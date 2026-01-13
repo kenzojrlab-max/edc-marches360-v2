@@ -103,6 +103,7 @@ export const PPMManage: React.FC = () => {
             dates_prevues[key] = excelDateToISO(row[9 + i]);
           });
 
+          // Fix: Add missing 'comments' property to satisfy the Marche interface
           return {
             id: generateUUID(),
             projet_id: importProjectId,
@@ -117,6 +118,7 @@ export const PPMManage: React.FC = () => {
             source_financement: project?.sourceFinancement || SourceFinancement.BUDGET_EDC,
             dates_prevues: dates_prevues,
             dates_realisees: {},
+            comments: {},
             docs: {},
             statut_global: StatutGlobal.PLANIFIE,
             is_infructueux: false,

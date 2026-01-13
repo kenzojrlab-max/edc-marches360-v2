@@ -7,7 +7,7 @@ import {
   FileText, CreditCard, TrendingUp, Layers, AlertTriangle, 
   AlertCircle, CheckCircle2, UserCheck, Banknote, Gavel, Ban, 
   ChevronRight, Calendar, Download, Info, XCircle, Clock, Receipt, HardHat,
-  ShieldCheck
+  ShieldCheck, Info as InfoIcon, MessageSquare
 } from 'lucide-react';
 import { JALONS_PPM_CONFIG, JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { formatDate, getLateStatus, calculateDaysBetween } from '../utils/date';
@@ -274,11 +274,20 @@ export const PPMView: React.FC = () => {
                       if (isEDC && jalon.key.includes('ano')) return <td key={jalon.key} colSpan={2} className={`p-4 border-r border-white/5 text-center text-[9px] font-black ${theme.textSecondary} opacity-20 italic`}>N/A</td>;
                       const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
                       const r = m.dates_realisees[jalon.key as keyof typeof m.dates_realisees];
+                      const comment = m.comments?.[jalon.key];
                       const s = getLateStatus(p || null, r || null);
                       return (
                         <React.Fragment key={`${m.id}-${jalon.key}`}>
                           <td className={`p-4 border-r border-white/5 text-center text-[10px] font-bold ${theme.textSecondary} opacity-60`}>{formatDate(p || null)}</td>
-                          <td className={`p-4 border-r border-white/5 text-center text-[10px] font-black ${s === 'late' ? 'text-red-500 bg-red-500/10' : s === 'done' ? 'text-green-500 bg-green-500/10' : theme.textSecondary}`}>{formatDate(r || null)}</td>
+                          <td 
+                            title={comment ? `OBSERVATION : ${comment}` : undefined}
+                            className={`p-4 border-r border-white/5 text-center text-[10px] font-black relative ${s === 'late' ? 'text-red-500 bg-red-500/10' : s === 'done' ? 'text-green-500 bg-green-500/10' : theme.textSecondary}`}
+                          >
+                            <div className="flex items-center justify-center gap-1.5">
+                               {formatDate(r || null)}
+                               {comment && <InfoIcon size={12} className="text-blue-500 cursor-help" />}
+                            </div>
+                          </td>
                         </React.Fragment>
                       );
                     })}
@@ -358,6 +367,7 @@ export const PPMView: React.FC = () => {
                                  {getVisibleJalonsOfGroup(group, selectedMarket).map(key => {
                                     const date = selectedMarket.dates_realisees[key as keyof typeof selectedMarket.dates_realisees];
                                     const docId = selectedMarket.docs?.[key];
+                                    const comment = selectedMarket.comments?.[key];
                                     const status = getStepStatus(date, docId);
 
                                     if (key === 'titulaire') return (
@@ -378,14 +388,22 @@ export const PPMView: React.FC = () => {
                                     );
 
                                     return (
-                                      <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex items-center justify-between hover:bg-white/5 transition-all group`}>
-                                         <div className="flex flex-col gap-0.5">
-                                            <p className={`text-[10px] font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
-                                            <span className={`text-[9px] uppercase tracking-tighter flex items-center gap-1.5 ${status.color}`}>
-                                              {status.icon} {status.label}
-                                            </span>
+                                      <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex flex-col gap-3 hover:bg-white/5 transition-all group`}>
+                                         <div className="flex items-center justify-between">
+                                            <div className="flex flex-col gap-0.5">
+                                               <p className={`text-[10px] font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
+                                               <span className={`text-[9px] uppercase tracking-tighter flex items-center gap-1.5 ${status.color}`}>
+                                                 {status.icon} {status.label}
+                                               </span>
+                                            </div>
+                                            <FileManager existingDocId={docId} onUpload={() => {}} disabled />
                                          </div>
-                                         <FileManager existingDocId={docId} onUpload={() => {}} disabled />
+                                         {comment && (
+                                           <div className="flex items-start gap-2 bg-black/10 p-3 rounded-xl border border-white/5">
+                                              <MessageSquare size={12} className="text-blue-500 mt-0.5 shrink-0" />
+                                              <p className="text-[10px] font-medium text-slate-300 italic">{comment}</p>
+                                           </div>
+                                         )}
                                       </div>
                                     );
                                  })}

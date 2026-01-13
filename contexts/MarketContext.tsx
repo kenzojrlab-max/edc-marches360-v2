@@ -24,6 +24,7 @@ interface MarketContextType {
   updateProject: (id: string, updates: Partial<Projet>) => void;
   getMarketById: (id: string) => Marche | undefined;
   updateJalon: (marketId: string, type: 'prevues' | 'realisees', key: string, value: string) => void;
+  updateComment: (marketId: string, key: string, value: string) => void;
   addLibraryDoc: (doc: LibraryDocument) => void;
   removeLibraryDoc: (id: string) => void;
   addFonction: (libelle: string) => void;
@@ -53,6 +54,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ...m,
       dates_prevues: m.dates_prevues || {},
       dates_realisees: m.dates_realisees || {},
+      comments: m.comments || {},
       docs: m.docs || {},
       execution: m.execution || { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 }
     }));
@@ -84,7 +86,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addMarket = (market: Marche) => {
     setMarkets(prev => {
-      const updated = [...prev, { ...market, docs: market.docs || {} }];
+      const updated = [...prev, { ...market, docs: market.docs || {}, comments: market.comments || {} }];
       storage.saveMarkets(updated);
       addLog('Passation', 'Inscription Marché', `Marché ${market.numDossier} inscrit.`);
       return updated;
@@ -93,7 +95,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addMarkets = (newMarkets: Marche[]) => {
     setMarkets(prev => {
-      const updated = [...prev, ...newMarkets.map(m => ({ ...m, docs: m.docs || {} }))];
+      const updated = [...prev, ...newMarkets.map(m => ({ ...m, docs: m.docs || {}, comments: m.comments || {} }))];
       storage.saveMarkets(updated);
       addLog('Passation', 'Import Excel', `${newMarkets.length} marchés importés.`);
       return updated;
@@ -262,11 +264,24 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
+  const updateComment = (marketId: string, key: string, value: string) => {
+    setMarkets(prev => {
+      const updated = prev.map(m => {
+        if (m.id === marketId) {
+          return { ...m, comments: { ...(m.comments || {}), [key]: value } };
+        }
+        return m;
+      });
+      storage.saveMarkets(updated);
+      return updated;
+    });
+  };
+
   return (
     <MarketContext.Provider value={{
       markets, deletedMarkets, projects, libraryDocs, fonctions, aoTypes, marketTypes, auditLogs,
       addMarket, addMarkets, updateMarket, updateMarketDoc, removeMarket, restoreMarket, permanentDeleteMarket,
-      addProject, updateProject, getMarketById, updateJalon, addLibraryDoc, removeLibraryDoc,
+      addProject, updateProject, getMarketById, updateJalon, updateComment, addLibraryDoc, removeLibraryDoc,
       addFonction, removeFonction, addAOType, removeAOType, addMarketType, removeMarketType, addLog
     }}>
       {children}

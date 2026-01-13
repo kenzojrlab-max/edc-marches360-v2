@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   ChevronLeft, Trash2, Plus, PencilLine, Search, Activity, ArrowUpRight,
-  Save, X, FileText, CreditCard, FileCheck, Download, Layers, Upload
+  Save, X, FileText, CreditCard, FileCheck, Download, Layers, Upload, MessageSquare
 } from 'lucide-react';
 import { BulleInput } from '../components/BulleInput';
 import { Modal } from '../components/Modal';
@@ -20,7 +20,7 @@ export const ProjectPlanManage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { theme, themeType } = useTheme();
-  const { markets, projects, updateMarket, addMarket, removeMarket, updateProject } = useMarkets();
+  const { markets, projects, updateMarket, addMarket, removeMarket, updateProject, updateComment } = useMarkets();
   const { user, can } = useAuth();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,7 +30,7 @@ export const ProjectPlanManage: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Marche>>({
     numDossier: '', objet: '', activite: '', fonction: FONCTIONS[0],
     typeAO: AOType.AON, typePrestation: MarketType.TRAVAUX, montant_prevu: 0,
-    imputation_budgetaire: '', dates_prevues: {} as MarcheDates, docs: {}, has_additif: false
+    imputation_budgetaire: '', dates_prevues: {} as MarcheDates, comments: {}, docs: {}, has_additif: false
   });
 
   const project = projects.find(p => p.id === projectId);
@@ -59,6 +59,7 @@ export const ProjectPlanManage: React.FC = () => {
         montant_prevu: 0, 
         imputation_budgetaire: '', 
         dates_prevues: {} as MarcheDates, 
+        comments: {},
         docs: {}, 
         has_additif: false 
       });
@@ -77,6 +78,7 @@ export const ProjectPlanManage: React.FC = () => {
         projet_id: projectId!, 
         source_financement: project.sourceFinancement, 
         dates_realisees: {}, 
+        comments: formData.comments || {},
         docs: formData.docs || {}, 
         statut_global: StatutGlobal.PLANIFIE, 
         is_infructueux: false, 
@@ -100,6 +102,16 @@ export const ProjectPlanManage: React.FC = () => {
       ...prev,
       dates_prevues: {
         ...(prev.dates_prevues || {}),
+        [key]: val
+      }
+    }));
+  };
+
+  const updateFormDataComment = (key: string, val: string) => {
+    setFormData(prev => ({
+      ...prev,
+      comments: {
+        ...(prev.comments || {}),
         [key]: val
       }
     }));
@@ -228,16 +240,28 @@ export const ProjectPlanManage: React.FC = () => {
            </div>
 
            <div className="pt-8 border-t border-white/10">
-              <h3 className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} mb-6`}>Calendrier Prévisionnel (PPM)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <h3 className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} mb-6`}>Calendrier Prévisionnel & Observations (PPM)</h3>
+              <div className="grid grid-cols-1 gap-6">
                  {JALONS_PPM_CONFIG.map(jalon => (
-                   <BulleInput 
-                    key={jalon.key} 
-                    type="date" 
-                    label={jalon.label} 
-                    value={formData.dates_prevues?.[jalon.key as keyof MarcheDates] || ''} 
-                    onChange={e => updateFormDataDate(jalon.key, e.target.value)} 
-                   />
+                   <div key={jalon.key} className="flex flex-col md:flex-row items-start gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <div className="w-full md:w-64">
+                         <BulleInput 
+                          type="date" 
+                          label={jalon.label} 
+                          value={formData.dates_prevues?.[jalon.key as keyof MarcheDates] || ''} 
+                          onChange={e => updateFormDataDate(jalon.key, e.target.value)} 
+                         />
+                      </div>
+                      <div className="flex-1 w-full">
+                         <BulleInput 
+                          label="Observation / Justification du jalon" 
+                          icon={MessageSquare}
+                          placeholder="Pourquoi ce jalon n'est pas encore réalisé ?" 
+                          value={formData.comments?.[jalon.key] || ''} 
+                          onChange={e => updateFormDataComment(jalon.key, e.target.value)} 
+                         />
+                      </div>
+                   </div>
                  ))}
               </div>
            </div>

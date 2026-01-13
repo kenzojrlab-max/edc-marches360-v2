@@ -1,4 +1,3 @@
-
 export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN = 'ADMIN',
@@ -156,6 +155,7 @@ export interface Marche {
   source_financement: SourceFinancement;
   dates_prevues: MarcheDates;
   dates_realisees: MarcheDates;
+  comments: Record<string, string>;
   docs: Record<string, string | undefined>;
   statut_global: StatutGlobal;
   is_infructueux: boolean;
