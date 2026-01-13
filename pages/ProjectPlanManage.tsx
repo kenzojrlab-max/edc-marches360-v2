@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   ChevronLeft, Trash2, Plus, PencilLine, Search, Activity, ArrowUpRight,
-  Save, X, FileText, CreditCard, FileCheck, Download, Layers
+  Save, X, FileText, CreditCard, FileCheck, Download, Layers, Upload
 } from 'lucide-react';
 import { BulleInput } from '../components/BulleInput';
 import { Modal } from '../components/Modal';
@@ -49,20 +49,65 @@ export const ProjectPlanManage: React.FC = () => {
       setFormData({ ...market });
     } else {
       setEditingMarket(null);
-      setFormData({ numDossier: '', objet: '', activite: '', fonction: FONCTIONS[0], typeAO: AOType.AON, typePrestation: MarketType.TRAVAUX, montant_prevu: 0, imputation_budgetaire: '', dates_prevues: {} as MarcheDates, docs: {}, has_additif: false });
+      setFormData({ 
+        numDossier: '', 
+        objet: '', 
+        activite: '', 
+        fonction: FONCTIONS[0], 
+        typeAO: AOType.AON, 
+        typePrestation: MarketType.TRAVAUX, 
+        montant_prevu: 0, 
+        imputation_budgetaire: '', 
+        dates_prevues: {} as MarcheDates, 
+        docs: {}, 
+        has_additif: false 
+      });
     }
     setIsModalOpen(true);
   };
 
   const handleSubmit = () => {
     if (!formData.numDossier || !formData.objet) return;
-    if (editingMarket) updateMarket(editingMarket.id, formData);
-    else addMarket({ ...(formData as Marche), id: crypto.randomUUID(), projet_id: projectId!, source_financement: project.sourceFinancement, dates_realisees: {}, docs: formData.docs || {}, statut_global: StatutGlobal.PLANIFIE, is_infructueux: false, is_annule: false, execution: { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 }, created_by: user?.id || 'system', date_creation: new Date().toISOString() });
+    if (editingMarket) {
+      updateMarket(editingMarket.id, formData);
+    } else {
+      addMarket({ 
+        ...(formData as Marche), 
+        id: crypto.randomUUID(), 
+        projet_id: projectId!, 
+        source_financement: project.sourceFinancement, 
+        dates_realisees: {}, 
+        docs: formData.docs || {}, 
+        statut_global: StatutGlobal.PLANIFIE, 
+        is_infructueux: false, 
+        is_annule: false, 
+        execution: { 
+          decomptes: [], 
+          avenants: [], 
+          has_avenant: false, 
+          is_resilie: false, 
+          resiliation_step: 0 
+        }, 
+        created_by: user?.id || 'system', 
+        date_creation: new Date().toISOString() 
+      });
+    }
     setIsModalOpen(false);
+  };
+
+  const updateFormDataDate = (key: string, val: string) => {
+    setFormData(prev => ({
+      ...prev,
+      dates_prevues: {
+        ...(prev.dates_prevues || {}),
+        [key]: val
+      }
+    }));
   };
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-40 relative">
+      {/* HEADER AVEC BOUTON D'IMPORTATION PPM SIGNÉ RÉTABLI */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
         <div className="flex items-center gap-5">
           <button onClick={() => navigate('/ppm-manage')} className={`p-4 ${theme.card} ${theme.buttonShape} hover:scale-105 transition-all text-slate-400`}><ChevronLeft size={20} /></button>
@@ -74,7 +119,20 @@ export const ProjectPlanManage: React.FC = () => {
             <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase leading-tight`}>{project.libelle}</h1>
           </div>
         </div>
-        <button onClick={() => openModal()} className={`${theme.buttonPrimary} px-8 py-3 ${theme.buttonShape} text-sm font-black shadow-2xl transition-all flex items-center gap-3`}><Plus size={20} /> Inscrire un Marché</button>
+        
+        <div className="flex items-center gap-4">
+          {/* BOUTON D'IMPORTATION DU PPM SIGNÉ (RÉTABLI) */}
+          <div className="flex flex-col items-end gap-1">
+            <span className={`text-[8px] font-black uppercase tracking-widest ${theme.textSecondary} opacity-60 mr-2`}>PPM Officiel Signé</span>
+            <FileManager 
+              onUpload={(docId) => updateProject(project.id, { ppm_doc_id: docId })}
+              existingDocId={project.ppm_doc_id}
+              disabled={!can('WRITE')}
+            />
+          </div>
+          
+          <button onClick={() => openModal()} className={`${theme.buttonPrimary} px-8 py-3 ${theme.buttonShape} text-sm font-black shadow-2xl transition-all flex items-center gap-3`}><Plus size={20} /> Inscrire un Marché</button>
+        </div>
       </div>
 
       {/* Barre de Recherche & Filtre harmonisée */}
@@ -95,7 +153,7 @@ export const ProjectPlanManage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tableau Structurel - Fond Opaque pour Glass */}
+      {/* Tableau Structurel */}
       <div className={`${theme.card} flex flex-col relative overflow-hidden`}>
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[3200px]">
@@ -149,6 +207,49 @@ export const ProjectPlanManage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* MODAL D'ÉDITION / CRÉATION */}
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title={editingMarket ? `Édition : ${editingMarket.numDossier}` : "Inscrire un nouveau Marché"}
+        size="xl"
+      >
+        <div className="space-y-8">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <BulleInput label="N° Dossier" value={formData.numDossier} onChange={e => setFormData({...formData, numDossier: e.target.value})} placeholder="Ex: 001/AO/EDC/2025" required />
+              <BulleInput label="Objet du Marché" value={formData.objet} onChange={e => setFormData({...formData, objet: e.target.value})} placeholder="Saisir l'objet complet..." required />
+              <CustomBulleSelect label="Fonction Analytique" value={formData.fonction || ''} options={FONCTIONS.map(f => ({value: f, label: f}))} onChange={v => setFormData({...formData, fonction: v})} />
+              <BulleInput label="Activité" value={formData.activite} onChange={e => setFormData({...formData, activite: e.target.value})} placeholder="Nom de l'activité..." />
+              <CustomBulleSelect label="Type de Dossier (AO)" value={formData.typeAO || ''} options={Object.values(AOType).map(v => ({value: v, label: v}))} onChange={v => setFormData({...formData, typeAO: v})} />
+              <CustomBulleSelect label="Prestation" value={formData.typePrestation || ''} options={Object.values(MarketType).map(v => ({value: v, label: v}))} onChange={v => setFormData({...formData, typePrestation: v})} />
+              <BulleInput label="Budget Estimé (FCFA)" type="number" value={formData.montant_prevu} onChange={e => setFormData({...formData, montant_prevu: Number(e.target.value)})} />
+              <BulleInput label="Imputation Budgétaire" value={formData.imputation_budgetaire} onChange={e => setFormData({...formData, imputation_budgetaire: e.target.value})} />
+           </div>
+
+           <div className="pt-8 border-t border-white/10">
+              <h3 className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} mb-6`}>Calendrier Prévisionnel (PPM)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 {JALONS_PPM_CONFIG.map(jalon => (
+                   <BulleInput 
+                    key={jalon.key} 
+                    type="date" 
+                    label={jalon.label} 
+                    value={formData.dates_prevues?.[jalon.key as keyof MarcheDates] || ''} 
+                    onChange={e => updateFormDataDate(jalon.key, e.target.value)} 
+                   />
+                 ))}
+              </div>
+           </div>
+
+           <button 
+             onClick={handleSubmit} 
+             className={`${theme.buttonPrimary} w-full py-4 ${theme.buttonShape} font-black uppercase tracking-widest shadow-xl transition-all hover:scale-[1.01]`}
+           >
+             {editingMarket ? "Mettre à jour le registre" : "Enregistrer dans le PPM"}
+           </button>
+        </div>
+      </Modal>
     </div>
   );
 };
