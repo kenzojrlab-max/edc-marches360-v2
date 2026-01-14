@@ -29,6 +29,7 @@ import { useTheme, ThemeType } from '../contexts/ThemeContext';
 import { JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { calculateDaysBetween } from '../utils/date';
 import { Marche, UserRole } from '../types';
+import { FloatingAIWidget } from './FloatingAIWidget';
 
 export const Layout: React.FC = () => {
   const { user, logout, isAdmin, isSuperAdmin } = useAuth();
@@ -176,7 +177,7 @@ export const Layout: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1050] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <header className={`h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[1000] backdrop-blur-md`}>
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(true)} className={`p-2 ${theme.textSecondary} lg:hidden hover:bg-white/5 rounded-xl`}>
@@ -277,6 +278,10 @@ export const Layout: React.FC = () => {
         <section className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
           <Outlet />
         </section>
+
+        {/* AJOUT DU WIDGET ASSISTANT IA */}
+        <FloatingAIWidget />
+
       </main>
     </div>
   );

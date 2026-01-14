@@ -1,5 +1,8 @@
+
 {
   "name": "EDC Marchés360 V2",
   "description": "Système intégré de gestion du Plan de Passation des Marchés (PPM) et du suivi de l'exécution pour EDC.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }
