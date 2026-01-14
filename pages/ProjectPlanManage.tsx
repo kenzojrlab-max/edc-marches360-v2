@@ -239,6 +239,19 @@ export const ProjectPlanManage: React.FC = () => {
               <BulleInput label="Imputation Budgétaire" value={formData.imputation_budgetaire} onChange={e => setFormData({...formData, imputation_budgetaire: e.target.value})} />
            </div>
 
+           {/* NOUVEAU CHAMP : SITUATION GLOBALE POUR L'IA */}
+           <div className="pt-8 border-t border-white/10">
+              <h3 className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} mb-4`}>Contextualisation pour rapports (Agent IA)</h3>
+              <BulleInput 
+                textarea 
+                label="Situation / Blocage pour Rapport" 
+                icon={Activity}
+                placeholder="Décrivez ici la situation globale, les points bloquants ou l'état d'avancement pour la rédaction automatique des rapports par l'IA..." 
+                value={formData.comments?.['situation_globale'] || ''} 
+                onChange={e => updateFormDataComment('situation_globale', e.target.value)} 
+              />
+           </div>
+
            <div className="pt-8 border-t border-white/10">
               <h3 className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} mb-6`}>Calendrier Prévisionnel & Observations (PPM)</h3>
               <div className="grid grid-cols-1 gap-6">
