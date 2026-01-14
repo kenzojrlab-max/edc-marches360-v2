@@ -134,7 +134,15 @@ export const Layout: React.FC = () => {
       `}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 bg-accent ${theme.buttonShape} flex items-center justify-center font-bold text-xl`}>E</div>
+            {/* CORRECTION LOGO : Conteneur blanc pour le contraste */}
+            <div className={`w-10 h-10 bg-white ${theme.buttonShape} flex items-center justify-center p-1 shadow-md overflow-hidden`}>
+              <img 
+                src="/logo.png" 
+                alt="Logo EDC" 
+                className="w-full h-full object-contain" 
+              />
+            </div>
+            
             <div>
               <h1 className="text-lg font-bold leading-none text-white">EDC</h1>
               <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">Marchés 360</p>
