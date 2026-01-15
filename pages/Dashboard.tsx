@@ -1,41 +1,25 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  TrendingUp, 
-  CheckCircle, 
-  DollarSign, 
-  FileSearch,
-  AlertTriangle,
-  Layers,
-  Clock,
-  Filter,
-  BarChart2,
-  PieChart as PieChartIcon,
-  Activity,
-  Briefcase,
-  ChevronRight,
-  Search
+  TrendingUp, Filter, BarChart2, PieChart as PieChartIcon, 
+  Activity, Briefcase, ChevronRight, Clock, AlertTriangle, 
+  Layers, DollarSign
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Cell, PieChart, Pie, Legend, LineChart, Line, RadialBarChart, RadialBar
+  Cell, PieChart, Pie, Legend, LineChart, Line
 } from 'recharts';
-import { useMarkets } from '../contexts/MarketContext';
-import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
-import { useConfig } from '../contexts/ConfigContext';   // NOUVEAU
-import { useTheme } from '../contexts/ThemeContext';
-import { StatutGlobal, SourceFinancement } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { CustomBulleSelect } from '../components/CustomBulleSelect';
-import { calculateDaysBetween } from '../utils/date';
 
-const COLORS = {
-  primary: '#1e3a8a',
-  accent: '#0ea5e9',
-  success: '#10b981',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  slate: '#64748b'
-};
+// Contextes
+import { useMarkets } from '../contexts/MarketContext';
+import { useProjects } from '../contexts/ProjectContext';
+import { useConfig } from '../contexts/ConfigContext';
+import { useTheme } from '../contexts/ThemeContext';
+
+// Hook personnalisé (Correction)
+import { useDashboardStats } from '../hooks/useDashboardStats';
+
+import { CustomBulleSelect } from '../components/CustomBulleSelect';
 
 const formatCurrency = (val: number) => {
   if (val >= 1000000000) return (val / 1000000000).toFixed(1) + ' Mrd';
@@ -44,15 +28,13 @@ const formatCurrency = (val: number) => {
 };
 
 export const Dashboard: React.FC = () => {
-  // CORRECTION : Éclatement des contextes pour éviter les re-renders inutiles
   const { markets } = useMarkets();
   const { projects } = useProjects();
   const { fonctions } = useConfig();
-  
   const { theme, themeType } = useTheme();
   const navigate = useNavigate();
 
-  // --- Filtres Globaux ---
+  // --- Filtres UI ---
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedFonction, setSelectedFonction] = useState<string>('');
@@ -66,7 +48,7 @@ export const Dashboard: React.FC = () => {
     return [{ value: '', label: 'Tous les projets' }, ...projects.map(p => ({ value: p.id, label: p.libelle }))];
   }, [projects]);
 
-  // --- Données Filtrées ---
+  // --- Filtrage des données (Logique UI) ---
   const filteredMarkets = useMemo(() => {
     return markets.filter(m => {
       const parentProject = projects.find(p => p.id === m.projet_id);
@@ -77,88 +59,10 @@ export const Dashboard: React.FC = () => {
     });
   }, [markets, projects, selectedYear, selectedProjectId, selectedFonction]);
 
-  // --- Calculs KPIs (Logique restaurée) ---
-  const delayStats = useMemo(() => {
-    const plannedMarkets = filteredMarkets.filter(m => m.dates_prevues.saisine_cipm && m.dates_prevues.signature_marche);
-    const avgPlanned = plannedMarkets.length > 0 
-      ? Math.round(plannedMarkets.reduce((acc, m) => acc + calculateDaysBetween(m.dates_prevues.saisine_cipm!, m.dates_prevues.signature_marche!), 0) / plannedMarkets.length)
-      : 0;
-
-    const realMarkets = filteredMarkets.filter(m => m.dates_realisees.saisine_cipm && m.dates_realisees.signature_marche);
-    const avgReal = realMarkets.length > 0 
-      ? Math.round(realMarkets.reduce((acc, m) => acc + calculateDaysBetween(m.dates_realisees.saisine_cipm!, m.dates_realisees.signature_marche!), 0) / realMarkets.length)
-      : 0;
-
-    return { planned: avgPlanned, real: avgReal };
-  }, [filteredMarkets]);
-
-  const funnelData = useMemo(() => {
-    const planifies = filteredMarkets.length;
-    const lances = filteredMarkets.filter(m => m.dates_realisees.lancement_ao).length;
-    const attribues = filteredMarkets.filter(m => m.dates_realisees.notification_attrib || m.titulaire).length;
-    const signes = filteredMarkets.filter(m => m.dates_realisees.signature_marche).length;
-    return [
-      { name: 'Planifiés', value: planifies, fill: '#94a3b8' },
-      { name: 'Lancés', value: lances, fill: COLORS.accent },
-      { name: 'Attribués', value: attribues, fill: COLORS.primary },
-      { name: 'Signés', value: signes, fill: COLORS.success }
-    ];
-  }, [filteredMarkets]);
-
-  const budgetStats = useMemo(() => {
-    const prevu = filteredMarkets.reduce((acc, m) => acc + (m.montant_prevu || 0), 0);
-    const signe = filteredMarkets.filter(m => m.dates_realisees.signature_marche)
-                                 .reduce((acc, m) => acc + (m.montant_ttc_reel || m.montant_prevu || 0), 0);
-    const rate = prevu > 0 ? (signe / prevu) * 100 : 0;
-    return { prevu, signe, rate };
-  }, [filteredMarkets]);
-
-  const procedureData = useMemo(() => {
-    const lances = filteredMarkets.filter(m => m.dates_realisees.lancement_ao);
-    const signes = lances.filter(m => m.dates_realisees.signature_marche).length;
-    const echecs = lances.filter(m => m.is_infructueux || m.is_annule).length;
-    const encours = Math.max(0, lances.length - signes - echecs);
-    return [
-      { name: 'Succès', value: signes, color: COLORS.success },
-      { name: 'Échecs', value: echecs, color: COLORS.danger },
-      { name: 'En cours', value: encours, color: COLORS.warning }
-    ];
-  }, [filteredMarkets]);
-
-  const functionStats = useMemo(() => {
-    const activeFonctions = Array.from(new Set(filteredMarkets.map(m => m.fonction).filter(Boolean))) as string[];
-    return activeFonctions.map(func => {
-      const marketsInFunc = filteredMarkets.filter(m => m.fonction === func);
-      let shortName = func.split(' ').slice(0, 2).join(' ') + '...';
-      return {
-        name: shortName,
-        planifies: marketsInFunc.length,
-        lances: marketsInFunc.filter(m => m.dates_realisees.lancement_ao).length,
-        signes: marketsInFunc.filter(m => m.dates_realisees.signature_marche).length,
-        budgetPrevu: marketsInFunc.reduce((acc, m) => acc + (m.montant_prevu || 0), 0),
-        budgetSigne: marketsInFunc.filter(m => m.dates_realisees.signature_marche).reduce((acc, m) => acc + (m.montant_ttc_reel || m.montant_prevu || 0), 0)
-      };
-    });
-  }, [filteredMarkets]);
-
-  const historicalData = useMemo(() => {
-    const groups: Record<string, any> = {};
-    projects.forEach(p => {
-      const year = p.exercice.toString();
-      if (!groups[year]) groups[year] = { year, planifies: 0, lances: 0, budgetEDC: 0, budgetBailleur: 0 };
-      const pMarkets = markets.filter(m => m.projet_id === p.id);
-      groups[year].planifies += pMarkets.length;
-      groups[year].lances += pMarkets.filter(m => m.dates_realisees.lancement_ao).length;
-      pMarkets.forEach(m => {
-        if (m.source_financement === SourceFinancement.BUDGET_EDC) groups[year].budgetEDC += (m.montant_prevu || 0);
-        else groups[year].budgetBailleur += (m.montant_prevu || 0);
-      });
-    });
-    return Object.values(groups).sort((a, b) => a.year.localeCompare(b.year)).map(g => ({
-      ...g,
-      tauxExecution: g.planifies > 0 ? Math.round((g.lances / g.planifies) * 100) : 0
-    }));
-  }, [markets, projects]);
+  // --- Appel du Hook pour les calculs lourds (Correction) ---
+  const { 
+    delayStats, funnelData, budgetStats, procedureData, functionStats, historicalData, COLORS 
+  } = useDashboardStats(filteredMarkets, markets, projects);
 
   const yearsRange = useMemo(() => {
     const years = historicalData.map(d => parseInt(d.year));
@@ -170,7 +74,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20 relative">
       
-      {/* 1. BARRE DE FILTRES - Position relative contrôlée pour les dropdowns centrés */}
+      {/* 1. BARRE DE FILTRES */}
       <div className={`${theme.card} p-6 flex flex-wrap items-center gap-6 mb-8 relative z-[500]`}>
         <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden md:flex`}>
           <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
@@ -181,7 +85,7 @@ export const Dashboard: React.FC = () => {
         <div className="w-full md:w-64"><CustomBulleSelect label="Fonction" value={selectedFonction} options={fonctions.map(f=>({value:f, label:f}))} onChange={setSelectedFonction} placeholder="Toutes fonctions" /></div>
       </div>
 
-      {/* 2. KPIs OPÉRATIONNELS - Priorité visuelle plus basse que les filtres */}
+      {/* 2. KPIs OPÉRATIONNELS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
         <div className={`${theme.card} p-8 flex items-center justify-between hover:scale-[1.02] transition-transform`}>
            <div>
