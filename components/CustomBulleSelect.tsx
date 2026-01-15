@@ -50,7 +50,7 @@ export const CustomBulleSelect: React.FC<Props> = ({
 
   return (
     <div 
-      className={`flex flex-col gap-1.5 w-full relative transition-none ${isOpen ? 'z-[9999]' : 'z-[50]'}`} 
+      className={`flex flex-col gap-1.5 w-full relative transition-none ${isOpen ? 'z-[50]' : 'z-0'}`} // Z-INDEX CORRIGÉ
       ref={containerRef}
     >
       {label && (
@@ -77,7 +77,7 @@ export const CustomBulleSelect: React.FC<Props> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-[9999]">
+        <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-[60]"> {/* Z-INDEX CORRIGÉ */}
           <div 
             className={`w-full ${getMenuBg()} p-2 animate-zoom-in ${theme.buttonShape}`}
             style={{ transformOrigin: 'top center' }}

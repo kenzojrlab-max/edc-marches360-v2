@@ -4,7 +4,6 @@ export const FONCTIONS = [
   "EDC support"
 ];
 
-// Les points officiels basés sur la capture d'écran utilisateur pour le template
 export const JALONS_LABELS: Record<string, string> = {
   saisine_prev: "Saisine prévisionnelle de la CIPM",
   saisine_cipm: "Saisine CIPM",
@@ -38,7 +37,6 @@ export const JALONS_LABELS: Record<string, string> = {
   adf_doc: "Attestation de Disponibilité des Fonds (ADF)"
 };
 
-// Ordre strict du PPM basé sur la capture d'écran
 export const JALONS_PPM_KEYS = [
   'saisine_cipm', 
   'examen_dao', 
@@ -88,3 +86,16 @@ export const JALONS_GROUPS = [
     keys: ['annule', 'notification', 'recours']
   }
 ];
+
+// NOUVEAU : SYSTÈME DE Z-INDEX CENTRALISÉ (Pour référence)
+export const LAYERS = {
+  BASE: 0,
+  CARD: 10,
+  TABLE_FIXED: 20,
+  TABLE_HEADER: 30,
+  FILTER_BAR: 40,
+  DROPDOWN: 50,
+  SIDEBAR: 100,
+  MODAL: 1000,
+  TOAST: 9999
+};

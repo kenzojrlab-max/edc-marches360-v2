@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useMarkets } from '../contexts/MarketContext';
-import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
+import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -37,10 +37,8 @@ const CircularProgress = ({ percent, color, icon: Icon }: { percent: number, col
 };
 
 export const PPMView: React.FC = () => {
-  // CORRECTION : Éclatement des contextes
   const { markets } = useMarkets();
   const { projects } = useProjects();
-  
   const { can } = useAuth();
   const { theme, themeType } = useTheme();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -60,7 +58,6 @@ export const PPMView: React.FC = () => {
     if (projectFilter) setSelectedProjectId(projectFilter);
     
     if (highlightedId) {
-      // 1. Trouver le marché pour ajuster les filtres automatiquement
       const targetMarket = markets.find(m => m.id === highlightedId);
       if (targetMarket) {
         const parentProject = projects.find(p => p.id === targetMarket.projet_id);
@@ -69,20 +66,16 @@ export const PPMView: React.FC = () => {
           setSelectedProjectId(parentProject.id);
         }
       }
-
-      // 2. Déclencher le scroll après un court délai pour laisser le temps aux filtres de s'appliquer
       setScrolledId(highlightedId);
       const timer = setTimeout(() => {
         const element = document.getElementById(`market-row-${highlightedId}`);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Nettoyer l'ID des params après le scroll réussi pour éviter les répétitions
           const newParams = new URLSearchParams(searchParams);
           newParams.delete('id');
           setSearchParams(newParams, { replace: true });
         }
       }, 600);
-      
       return () => clearTimeout(timer);
     }
   }, [searchParams, markets, projects]);
@@ -159,7 +152,6 @@ export const PPMView: React.FC = () => {
 
   const selectedMarket = markets.find(m => m.id === detailMarketId);
 
-  // LOGIQUE DE SLICING DES JALONS
   const getVisibleJalonsOfGroup = (group: typeof JALONS_GROUPS[0], m: Marche) => {
     const visible = [];
     for (const key of group.keys) {
@@ -186,13 +178,13 @@ export const PPMView: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-40 relative">
-      {/* HEADER & FILTRES */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 px-2 relative z-[200]">
+      {/* HEADER & FILTRES - Z-INDEX CORRIGÉ: z-20 (au-dessus du tableau z-10) */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 px-2 relative z-20">
         <div className="border-l-4 border-primary pl-4">
           <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Suivi PPM</h1>
           <p className={`${theme.textSecondary} font-medium text-sm italic`}>Registre complet consolidé par exercice.</p>
         </div>
-        <div className={`${theme.card} p-3 flex flex-col md:flex-row items-center gap-3 w-full md:w-auto relative z-[300]`}>
+        <div className={`${theme.card} p-3 flex flex-col md:flex-row items-center gap-3 w-full md:w-auto relative z-40`}>
           <div className="w-full md:w-40"><CustomBulleSelect label="" value={selectedYear} options={yearOptions} onChange={setSelectedYear} /></div>
           <div className="w-full md:w-64"><CustomBulleSelect label="" value={selectedProjectId} options={projectOptions} onChange={setSelectedProjectId} /></div>
           
@@ -213,30 +205,30 @@ export const PPMView: React.FC = () => {
         </div>
       </div>
 
-      {/* TABLEAU AVEC CORRECTION STICKY & Z-INDEX */}
-      <div className={`${theme.card} flex flex-col relative overflow-visible z-[10]`}>
-        <div ref={topScrollRef} onScroll={handleTopScroll} className="overflow-x-auto overflow-y-hidden custom-scrollbar border-b border-white/5 sticky top-0 z-[100] h-4">
+      {/* TABLEAU AVEC Z-INDEX CORRIGÉS */}
+      <div className={`${theme.card} flex flex-col relative overflow-visible z-10`}>
+        <div ref={topScrollRef} onScroll={handleTopScroll} className="overflow-x-auto overflow-y-hidden custom-scrollbar border-b border-white/5 sticky top-0 z-50 h-4">
           <div className="h-[1px] min-w-[3600px]"></div>
         </div>
         <div ref={tableContainerRef} onScroll={handleTableScroll} className="overflow-auto custom-scrollbar max-h-[75vh]">
           <table className="w-full text-left border-collapse min-w-[3600px] table-fixed">
             <thead>
-              <tr className="z-[300]">
-                {/* Coin En-tête : Z-INDEX MAXIMAL (100) pour passer au dessus de tout */}
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} sticky left-0 top-0 ${getSolidBg()} z-[100] w-[420px] align-middle text-center`}>Dossier & Objet</th>
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-[80] w-[180px] align-middle`}>Budget Estimé</th>
+              <tr className="z-30">
+                {/* Coin En-tête : Z-INDEX 45 */}
+                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} sticky left-0 top-0 ${getSolidBg()} z-45 w-[420px] align-middle text-center`}>Dossier & Objet</th>
+                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-40 w-[180px] align-middle`}>Budget Estimé</th>
                 {JALONS_PPM_CONFIG.map(jalon => (
-                  <th key={jalon.key} colSpan={2} className={`p-6 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center ${getSolidBg()} sticky top-0 z-[80] align-middle`}>{jalon.label}</th>
+                  <th key={jalon.key} colSpan={2} className={`p-6 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center ${getSolidBg()} sticky top-0 z-40 align-middle`}>{jalon.label}</th>
                 ))}
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-[80] w-[200px] align-middle`}>Synthèse Délais</th>
-                <th rowSpan={2} className={`p-8 border-b border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky right-0 top-0 ${getSolidBg()} z-[90] w-[100px] align-middle`}>Détails</th>
+                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-40 w-[200px] align-middle`}>Synthèse Délais</th>
+                <th rowSpan={2} className={`p-8 border-b border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky right-0 top-0 ${getSolidBg()} z-45 w-[100px] align-middle`}>Détails</th>
               </tr>
-              <tr className="z-[250]">
-                {/* Ligne PRÉVUE/RÉALISÉE : Z-INDEX 80 et top exact pour éviter les fuites de dates */}
+              <tr className="z-30">
+                {/* Ligne PRÉVUE/RÉALISÉE : Z-INDEX 40 */}
                 {JALONS_PPM_CONFIG.map(jalon => (
                   <React.Fragment key={`${jalon.key}-sub`}>
-                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textSecondary} text-center uppercase sticky top-[82px] ${getSolidBg()} z-[80]`}>Prévue</th>
-                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textAccent} text-center uppercase sticky top-[82px] ${getSolidBg()} z-[80]`}>Réalisée</th>
+                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textSecondary} text-center uppercase sticky top-[82px] ${getSolidBg()} z-40`}>Prévue</th>
+                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textAccent} text-center uppercase sticky top-[82px] ${getSolidBg()} z-40`}>Réalisée</th>
                   </React.Fragment>
                 ))}
               </tr>
@@ -258,8 +250,8 @@ export const PPMView: React.FC = () => {
                     onDoubleClick={() => setDetailMarketId(m.id)} 
                     className={`group transition-all cursor-pointer hover:bg-white/10 ${isAborted ? 'opacity-80 grayscale-[0.5]' : ''} ${isHighlighted ? 'bg-primary/10 ring-4 ring-primary ring-inset animate-pulse' : ''}`}
                   >
-                    {/* Colonne de gauche fixe dans le body : Z-INDEX 50 pour passer AU DESSUS des PRÉVUE/RÉALISÉE du body */}
-                    <td className={`p-8 border-r border-white/5 sticky left-0 z-[50] ${getSolidBg()}`}>
+                    {/* Colonne de gauche fixe : Z-INDEX 35 */}
+                    <td className={`p-8 border-r border-white/5 sticky left-0 z-35 ${getSolidBg()}`}>
                       <div className="flex flex-col gap-2">
                         <span className={`text-[10px] font-black px-3 py-1 ${theme.buttonShape} w-fit ${m.is_annule ? 'bg-danger text-white' : m.is_infructueux ? 'bg-warning text-black' : 'bg-primary text-white'}`}>{m.numDossier}</span>
                         <span className={`text-xs font-black ${theme.textMain} line-clamp-2 uppercase whitespace-normal leading-snug`}>{m.objet}</span>
@@ -300,7 +292,7 @@ export const PPMView: React.FC = () => {
                         <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter"><span className={theme.textSecondary}>Réalisé :</span><span className={delaiRealise !== null ? theme.textAccent : theme.textSecondary}>{delaiRealise !== null ? `${delaiRealise} j` : '-'}</span></div>
                       </div>
                     </td>
-                    <td className={`p-6 text-center sticky right-0 z-[50] ${getSolidBg()} w-[100px]`}><button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape}`}><ExternalLink size={18} /></button></td>
+                    <td className={`p-6 text-center sticky right-0 z-35 ${getSolidBg()} w-[100px]`}><button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape}`}><ExternalLink size={18} /></button></td>
                   </tr>
                 );
               }) : (<tr><td colSpan={100} className="p-40 text-center font-black uppercase text-slate-400">Aucun marché trouvé</td></tr>)}
@@ -309,9 +301,10 @@ export const PPMView: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL DE DÉTAILS - SYNCHRONISATION 360° */}
+      {/* MODAL DE DÉTAILS - Z-INDEX 1000 */}
       {selectedMarket && (
-        <div className="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-2 md:p-4">
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-2 md:p-4">
+           {/* ... Contenu de la modale inchangé ... */}
            <div className={`relative w-full max-w-[1400px] h-[95vh] ${theme.card} shadow-2xl overflow-hidden flex flex-col animate-zoom-in border border-white/10`}>
               <div className="p-8 border-b border-white/5 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-6">
@@ -325,7 +318,7 @@ export const PPMView: React.FC = () => {
               </div>
 
               <div className="flex-1 flex divide-x divide-white/5 overflow-hidden">
-                {/* VOLET GAUCHE: PASSATION DÉTAILLÉE AVEC SLICING */}
+                {/* VOLET GAUCHE */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
                       <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme.textAccent}`}>Phase Passation détaillée</h3>
@@ -334,7 +327,6 @@ export const PPMView: React.FC = () => {
                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12">
                       <div className="mb-12 flex justify-center"><CircularProgress percent={calculateProgress(selectedMarket).passation} color={theme.textAccent} icon={FileBox} /></div>
                       <div className="space-y-10">
-                         {/* SECTIONS CONDITIONNELLES ANNULATION / RECOURS / INFRUCTUEUX */}
                          {(selectedMarket.is_annule || selectedMarket.is_infructueux || selectedMarket.has_recours) && (
                            <div className="p-8 rounded-[2rem] bg-slate-950 border border-white/10 space-y-6 shadow-2xl animate-in slide-in-from-top-4">
                               <div className="flex items-center gap-3 text-red-500 font-black uppercase text-[11px] tracking-widest"><AlertTriangle size={20}/> Statut Spécifique du Dossier</div>
@@ -417,7 +409,7 @@ export const PPMView: React.FC = () => {
                    </div>
                 </div>
 
-                {/* VOLET DROIT: EXÉCUTION DÉTAILLÉE SYNCHRONISÉE */}
+                {/* VOLET DROIT: EXÉCUTION DÉTAILLÉE */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
                       <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] text-green-500`}>Phase Exécution (Financier & Contractuel)</h3>
@@ -426,7 +418,6 @@ export const PPMView: React.FC = () => {
                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12">
                       <div className="mb-12 flex justify-center"><CircularProgress percent={calculateProgress(selectedMarket).execution} color="text-green-500" icon={Activity} /></div>
                       
-                      {/* VERROUILLAGE SI DOSSIER STOPPÉ PRÉMATURÉMENT */}
                       {(selectedMarket.is_annule || selectedMarket.is_infructueux) ? (
                          <div className="p-12 text-center flex flex-col items-center gap-8 bg-slate-950/50 rounded-[3rem] border border-white/5">
                             <div className={`w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 shadow-2xl`}><XCircle size={48} /></div>

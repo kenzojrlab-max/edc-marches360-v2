@@ -126,15 +126,14 @@ export const Layout: React.FC = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden relative`}>
-      {/* Sidebar */}
+      {/* Sidebar - Z-INDEX CORRIGÉ: z-[100] */}
       <aside className={`
-        fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-[1100] transition-transform duration-300 transform
+        fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-[100] transition-transform duration-300 transform
         lg:translate-x-0 lg:static lg:inset-auto
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* CORRECTION LOGO : Conteneur blanc pour le contraste */}
             <div className={`w-10 h-10 bg-white ${theme.buttonShape} flex items-center justify-center p-1 shadow-md overflow-hidden`}>
               <img 
                 src="/logo.png" 
@@ -181,12 +180,14 @@ export const Layout: React.FC = () => {
         </div>
       </aside>
 
+      {/* Overlay Mobile - Z-INDEX CORRIGÉ: z-[100] */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1050] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <header className={`h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[1000] backdrop-blur-md`}>
+        {/* Header - Z-INDEX CORRIGÉ: z-[40] */}
+        <header className={`h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[40] backdrop-blur-md`}>
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(true)} className={`p-2 ${theme.textSecondary} lg:hidden hover:bg-white/5 rounded-xl`}>
               <Menu size={24} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
@@ -207,7 +208,8 @@ export const Layout: React.FC = () => {
                 <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Thème</span>
               </button>
               {showThemePicker && (
-                <div className={`absolute top-full right-0 mt-2 w-52 ${getMenuBg()} z-[9999] p-2 animate-zoom-in rounded-2xl`}>
+                // Dropdown - Z-INDEX CORRIGÉ: z-[60]
+                <div className={`absolute top-full right-0 mt-2 w-52 ${getMenuBg()} z-[60] p-2 animate-zoom-in rounded-2xl`}>
                    {themeOptions.map((opt) => (
                     <button
                       key={opt.type}
@@ -238,7 +240,8 @@ export const Layout: React.FC = () => {
               </button>
 
               {showNotifications && (
-                <div className={`absolute top-full right-0 mt-2 w-80 md:w-96 ${getMenuBg()} z-[9999] shadow-2xl animate-zoom-in p-2 rounded-2xl`}>
+                // Dropdown - Z-INDEX CORRIGÉ: z-[60]
+                <div className={`absolute top-full right-0 mt-2 w-80 md:w-96 ${getMenuBg()} z-[60] shadow-2xl animate-zoom-in p-2 rounded-2xl`}>
                   <div className="p-4 border-b border-white/10 flex items-center justify-between">
                     <h3 className={`${theme.textMain} font-black text-[10px] uppercase tracking-widest`}>Alertes PPM ({alerts.length})</h3>
                     <AlertTriangle size={14} className="text-red-500" />
@@ -287,7 +290,7 @@ export const Layout: React.FC = () => {
           <Outlet />
         </section>
 
-        {/* AJOUT DU WIDGET ASSISTANT IA */}
+        {/* AJOUT DU WIDGET ASSISTANT IA - Z-INDEX 9999 (Doit rester au-dessus de tout) */}
         <FloatingAIWidget />
 
       </main>
