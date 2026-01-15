@@ -2,11 +2,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { storage } from '../utils/storage';
 import { generateUUID } from '../utils/uid';
+import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
+import { auth } from "../firebase"; 
 
 interface AuthContextType {
   user: User | null;
   users: User[];
   login: (email: string, password: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<void>; 
   register: (userData: Omit<User, 'id' | 'created_at'>) => void;
   updateUserRole: (userId: string, role: UserRole) => void;
   deleteUser: (userId: string) => void;
@@ -23,30 +26,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(storage.getSession());
   const [users, setUsers] = useState<User[]>(storage.getUsers());
 
+  // --- CORRECTION MAJEURE ICI ---
+  // On force la création/mise à jour de votre compte admin à chaque démarrage
   useEffect(() => {
-    if (users.length === 0) {
-      const defaultUsers: User[] = [
-        // Mot de passe par défaut pour super admin
-        { id: '1', name: 'Super Admin', email: 'super@edc.cm', role: UserRole.SUPER_ADMIN, statut: 'actif', password: 'password', created_at: new Date().toISOString() },
-        // Mot de passe sécurisé par défaut au lieu de la constante
-        { id: '2', name: 'Administration Centrale', email: 'admin@edc.cm', role: UserRole.SUPER_ADMIN, statut: 'actif', password: 'password123', created_at: new Date().toISOString() },
-      ];
-      setUsers(defaultUsers);
-      storage.saveUsers(defaultUsers);
+    const adminEmail = 'juniorngassa@edc.cm';
+    const existingUserIndex = users.findIndex(u => u.email.toLowerCase() === adminEmail.toLowerCase());
+
+    const superAdminUser: User = {
+      id: existingUserIndex >= 0 ? users[existingUserIndex].id : '1', // Garde l'ID s'il existe
+      name: 'Junior Ngassa',
+      email: adminEmail,
+      role: UserRole.SUPER_ADMIN,
+      statut: 'actif',
+      password: 'password', // Mot de passe forcé
+      created_at: new Date().toISOString()
+    };
+
+    let newUsersList = [...users];
+
+    if (existingUserIndex >= 0) {
+      // Si l'utilisateur existe, on met à jour son rôle et son mot de passe pour être sûr
+      newUsersList[existingUserIndex] = superAdminUser;
+    } else {
+      // Sinon, on l'ajoute
+      newUsersList.push(superAdminUser);
     }
-  }, []);
+
+    // On sauvegarde et on met à jour l'état
+    // Note: On compare JSON.stringify pour éviter les boucles infinies de mise à jour
+    if (JSON.stringify(newUsersList) !== JSON.stringify(users)) {
+        setUsers(newUsersList);
+        storage.saveUsers(newUsersList);
+        console.log("✅ Compte Super Admin juniorngassa@edc.cm restauré/mis à jour.");
+    }
+  }, [users]); // Dépendance à users pour être sûr d'avoir la dernière liste
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Suppression de la logique backdoor (if password === ...)
-
-    const found = users.find(u => u.email === email);
-    // Vérification simple (Note: Dans une vraie prod, utilisez bcrypt/argon2 pour le hachage)
+    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (found && (found.password === password || (!found.password && password === 'password'))) {
       setUser(found);
       storage.setSession(found);
       return true;
     }
     return false;
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const fbUser = result.user;
+
+      let appUser = users.find(u => u.email.toLowerCase() === fbUser.email?.toLowerCase());
+
+      if (!appUser) {
+        const newUser: User = {
+          id: fbUser.uid,
+          name: fbUser.displayName || 'Utilisateur Google',
+          email: fbUser.email || '',
+          role: UserRole.GUEST, 
+          statut: 'actif',
+          created_at: new Date().toISOString(),
+          fonction: 'Non définie'
+        };
+        
+        const newUsersList = [...users, newUser];
+        setUsers(newUsersList);
+        storage.saveUsers(newUsersList);
+        appUser = newUser;
+      }
+
+      setUser(appUser);
+      storage.setSession(appUser);
+
+    } catch (error) {
+      console.error("Erreur connexion Google:", error);
+      alert("La connexion avec Google a échoué.");
+    }
   };
 
   const register = (userData: Omit<User, 'id' | 'created_at'>) => {
@@ -73,7 +129,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     storage.saveUsers(updated);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await signOut(auth);
     setUser(null);
     storage.setSession(null);
   };
@@ -92,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{
-      user, users, login, register, updateUserRole, deleteUser, logout,
+      user, users, login, loginWithGoogle, register, updateUserRole, deleteUser, logout,
       isSuperAdmin: user?.role === UserRole.SUPER_ADMIN,
       isAdmin: user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN,
       isGuest: user?.role === UserRole.GUEST,
