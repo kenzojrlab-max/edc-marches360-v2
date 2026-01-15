@@ -1,18 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Marche, Projet, LibraryDocument, StatutGlobal, AuditLog, UserRole, AOType, MarketType } from '../types';
+import { Marche, StatutGlobal } from '../types';
 import { storage } from '../utils/storage';
-import { FONCTIONS as INITIAL_FONCTIONS } from '../constants';
-import { generateUUID } from '../utils/uid';
+import { useLogs } from './LogsContext'; // Import du hook
 
 interface MarketContextType {
   markets: Marche[];
   deletedMarkets: Marche[];
-  projects: Projet[];
-  libraryDocs: LibraryDocument[];
-  fonctions: string[];
-  aoTypes: string[];
-  marketTypes: string[];
-  auditLogs: AuditLog[];
   addMarket: (market: Marche) => void;
   addMarkets: (newMarkets: Marche[]) => void;
   updateMarket: (id: string, updates: Partial<Marche>) => void;
@@ -20,20 +13,9 @@ interface MarketContextType {
   removeMarket: (id: string) => void;
   restoreMarket: (id: string) => void;
   permanentDeleteMarket: (id: string) => void;
-  addProject: (project: Projet) => void;
-  updateProject: (id: string, updates: Partial<Projet>) => void;
   getMarketById: (id: string) => Marche | undefined;
   updateJalon: (marketId: string, type: 'prevues' | 'realisees', key: string, value: string) => void;
   updateComment: (marketId: string, key: string, value: string) => void;
-  addLibraryDoc: (doc: LibraryDocument) => void;
-  removeLibraryDoc: (id: string) => void;
-  addFonction: (libelle: string) => void;
-  removeFonction: (libelle: string) => void;
-  addAOType: (label: string) => void;
-  removeAOType: (label: string) => void;
-  addMarketType: (label: string) => void;
-  removeMarketType: (label: string) => void;
-  addLog: (module: string, action: string, details: string) => void;
 }
 
 const MarketContext = createContext<MarketContextType | undefined>(undefined);
@@ -41,12 +23,9 @@ const MarketContext = createContext<MarketContextType | undefined>(undefined);
 export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [markets, setMarkets] = useState<Marche[]>([]);
   const [deletedMarkets, setDeletedMarkets] = useState<Marche[]>([]);
-  const [projects, setProjects] = useState<Projet[]>([]);
-  const [libraryDocs, setLibraryDocs] = useState<LibraryDocument[]>([]);
-  const [fonctions, setFonctions] = useState<string[]>([]);
-  const [aoTypes, setAoTypes] = useState<string[]>([]);
-  const [marketTypes, setMarketTypes] = useState<string[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  
+  // Utilisation du contexte Logs pour tracer les actions (ne re-render pas si les logs changent)
+  const { addLog } = useLogs();
 
   useEffect(() => {
     let storedMarkets = storage.getMarkets();
@@ -60,29 +39,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
     setMarkets(storedMarkets);
     setDeletedMarkets(JSON.parse(localStorage.getItem('edc_deleted_markets') || '[]'));
-    setProjects(JSON.parse(localStorage.getItem('edc_projects') || '[]'));
-    setLibraryDocs(JSON.parse(localStorage.getItem('edc_library') || '[]'));
-    setFonctions(JSON.parse(localStorage.getItem('edc_fonctions') || JSON.stringify(INITIAL_FONCTIONS)));
-    setAoTypes(JSON.parse(localStorage.getItem('edc_aotypes') || JSON.stringify(Object.values(AOType))));
-    setMarketTypes(JSON.parse(localStorage.getItem('edc_markettypes') || JSON.stringify(Object.values(MarketType))));
-    setAuditLogs(JSON.parse(localStorage.getItem('edc_audit_logs') || '[]'));
   }, []);
-
-  const addLog = (module: string, action: string, details: string) => {
-    const session = storage.getSession();
-    const newLog: AuditLog = {
-      id: generateUUID(),
-      timestamp: new Date().toISOString(),
-      userName: session?.name || 'Système',
-      userRole: session?.role || UserRole.GUEST,
-      module, action, details
-    };
-    setAuditLogs(prev => {
-      const updated = [newLog, ...prev].slice(0, 1000);
-      localStorage.setItem('edc_audit_logs', JSON.stringify(updated));
-      return updated;
-    });
-  };
 
   const addMarket = (market: Marche) => {
     setMarkets(prev => {
@@ -164,87 +121,6 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
-  const addProject = (project: Projet) => {
-    setProjects(prev => {
-      const updated = [...prev, project];
-      localStorage.setItem('edc_projects', JSON.stringify(updated));
-      addLog('Projets', 'Création', `Nouveau projet : ${project.libelle}`);
-      return updated;
-    });
-  };
-
-  const updateProject = (id: string, updates: Partial<Projet>) => {
-    setProjects(prev => {
-      const updated = prev.map(p => p.id === id ? { ...p, ...updates } : p);
-      localStorage.setItem('edc_projects', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const addLibraryDoc = (doc: LibraryDocument) => {
-    setLibraryDocs(prev => {
-      const updated = [...prev, doc];
-      localStorage.setItem('edc_library', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const removeLibraryDoc = (id: string) => {
-    setLibraryDocs(prev => {
-      const updated = prev.filter(d => d.id !== id);
-      localStorage.setItem('edc_library', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const addFonction = (libelle: string) => {
-    setFonctions(prev => {
-      const updated = [...prev, libelle];
-      localStorage.setItem('edc_fonctions', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const removeFonction = (libelle: string) => {
-    setFonctions(prev => {
-      const updated = prev.filter(f => f !== libelle);
-      localStorage.setItem('edc_fonctions', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const addAOType = (label: string) => {
-    setAoTypes(prev => {
-      const updated = [...prev, label];
-      localStorage.setItem('edc_aotypes', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const removeAOType = (label: string) => {
-    setAoTypes(prev => {
-      const updated = prev.filter(t => t !== label);
-      localStorage.setItem('edc_aotypes', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const addMarketType = (label: string) => {
-    setMarketTypes(prev => {
-      const updated = [...prev, label];
-      localStorage.setItem('edc_markettypes', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const removeMarketType = (label: string) => {
-    setMarketTypes(prev => {
-      const updated = prev.filter(t => t !== label);
-      localStorage.setItem('edc_markettypes', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
   const getMarketById = (id: string) => markets.find(m => m.id === id);
 
   const updateJalon = (marketId: string, type: 'prevues' | 'realisees', key: string, value: string) => {
@@ -279,10 +155,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   return (
     <MarketContext.Provider value={{
-      markets, deletedMarkets, projects, libraryDocs, fonctions, aoTypes, marketTypes, auditLogs,
-      addMarket, addMarkets, updateMarket, updateMarketDoc, removeMarket, restoreMarket, permanentDeleteMarket,
-      addProject, updateProject, getMarketById, updateJalon, updateComment, addLibraryDoc, removeLibraryDoc,
-      addFonction, removeFonction, addAOType, removeAOType, addMarketType, removeMarketType, addLog
+      markets, deletedMarkets, addMarket, addMarkets, updateMarket, updateMarketDoc, 
+      removeMarket, restoreMarket, permanentDeleteMarket, getMarketById, updateJalon, updateComment
     }}>
       {children}
     </MarketContext.Provider>
