@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
+import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -20,7 +21,11 @@ export const ProjectPlanManage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { theme, themeType } = useTheme();
-  const { markets, projects, updateMarket, addMarket, removeMarket, updateProject, updateComment } = useMarkets();
+  
+  // CORRECTION : Éclatement des contextes
+  const { markets, updateMarket, addMarket, removeMarket, updateComment } = useMarkets();
+  const { projects, updateProject } = useProjects();
+  
   const { user, can } = useAuth();
   
   const [searchTerm, setSearchTerm] = useState('');

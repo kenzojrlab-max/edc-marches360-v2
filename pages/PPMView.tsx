@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useMarkets } from '../contexts/MarketContext';
+import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   Search, ExternalLink, X, FileBox, FileCheck, Activity, Lock, 
-  FileText, CreditCard, TrendingUp, Layers, AlertTriangle, 
-  AlertCircle, CheckCircle2, UserCheck, Banknote, Gavel, Ban, 
-  ChevronRight, Calendar, Download, Info, XCircle, Clock, Receipt, HardHat,
-  ShieldCheck, Info as InfoIcon, MessageSquare
+  FileText, TrendingUp, AlertTriangle, 
+  CheckCircle2, UserCheck, Banknote, Gavel, Ban, 
+  Clock, Receipt, ShieldCheck, Info as InfoIcon, MessageSquare, XCircle
 } from 'lucide-react';
 import { JALONS_PPM_CONFIG, JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { formatDate, getLateStatus, calculateDaysBetween } from '../utils/date';
@@ -37,7 +37,10 @@ const CircularProgress = ({ percent, color, icon: Icon }: { percent: number, col
 };
 
 export const PPMView: React.FC = () => {
-  const { markets, projects } = useMarkets();
+  // CORRECTION : Éclatement des contextes
+  const { markets } = useMarkets();
+  const { projects } = useProjects();
+  
   const { can } = useAuth();
   const { theme, themeType } = useTheme();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');

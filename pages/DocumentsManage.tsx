@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { useMarkets } from '../contexts/MarketContext';
+import { useLibrary } from '../contexts/LibraryContext'; // NOUVEAU CONTEXTE
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { BulleInput } from '../components/BulleInput';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { Modal } from '../components/Modal';
-import { ChevronLeft, Plus, Upload, Trash2, FileCode, CheckCircle2, AlertTriangle, FileUp, Library } from 'lucide-react';
+import { ChevronLeft, Plus, Upload, Trash2, Library } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LibraryDocument } from '../types';
 
@@ -13,7 +13,10 @@ const CATEGORIES = ["Rapports d'Audits", "Gestion & Performance", "Réglementati
 
 export const DocumentsManage: React.FC = () => {
   const navigate = useNavigate();
-  const { addLibraryDoc, libraryDocs, removeLibraryDoc } = useMarkets();
+  
+  // CORRECTION : Utilisation du contexte dédié Library
+  const { addLibraryDoc, libraryDocs, removeLibraryDoc } = useLibrary();
+  
   const { user } = useAuth();
   const { theme, themeType } = useTheme();
   const [showModal, setShowModal] = useState(false);

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useMarkets } from '../contexts/MarketContext';
+import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -14,7 +15,10 @@ import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { SourceFinancement, StatutGlobal } from '../types';
 
 export const Tracking: React.FC = () => {
-  const { markets, projects, updateMarket, updateMarketDoc, updateJalon } = useMarkets();
+  // CORRECTION : Éclatement des contextes
+  const { markets, updateMarket, updateMarketDoc, updateJalon } = useMarkets();
+  const { projects } = useProjects();
+  
   const { can } = useAuth();
   const { theme, themeType } = useTheme();
   

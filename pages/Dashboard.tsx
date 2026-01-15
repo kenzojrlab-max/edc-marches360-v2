@@ -20,6 +20,8 @@ import {
   Cell, PieChart, Pie, Legend, LineChart, Line, RadialBarChart, RadialBar
 } from 'recharts';
 import { useMarkets } from '../contexts/MarketContext';
+import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
+import { useConfig } from '../contexts/ConfigContext';   // NOUVEAU
 import { useTheme } from '../contexts/ThemeContext';
 import { StatutGlobal, SourceFinancement } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -42,7 +44,11 @@ const formatCurrency = (val: number) => {
 };
 
 export const Dashboard: React.FC = () => {
-  const { markets, projects, fonctions } = useMarkets();
+  // CORRECTION : Éclatement des contextes pour éviter les re-renders inutiles
+  const { markets } = useMarkets();
+  const { projects } = useProjects();
+  const { fonctions } = useConfig();
+  
   const { theme, themeType } = useTheme();
   const navigate = useNavigate();
 

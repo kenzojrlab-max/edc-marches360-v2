@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
+import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Decompte, Avenant } from '../types';
@@ -9,13 +10,17 @@ import { FileManager } from '../components/FileManager';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { Modal } from '../components/Modal';
 import { 
-  Lock, Search, TrendingUp, Clock, AlertTriangle, Plus, Trash2, 
-  ArrowRight, ShieldCheck, FileText, CreditCard, Save, CheckCircle2, Filter, Layers
+  Lock, Search, TrendingUp, AlertTriangle, Plus, Trash2, 
+  ArrowRight, ShieldCheck, FileText, CreditCard, Save, CheckCircle2, Layers
 } from 'lucide-react';
 
 export const Execution: React.FC = () => {
   const navigate = useNavigate();
-  const { markets, projects, updateMarket } = useMarkets();
+  
+  // CORRECTION : Éclatement des contextes
+  const { markets, updateMarket } = useMarkets();
+  const { projects } = useProjects();
+  
   const { isGuest, can } = useAuth();
   const { theme, themeType } = useTheme();
   

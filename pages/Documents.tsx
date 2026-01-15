@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMarkets } from '../contexts/MarketContext';
+import { useLibrary } from '../contexts/LibraryContext'; // NOUVEAU CONTEXTE
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -20,7 +20,9 @@ import { useNavigate } from 'react-router-dom';
 const CATEGORIES = ["Tous les documents", "Rapports d'Audits", "Gestion & Performance", "Réglementation & Manuels", "Modèles & Lettres Types"];
 
 export const Documents: React.FC = () => {
-  const { libraryDocs, removeLibraryDoc } = useMarkets();
+  // CORRECTION : Utilisation du contexte dédié Library
+  const { libraryDocs, removeLibraryDoc } = useLibrary();
+  
   const { isAdmin, can } = useAuth();
   const { theme, themeType } = useTheme();
   const navigate = useNavigate();

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
@@ -13,23 +12,19 @@ import {
   Save, 
   RefreshCcw, 
   Ban, 
-  Gavel, 
   AlertCircle,
-  FileCheck,
-  Calendar,
-  Lock,
   ArrowRight,
-  Download,
   AlertTriangle,
   Activity,
   UserCheck,
   Banknote
 } from 'lucide-react';
-import { Marche, SourceFinancement } from '../types';
+import { SourceFinancement } from '../types';
 
 export const MarketDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // Utilisation directe de useMarkets car getMarketById et les updates sont dedans
   const { getMarketById, updateMarket, updateJalon, updateMarketDoc } = useMarkets();
   const { isGuest, can } = useAuth();
   

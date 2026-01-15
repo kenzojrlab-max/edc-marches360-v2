@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMarkets } from '../contexts/MarketContext';
+import { useConfig } from '../contexts/ConfigContext'; // NOUVEAU
+import { useLogs } from '../contexts/LogsContext';     // NOUVEAU
 import { useTheme } from '../contexts/ThemeContext';
 import { UserRole } from '../types';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
@@ -8,24 +10,30 @@ import {
   Users, 
   History, 
   Trash2, 
-  Check,
-  X,
-  Activity,
-  Search,
-  Database,
-  Layers,
+  Check, 
+  X, 
+  Activity, 
+  Search, 
+  Database, 
+  Layers, 
   Plus
 } from 'lucide-react';
 import { formatDate } from '../utils/date';
 
 export const Settings: React.FC = () => {
   const { users, updateUserRole, deleteUser, user: currentUser, can } = useAuth();
+  
+  // CORRECTION : Éclatement des contextes
+  const { markets, deletedMarkets, restoreMarket, permanentDeleteMarket } = useMarkets();
+  
   const { 
     fonctions, addFonction, removeFonction, 
     aoTypes, addAOType, removeAOType,
-    marketTypes, addMarketType, removeMarketType,
-    markets, deletedMarkets, restoreMarket, permanentDeleteMarket, auditLogs, addLog
-  } = useMarkets();
+    marketTypes, addMarketType, removeMarketType 
+  } = useConfig();
+
+  const { auditLogs, addLog } = useLogs();
+
   const { theme, themeType } = useTheme();
   
   const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'logs' | 'trash' | 'config'>(can('MANAGE_USERS') ? 'users' : 'logs');

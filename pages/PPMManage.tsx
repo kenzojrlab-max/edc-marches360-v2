@@ -1,6 +1,8 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
+import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
+import { useLogs } from '../contexts/LogsContext';       // NOUVEAU
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { BulleInput } from '../components/BulleInput';
@@ -17,7 +19,11 @@ export const PPMManage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { theme, themeType } = useTheme();
-  const { addMarkets, projects, addProject, addLog } = useMarkets();
+  
+  // CORRECTION : Éclatement des contextes
+  const { addMarkets } = useMarkets();
+  const { projects, addProject } = useProjects();
+  const { addLog } = useLogs();
   
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
