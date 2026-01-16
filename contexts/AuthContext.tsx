@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User, UserRole } from '../types';
 import { storage } from '../utils/storage';
 import { generateUUID } from '../utils/uid';
@@ -25,41 +25,54 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(storage.getSession());
   const [users, setUsers] = useState<User[]>(storage.getUsers());
+  
+  // CORRECTION : useRef pour s'assurer que l'initialisation ne s'exécute qu'une seule fois
+  const isInitialized = useRef(false);
 
-  // --- CORRECTION MAJEURE ICI ---
-  // On force la création/mise à jour de votre compte admin à chaque démarrage
+  // CORRECTION : useEffect avec tableau de dépendances VIDE []
+  // S'exécute une seule fois au montage du composant
   useEffect(() => {
+    // Éviter la double exécution en mode strict de React
+    if (isInitialized.current) return;
+    isInitialized.current = true;
+
     const adminEmail = 'juniorngassa@edc.cm';
-    const existingUserIndex = users.findIndex(u => u.email.toLowerCase() === adminEmail.toLowerCase());
+    const currentUsers = storage.getUsers(); // Lire directement depuis le storage
+    const existingUserIndex = currentUsers.findIndex(u => u.email.toLowerCase() === adminEmail.toLowerCase());
 
     const superAdminUser: User = {
-      id: existingUserIndex >= 0 ? users[existingUserIndex].id : '1', // Garde l'ID s'il existe
+      id: existingUserIndex >= 0 ? currentUsers[existingUserIndex].id : '1',
       name: 'Junior Ngassa',
       email: adminEmail,
       role: UserRole.SUPER_ADMIN,
       statut: 'actif',
-      password: 'password', // Mot de passe forcé
+      password: 'password',
       created_at: new Date().toISOString()
     };
 
-    let newUsersList = [...users];
+    let newUsersList = [...currentUsers];
+    let needsUpdate = false;
 
     if (existingUserIndex >= 0) {
-      // Si l'utilisateur existe, on met à jour son rôle et son mot de passe pour être sûr
-      newUsersList[existingUserIndex] = superAdminUser;
+      // Vérifier si une mise à jour est vraiment nécessaire
+      const existingUser = currentUsers[existingUserIndex];
+      if (existingUser.role !== UserRole.SUPER_ADMIN || existingUser.password !== 'password') {
+        newUsersList[existingUserIndex] = superAdminUser;
+        needsUpdate = true;
+      }
     } else {
-      // Sinon, on l'ajoute
+      // L'utilisateur n'existe pas, on l'ajoute
       newUsersList.push(superAdminUser);
+      needsUpdate = true;
     }
 
-    // On sauvegarde et on met à jour l'état
-    // Note: On compare JSON.stringify pour éviter les boucles infinies de mise à jour
-    if (JSON.stringify(newUsersList) !== JSON.stringify(users)) {
-        setUsers(newUsersList);
-        storage.saveUsers(newUsersList);
-        console.log("✅ Compte Super Admin juniorngassa@edc.cm restauré/mis à jour.");
+    // Seulement mettre à jour si nécessaire
+    if (needsUpdate) {
+      setUsers(newUsersList);
+      storage.saveUsers(newUsersList);
+      console.log("✅ Compte Super Admin juniorngassa@edc.cm restauré/mis à jour.");
     }
-  }, [users]); // Dépendance à users pour être sûr d'avoir la dernière liste
+  }, []); // TABLEAU VIDE = exécution unique au montage
 
   const login = async (email: string, password: string): Promise<boolean> => {
     const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());

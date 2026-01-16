@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, File, Lock, RefreshCcw, Trash2 } from 'lucide-react';
+import { Upload, File, Lock, Trash2 } from 'lucide-react'; // RefreshCcw retiré car remplacé par la barre
 import { PieceJointe } from '../types';
 import { storage } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,6 +14,7 @@ export const FileManager: React.FC<Props> = ({ onUpload, existingDocId, disabled
   const { can } = useAuth();
   const [doc, setDoc] = useState<PieceJointe | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0); // NOUVEAU : État pour la progression
 
   useEffect(() => {
     let isMounted = true;
@@ -40,19 +41,25 @@ export const FileManager: React.FC<Props> = ({ onUpload, existingDocId, disabled
     }
 
     setLoading(true);
+    setProgress(0); // Reset progression
+
     try {
-      // 2. CORRECTION CRITIQUE : Appel direct à uploadFile
-      // On n'utilise plus FileReader, on envoie le fichier direct
-      const newDoc = await storage.uploadFile(file);
+      // 2. Appel à uploadFile avec le callback de progression
+      const newDoc = await storage.uploadFile(
+        file, 
+        'marches_docs', 
+        (pct) => setProgress(pct) // Mise à jour de la barre
+      );
       
       setDoc(newDoc);
-      onUpload(newDoc.id); // On renvoie l'ID au parent
+      onUpload(newDoc.id); 
       
     } catch (error) {
       console.error("Erreur upload:", error);
-      alert("Erreur lors de l'upload. Vérifiez les règles Firebase.");
+      alert("Erreur lors de l'upload. Vérifiez votre connexion.");
     } finally {
       setLoading(false);
+      setProgress(0);
     }
   };
 
@@ -66,7 +73,7 @@ export const FileManager: React.FC<Props> = ({ onUpload, existingDocId, disabled
     if (!doc || !can('WRITE') || disabled) return;
 
     if (window.confirm("Supprimer ce fichier ?")) {
-      setLoading(true);
+      setLoading(true); // Ici on garde un chargement simple sans progression
       try {
         await storage.deleteDoc(doc.id, doc.url);
         setDoc(null);
@@ -80,7 +87,20 @@ export const FileManager: React.FC<Props> = ({ onUpload, existingDocId, disabled
     }
   };
 
-  if (loading) return <RefreshCcw className="animate-spin text-accent" size={16} />;
+  // AFFICHAGE : BARRE DE PROGRESSION PENDANT L'UPLOAD
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 w-full max-w-[120px]">
+        <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-accent transition-all duration-200 ease-out"
+            style={{ width: `${Math.max(5, progress)}%` }} // Min 5% pour voir qu'il y a quelque chose
+          />
+        </div>
+        <span className="text-[9px] font-black text-accent w-6 text-right">{Math.round(progress)}%</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2 max-w-full">

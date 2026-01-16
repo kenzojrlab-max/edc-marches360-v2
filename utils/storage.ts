@@ -1,6 +1,6 @@
 import { 
   ref, 
-  uploadBytes, 
+  uploadBytesResumable, // MODIFIÉ : On utilise la version "Resumable" pour le suivi
   getDownloadURL, 
   deleteObject 
 } from "firebase/storage";
@@ -10,7 +10,7 @@ import {
   getDoc, 
   deleteDoc 
 } from "firebase/firestore";
-import { db, storage as firebaseStorage } from "../firebase"; // Assure-toi que src/firebase.ts existe
+import { db, storage as firebaseStorage } from "../firebase"; 
 import { Marche, User, PieceJointe } from "../types";
 
 // Clés pour le stockage local (Données légères uniquement)
@@ -27,38 +27,58 @@ export const storage = {
 
   /**
    * Envoie un fichier sur Firebase Storage et enregistre ses métadonnées dans Firestore
+   * MODIFICATION : Ajout du callback onProgress pour suivre l'avancement
    */
-  uploadFile: async (file: File, folder: string = 'marches_docs'): Promise<PieceJointe> => {
-    try {
-      // A. Création d'une référence unique (ex: marches_docs/123456_mon_fichier.pdf)
-      const uniqueId = crypto.randomUUID();
-      const storageRef = ref(firebaseStorage, `${folder}/${uniqueId}_${file.name}`);
+  uploadFile: (file: File, folder: string = 'marches_docs', onProgress?: (progress: number) => void): Promise<PieceJointe> => {
+    return new Promise((resolve, reject) => {
+      try {
+        // A. Création d'une référence unique
+        const uniqueId = crypto.randomUUID();
+        const storageRef = ref(firebaseStorage, `${folder}/${uniqueId}_${file.name}`);
 
-      // B. Envoi du fichier physique (Blob)
-      const snapshot = await uploadBytes(storageRef, file);
+        // B. Lancement de l'upload avec suivi (UploadTask)
+        const uploadTask = uploadBytesResumable(storageRef, file);
 
-      // C. Récupération de l'URL publique de téléchargement
-      const downloadURL = await getDownloadURL(snapshot.ref);
+        // C. Écoute des événements
+        uploadTask.on('state_changed', 
+          (snapshot) => {
+            // Calcul du pourcentage
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            if (onProgress) onProgress(progress);
+          },
+          (error) => {
+            // Gestion des erreurs d'upload
+            console.error("Erreur upload Firebase:", error);
+            reject(error);
+          },
+          async () => {
+            // D. Fin de l'upload -> Récupération URL & Enregistrement Firestore
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
 
-      // D. Création de l'objet métadonnées
-      const newDoc: PieceJointe = {
-        id: uniqueId,
-        nom: file.name,
-        type: file.type,
-        size: file.size,
-        url: downloadURL, // L'URL distante Firebase
-        date_upload: new Date().toISOString()
-      };
+              const newDoc: PieceJointe = {
+                id: uniqueId,
+                nom: file.name,
+                type: file.type,
+                size: file.size,
+                url: downloadURL,
+                date_upload: new Date().toISOString()
+              };
 
-      // E. Sauvegarde de la fiche dans la collection Firestore "documents"
-      // Cela remplace IndexedDB pour le suivi des fichiers
-      await setDoc(doc(db, "documents", uniqueId), newDoc);
+              // E. Sauvegarde de la fiche dans la collection Firestore "documents"
+              await setDoc(doc(db, "documents", uniqueId), newDoc);
 
-      return newDoc;
-    } catch (error) {
-      console.error("Erreur upload Firebase:", error);
-      throw error;
-    }
+              resolve(newDoc);
+            } catch (err) {
+              console.error("Erreur post-upload (Firestore):", err);
+              reject(err);
+            }
+          }
+        );
+      } catch (error) {
+        reject(error);
+      }
+    });
   },
 
   /**
@@ -89,9 +109,7 @@ export const storage = {
       // 1. Supprimer la fiche Firestore
       await deleteDoc(doc(db, "documents", docId));
 
-      // 2. Supprimer le fichier physique du Storage (si l'URL est fournie ou récupérée)
-      // Note: Pour faire propre, il faudrait extraire le chemin depuis l'URL, 
-      // mais pour l'instant on sécurise surtout la base de données.
+      // 2. Supprimer le fichier physique du Storage
       if (fileUrl) {
         const fileRef = ref(firebaseStorage, fileUrl);
         await deleteObject(fileRef).catch(err => console.warn("Fichier déjà supprimé ou introuvable sur le storage", err));
@@ -104,9 +122,6 @@ export const storage = {
 
   // =================================================================
   // 2. GESTION DES DONNÉES MÉTIER (LOCALSTORAGE - TEMPORAIRE)
-  // On garde ça pour l'instant pour ne pas casser l'application.
-  // La migration vers Firestore (Collections 'marches', 'users') se fera
-  // en modifiant les Contexts (MarketContext, AuthContext).
   // =================================================================
 
   getMarkets: (): Marche[] => {
