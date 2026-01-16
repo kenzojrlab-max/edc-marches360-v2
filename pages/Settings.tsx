@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMarkets } from '../contexts/MarketContext';
-import { useConfig } from '../contexts/ConfigContext'; // NOUVEAU
-import { useLogs } from '../contexts/LogsContext';     // NOUVEAU
+import { useConfig } from '../contexts/ConfigContext';
+import { useLogs } from '../contexts/LogsContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { UserRole } from '../types';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
@@ -22,8 +22,6 @@ import { formatDate } from '../utils/date';
 
 export const Settings: React.FC = () => {
   const { users, updateUserRole, deleteUser, user: currentUser, can } = useAuth();
-  
-  // CORRECTION : Éclatement des contextes
   const { markets, deletedMarkets, restoreMarket, permanentDeleteMarket } = useMarkets();
   
   const { 
@@ -33,7 +31,6 @@ export const Settings: React.FC = () => {
   } = useConfig();
 
   const { auditLogs, addLog } = useLogs();
-
   const { theme, themeType } = useTheme();
   
   const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'logs' | 'trash' | 'config'>(can('MANAGE_USERS') ? 'users' : 'logs');
@@ -94,7 +91,6 @@ export const Settings: React.FC = () => {
   }, [auditLogs, logSearch]);
 
   return (
-    /* Suppression de l'animation globale pour stabiliser les changements d'état internes */
     <div className="space-y-10 max-w-7xl mx-auto pb-40">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
         <div>
@@ -140,12 +136,12 @@ export const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* Conteneur de contenu avec une hauteur min stable pour éviter les tremblements visuels */}
       <div className="min-h-[400px]">
         {activeTab === 'users' && (
           <div className="space-y-8 px-2 animate-in fade-in duration-200">
-            <div className={`${theme.card} overflow-hidden shadow-sm`}>
-              <div className="overflow-x-auto custom-scrollbar">
+            {/* CORRECTION : overflow-visible maintenu */}
+            <div className={`${theme.card} overflow-visible shadow-sm`}>
+              <div className="overflow-x-auto custom-scrollbar pb-40">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
                   <thead>
                     <tr className="bg-black/5 border-b border-white/5">
@@ -157,9 +153,13 @@ export const Settings: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {users.map(u => {
+                    {/* MODIFICATION ICI : On utilise l'index pour repérer le dernier élément */}
+                    {users.map((u, index) => {
                       const hasPending = !!pendingRoles[u.id];
                       const displayedRole = pendingRoles[u.id] || u.role;
+                      // Si c'est le dernier élément, on passe direction='up'
+                      const isLastItem = index === users.length - 1;
+
                       return (
                         <tr key={u.id} className="hover:bg-white/5 transition-all group">
                           <td className="p-8">
@@ -188,6 +188,8 @@ export const Settings: React.FC = () => {
                                   options={Object.values(UserRole).map(r => ({ value: r, label: r }))}
                                   onChange={(val) => setPendingRoles(prev => ({ ...prev, [u.id]: val as UserRole }))}
                                   disabled={u.id === currentUser?.id}
+                                  // CORRECTION : Passage de la direction UP si dernier élément
+                                  direction={isLastItem ? 'up' : 'down'}
                                 />
                               </div>
                               {hasPending && (
@@ -219,7 +221,6 @@ export const Settings: React.FC = () => {
 
         {activeTab === 'structure' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-2 animate-in fade-in duration-200">
-            {/* Section Fonctions */}
             <section className={`${theme.card} p-10 flex flex-col h-full`}>
               <div className="flex items-center gap-3 mb-8">
                 <Activity size={20} className={theme.textAccent} />
@@ -245,7 +246,6 @@ export const Settings: React.FC = () => {
               </div>
             </section>
 
-            {/* Section AO Types */}
             <section className={`${theme.card} p-10 flex flex-col h-full`}>
               <div className="flex items-center gap-3 mb-8">
                 <Layers size={20} className={theme.textAccent} />
@@ -271,7 +271,6 @@ export const Settings: React.FC = () => {
               </div>
             </section>
 
-            {/* Section Market Types */}
             <section className={`${theme.card} p-10 flex flex-col h-full`}>
               <div className="flex items-center gap-3 mb-8">
                 <Check size={20} className={theme.textAccent} />

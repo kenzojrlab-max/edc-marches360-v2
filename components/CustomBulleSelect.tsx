@@ -14,6 +14,7 @@ interface Props {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  direction?: 'up' | 'down'; // NOUVEAU : Prop pour contrôler la direction
 }
 
 export const CustomBulleSelect: React.FC<Props> = ({ 
@@ -22,7 +23,8 @@ export const CustomBulleSelect: React.FC<Props> = ({
   options, 
   onChange, 
   placeholder = "Sélectionner...", 
-  disabled 
+  disabled,
+  direction = 'down' // Par défaut, s'ouvre vers le bas
 }) => {
   const { theme, themeType } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -50,7 +52,7 @@ export const CustomBulleSelect: React.FC<Props> = ({
 
   return (
     <div 
-      className={`flex flex-col gap-1.5 w-full relative transition-none ${isOpen ? 'z-[50]' : 'z-0'}`} // Z-INDEX CORRIGÉ
+      className={`flex flex-col gap-1.5 w-full relative transition-none ${isOpen ? 'z-[50]' : 'z-0'}`}
       ref={containerRef}
     >
       {label && (
@@ -77,10 +79,11 @@ export const CustomBulleSelect: React.FC<Props> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-[60]"> {/* Z-INDEX CORRIGÉ */}
+        // CORRECTION ICI : Positionnement dynamique basé sur la prop 'direction'
+        <div className={`absolute left-0 right-0 z-[60] ${direction === 'up' ? 'bottom-full mb-2' : 'top-[calc(100%+8px)]'}`}>
           <div 
             className={`w-full ${getMenuBg()} p-2 animate-zoom-in ${theme.buttonShape}`}
-            style={{ transformOrigin: 'top center' }}
+            style={{ transformOrigin: direction === 'up' ? 'bottom center' : 'top center' }}
           >
             <div className="max-h-60 overflow-y-auto custom-scrollbar">
               {options.map((option) => (

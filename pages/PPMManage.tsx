@@ -11,18 +11,18 @@ import { Modal } from '../components/Modal';
 import { FileManager } from '../components/FileManager';
 import { FONCTIONS, JALONS_PPM_KEYS, JALONS_LABELS } from '../constants';
 import { AOType, MarketType, Marche, StatutGlobal, SourceFinancement, Projet } from '../types';
-import { ChevronLeft, FileSpreadsheet, Plus, Download, Upload, MousePointer2, Search, Layers } from 'lucide-react';
+import { ChevronLeft, FileSpreadsheet, Plus, Download, Upload, MousePointer2, Search, Layers, Trash2 } from 'lucide-react';
 import { generateUUID } from '../utils/uid';
 import * as XLSX from 'xlsx';
 
 export const PPMManage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth(); // Ajout de isSuperAdmin
   const { theme, themeType } = useTheme();
   
   // CORRECTION : Éclatement des contextes
   const { addMarkets } = useMarkets();
-  const { projects, addProject } = useProjects();
+  const { projects, addProject, removeProject } = useProjects(); // Ajout de removeProject
   const { addLog } = useLogs();
   
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -109,7 +109,6 @@ export const PPMManage: React.FC = () => {
             dates_prevues[key] = excelDateToISO(row[9 + i]);
           });
 
-          // Fix: Add missing 'comments' property to satisfy the Marche interface
           return {
             id: generateUUID(),
             projet_id: importProjectId,
@@ -213,7 +212,24 @@ export const PPMManage: React.FC = () => {
              </div>
              <div className="pt-6 border-t border-white/10 flex items-center justify-between mt-auto">
                 <div className={`flex items-center gap-1 text-[8px] font-black ${theme.textSecondary} uppercase`}><MousePointer2 size={10} /> Double-clic : Gérer</div>
-                <button onClick={(e) => {e.stopPropagation(); navigate(`/ppm-view?projectId=${p.id}`)}} className={`text-[10px] font-black uppercase ${theme.textSecondary} hover:${theme.textAccent} transition-colors`}>Voir Suivi</button>
+                
+                <div className="flex items-center gap-3">
+                   {isSuperAdmin && (
+                     <button 
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         if (window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ? Cette action est irréversible.")) {
+                           removeProject(p.id);
+                         }
+                       }} 
+                       className={`p-2 hover:bg-red-500/10 text-slate-400 hover:text-red-500 rounded-lg transition-colors`}
+                       title="Supprimer le projet"
+                     >
+                       <Trash2 size={16} />
+                     </button>
+                   )}
+                   <button onClick={(e) => {e.stopPropagation(); navigate(`/ppm-view?projectId=${p.id}`)}} className={`text-[10px] font-black uppercase ${theme.textSecondary} hover:${theme.textAccent} transition-colors`}>Voir Suivi</button>
+                </div>
              </div>
           </div>
         ))}

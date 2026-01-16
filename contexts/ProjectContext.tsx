@@ -6,6 +6,7 @@ interface ProjectContextType {
   projects: Projet[];
   addProject: (project: Projet) => void;
   updateProject: (id: string, updates: Partial<Projet>) => void;
+  removeProject: (id: string) => void; // NOUVEAU
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -36,8 +37,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
+  // IMPLEMENTATION DE LA SUPPRESSION
+  const removeProject = (id: string) => {
+    setProjects(prev => {
+      const updated = prev.filter(p => p.id !== id);
+      localStorage.setItem('edc_projects', JSON.stringify(updated));
+      addLog('Projets', 'Suppression', `Projet ID ${id} supprimé.`);
+      return updated;
+    });
+  };
+
   return (
-    <ProjectContext.Provider value={{ projects, addProject, updateProject }}>
+    <ProjectContext.Provider value={{ projects, addProject, updateProject, removeProject }}>
       {children}
     </ProjectContext.Provider>
   );

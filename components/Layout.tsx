@@ -126,9 +126,9 @@ export const Layout: React.FC = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden relative`}>
-      {/* Sidebar - Z-INDEX CORRIGÉ: z-[100] */}
+      {/* Sidebar - Z-INDEX CORRIGÉ: z-[1000] pour être au-dessus du Header et du contenu */}
       <aside className={`
-        fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-[100] transition-transform duration-300 transform
+        fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-[1000] transition-transform duration-300 transform
         lg:translate-x-0 lg:static lg:inset-auto
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
@@ -180,14 +180,14 @@ export const Layout: React.FC = () => {
         </div>
       </aside>
 
-      {/* Overlay Mobile - Z-INDEX CORRIGÉ: z-[100] */}
+      {/* Overlay Mobile - Z-INDEX CORRIGÉ: z-[999] */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Header - Z-INDEX CORRIGÉ: z-[40] */}
-        <header className={`h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[40] backdrop-blur-md`}>
+        {/* Header - Z-INDEX CORRIGÉ: z-[900] pour dépasser les filtres des pages (qui sont max z-[500]) */}
+        <header className={`h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[900] backdrop-blur-md`}>
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(true)} className={`p-2 ${theme.textSecondary} lg:hidden hover:bg-white/5 rounded-xl`}>
               <Menu size={24} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
@@ -208,7 +208,7 @@ export const Layout: React.FC = () => {
                 <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Thème</span>
               </button>
               {showThemePicker && (
-                // Dropdown - Z-INDEX CORRIGÉ: z-[60]
+                // Dropdown - Z-INDEX hérite du header (900) mais on met 60 pour stack context local
                 <div className={`absolute top-full right-0 mt-2 w-52 ${getMenuBg()} z-[60] p-2 animate-zoom-in rounded-2xl`}>
                    {themeOptions.map((opt) => (
                     <button
@@ -240,7 +240,7 @@ export const Layout: React.FC = () => {
               </button>
 
               {showNotifications && (
-                // Dropdown - Z-INDEX CORRIGÉ: z-[60]
+                // Dropdown - Z-INDEX local
                 <div className={`absolute top-full right-0 mt-2 w-80 md:w-96 ${getMenuBg()} z-[60] shadow-2xl animate-zoom-in p-2 rounded-2xl`}>
                   <div className="p-4 border-b border-white/10 flex items-center justify-between">
                     <h3 className={`${theme.textMain} font-black text-[10px] uppercase tracking-widest`}>Alertes PPM ({alerts.length})</h3>
