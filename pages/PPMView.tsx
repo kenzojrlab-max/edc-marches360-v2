@@ -124,19 +124,25 @@ export const PPMView: React.FC = () => {
     return 'bg-white';
   };
 
+  // CORRECTION : Logique de calcul du progrès mise à jour
   const calculateProgress = (m: Marche) => {
     const isEDC = m.source_financement === SourceFinancement.BUDGET_EDC;
-    let passKeys = JALONS_GROUPS.flatMap(g => g.keys);
-    passKeys = passKeys.filter(key => {
-      if (isEDC && key.includes('ano')) return false;
-      if (key === 'additif' && !m.has_additif) return false;
-      if (key === 'recours' && !m.has_recours) return false;
-      if (key === 'infructueux' && !m.is_infructueux) return false;
-      if (key === 'annule' && !m.is_annule) return false;
-      return true;
+    const allBaseKeys = JALONS_GROUPS.flatMap(g => g.keys);
+
+    // Filtrer les étapes pertinentes pour ce marché spécifique
+    const relevantKeys = allBaseKeys.filter(key => {
+        // Règle 1 : Si Budget EDC, masquer les ANOs
+        if (isEDC && key.includes('ano')) return false;
+        // Règle 2 : Si pas d'additif, masquer l'étape additif
+        if (key === 'additif' && !m.has_additif) return false;
+        // Règle 3 : Exclure les exceptions (gérées dans les alertes) du calcul de base
+        if (key === 'annule' || key === 'infructueux' || key === 'recours') return false;
+        return true;
     });
-    const completedCount = passKeys.filter(k => !!m.dates_realisees[k as keyof typeof m.dates_realisees] || !!m.docs?.[k]).length;
-    const passPercent = passKeys.length > 0 ? (completedCount / passKeys.length) * 100 : 0;
+
+    const completedCount = relevantKeys.filter(k => !!m.dates_realisees[k as keyof typeof m.dates_realisees] || !!m.docs?.[k]).length;
+    // Calculer le pourcentage sur la base des étapes pertinentes uniquement
+    const passPercent = relevantKeys.length > 0 ? (completedCount / relevantKeys.length) * 100 : 0;
     
     const exec = m.execution;
     const execWeight = [exec.ref_contrat, exec.doc_notif_contrat_id, exec.doc_notif_os_id, exec.doc_pv_provisoire_id].filter(Boolean).length;
@@ -152,15 +158,7 @@ export const PPMView: React.FC = () => {
 
   const selectedMarket = markets.find(m => m.id === detailMarketId);
 
-  const getVisibleJalonsOfGroup = (group: typeof JALONS_GROUPS[0], m: Marche) => {
-    const visible = [];
-    for (const key of group.keys) {
-      visible.push(key);
-      if (key === 'infructueux' && m.is_infructueux) break;
-      if (key === 'annule' && m.is_annule) break;
-    }
-    return visible;
-  };
+  // FONCTION SUPPRIMÉE : getVisibleJalonsOfGroup n'est plus utilisée, remplacée par un filtre direct dans le JSX
 
   const isGroupVisible = (group: typeof JALONS_GROUPS[0], m: Marche) => {
     const groups = JALONS_GROUPS;
@@ -365,7 +363,29 @@ export const PPMView: React.FC = () => {
                            <div key={group.id} className="space-y-4">
                               <h4 className={`text-[9px] font-black uppercase tracking-widest ${theme.textSecondary} px-4 py-1 rounded-full w-fit bg-black/5`}>{group.label}</h4>
                               <div className="grid grid-cols-1 gap-2">
-                                 {getVisibleJalonsOfGroup(group, selectedMarket).map(key => {
+                                 {/* CORRECTION : Filtrage dynamique des étapes pour l'affichage */}
+                                 {group.keys.filter(key => {
+                                    const isEDC = selectedMarket.source_financement === SourceFinancement.BUDGET_EDC;
+                                    // Règle 1 : Masquer ANO si EDC
+                                    if (key.includes('ano') && isEDC) return false;
+                                    // Règle 3 : Masquer les exceptions (gérées en alerte) de la liste principale
+                                    if (key === 'annule' || key === 'infructueux' || key === 'recours') return false;
+                                    // Règle 2 : Masquer Additif si inexistant
+                                    if (key === 'additif' && !selectedMarket.has_additif) return false;
+                                    
+                                    // Logique existante pour arrêter l'affichage si le dossier est clos prématurément
+                                    if (selectedMarket.is_infructueux) {
+                                      const stopIdx = JALONS_GROUPS.flatMap(g => g.keys).indexOf('infructueux');
+                                      const currentIdx = JALONS_GROUPS.flatMap(g => g.keys).indexOf(key);
+                                      if (currentIdx > stopIdx) return false;
+                                    }
+                                    if (selectedMarket.is_annule) {
+                                      const stopIdx = JALONS_GROUPS.flatMap(g => g.keys).indexOf('annule');
+                                      const currentIdx = JALONS_GROUPS.flatMap(g => g.keys).indexOf(key);
+                                      if (currentIdx > stopIdx) return false;
+                                    }
+                                    return true;
+                                 }).map(key => {
                                     const date = selectedMarket.dates_realisees[key as keyof typeof selectedMarket.dates_realisees];
                                     const docId = selectedMarket.docs?.[key];
                                     const comment = selectedMarket.comments?.[key];
