@@ -5,12 +5,12 @@ import { getStorage } from "firebase/storage";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD6hWkbVJHfFHNIacroMLWPI6igc0htaNk",
-  authDomain: "edc-marches360.firebaseapp.com",
-  projectId: "edc-marches360",
-  storageBucket: "edc-marches360.firebasestorage.app",
-  messagingSenderId: "770570879132",
-  appId: "1:770570879132:web:1fde4a813b4c3d2764ad59"
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
 };
 
 const app = initializeApp(firebaseConfig);
