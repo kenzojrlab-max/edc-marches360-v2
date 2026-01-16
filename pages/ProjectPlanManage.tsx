@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
-import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
+import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   ChevronLeft, Trash2, Plus, PencilLine, Search, Activity, ArrowUpRight,
-  Save, X, FileText, CreditCard, FileCheck, Download, Layers, Upload, MessageSquare
+  Save, X, FileText, CreditCard, FileCheck, Download, Layers, Upload, MousePointer2, MessageSquare
 } from 'lucide-react';
 import { BulleInput } from '../components/BulleInput';
 import { Modal } from '../components/Modal';
@@ -14,16 +14,14 @@ import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { FileManager } from '../components/FileManager';
 import { Marche, StatutGlobal, AOType, MarketType, MarcheDates, SourceFinancement, Projet } from '../types';
 import { FONCTIONS, JALONS_PPM_KEYS, JALONS_LABELS, JALONS_PPM_CONFIG } from '../constants';
-import { formatDate, getLateStatus } from '../utils/date';
-import { storage } from '../utils/storage';
+import { formatDate } from '../utils/date';
 
 export const ProjectPlanManage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { theme, themeType } = useTheme();
   
-  // CORRECTION : Éclatement des contextes
-  const { markets, updateMarket, addMarket, removeMarket, updateComment } = useMarkets();
+  const { markets, updateMarket, addMarket, removeMarket } = useMarkets();
   const { projects, updateProject } = useProjects();
   
   const { user, can } = useAuth();
@@ -124,7 +122,7 @@ export const ProjectPlanManage: React.FC = () => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-40 relative">
-      {/* HEADER AVEC BOUTON D'IMPORTATION PPM SIGNÉ RÉTABLI */}
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
         <div className="flex items-center gap-5">
           <button onClick={() => navigate('/ppm-manage')} className={`p-4 ${theme.card} ${theme.buttonShape} hover:scale-105 transition-all text-slate-400`}><ChevronLeft size={20} /></button>
@@ -138,7 +136,6 @@ export const ProjectPlanManage: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* BOUTON D'IMPORTATION DU PPM SIGNÉ (RÉTABLI) */}
           <div className="flex flex-col items-end gap-1">
             <span className={`text-[8px] font-black uppercase tracking-widest ${theme.textSecondary} opacity-60 mr-2`}>PPM Officiel Signé</span>
             <FileManager 
@@ -152,7 +149,7 @@ export const ProjectPlanManage: React.FC = () => {
         </div>
       </div>
 
-      {/* Barre de Recherche & Filtre harmonisée */}
+      {/* Barre de Recherche */}
       <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 relative z-[100]`}>
         <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden lg:flex`}>
           <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
@@ -170,18 +167,19 @@ export const ProjectPlanManage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tableau Structurel */}
+      {/* Tableau Structurel - SCROLLBAR FIX (overflow-hidden) */}
       <div className={`${theme.card} flex flex-col relative overflow-hidden`}>
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[3200px]">
             <thead>
               <tr className={`${themeType === 'glass' ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} sticky left-0 ${themeType === 'glass' ? 'bg-slate-900' : 'bg-slate-50'} z-20 w-[350px]`}>Dossier & Objet</th>
+                {/* Z-INDEX CORRIGÉS : 50 pour header sticky */}
+                <th rowSpan={2} className={`p-8 border-b border-r border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} sticky left-0 ${themeType === 'glass' ? 'bg-slate-900' : 'bg-slate-50'} z-[50] w-[350px]`}>Dossier & Objet</th>
                 <th rowSpan={2} className={`p-8 border-b border-r border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} w-[180px] text-right`}>Budget Estimé</th>
                 {JALONS_PPM_CONFIG.map(jalon => (
                   <th key={jalon.key} colSpan={2} className={`p-4 border-b border-r border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} text-center`}>{jalon.label}</th>
                 ))}
-                <th rowSpan={2} className={`p-8 border-b border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky right-0 ${themeType === 'glass' ? 'bg-slate-900' : 'bg-slate-50'} z-20`}>Actions</th>
+                <th rowSpan={2} className={`p-8 border-b border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky right-0 ${themeType === 'glass' ? 'bg-slate-900' : 'bg-slate-50'} z-[50]`}>Actions</th>
               </tr>
               <tr className={`${themeType === 'glass' ? 'bg-slate-900/80' : 'bg-slate-50/80'}`}>
                 {JALONS_PPM_CONFIG.map(jalon => (
@@ -195,7 +193,8 @@ export const ProjectPlanManage: React.FC = () => {
             <tbody className="divide-y divide-white/5">
               {filteredMarkets.length > 0 ? filteredMarkets.map((m) => (
                 <tr key={m.id} className="group hover:bg-white/5 transition-all">
-                  <td className={`p-6 border-r border-white/10 sticky left-0 z-10 ${themeType === 'glass' ? 'bg-[#1a2333]' : 'bg-white'} transition-colors`}>
+                  {/* Z-INDEX CORRIGÉS : 40 pour body sticky */}
+                  <td className={`p-6 border-r border-white/10 sticky left-0 z-[40] ${themeType === 'glass' ? 'bg-[#1a2333]' : 'bg-white'} transition-colors`}>
                     <div className="flex flex-col">
                       <span className={`text-[10px] font-black ${theme.textAccent} uppercase`}>{m.numDossier}</span>
                       <span className={`text-xs font-bold ${theme.textMain} uppercase leading-tight line-clamp-2`}>{m.objet}</span>
@@ -212,7 +211,7 @@ export const ProjectPlanManage: React.FC = () => {
                       </td>
                     </React.Fragment>
                   ))}
-                  <td className={`p-6 text-center sticky right-0 z-10 ${themeType === 'glass' ? 'bg-[#1a2333]' : 'bg-white'}`}>
+                  <td className={`p-6 text-center sticky right-0 z-[40] ${themeType === 'glass' ? 'bg-[#1a2333]' : 'bg-white'}`}>
                     <div className="flex items-center justify-center gap-2">
                       <button onClick={() => openModal(m)} className={`p-2.5 ${theme.buttonSecondary} ${theme.buttonShape} transition-all`}><PencilLine size={16} /></button>
                       <button onClick={() => removeMarket(m.id)} className={`p-2.5 ${theme.buttonDanger} ${theme.buttonShape} transition-all`}><Trash2 size={16} /></button>
@@ -225,7 +224,7 @@ export const ProjectPlanManage: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL D'ÉDITION / CRÉATION */}
+      {/* MODAL D'ÉDITION */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
@@ -244,7 +243,6 @@ export const ProjectPlanManage: React.FC = () => {
               <BulleInput label="Imputation Budgétaire" value={formData.imputation_budgetaire} onChange={e => setFormData({...formData, imputation_budgetaire: e.target.value})} />
            </div>
 
-           {/* NOUVEAU CHAMP : SITUATION GLOBALE POUR L'IA */}
            <div className="pt-8 border-t border-white/10">
               <h3 className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} mb-4`}>Contextualisation pour rapports (Agent IA)</h3>
               <BulleInput 

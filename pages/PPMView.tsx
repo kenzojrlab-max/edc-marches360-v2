@@ -178,7 +178,7 @@ export const PPMView: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-40 relative">
-      {/* HEADER & FILTRES - Z-INDEX CORRIGÉ: z-20 (au-dessus du tableau z-10) */}
+      {/* HEADER & FILTRES */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 px-2 relative z-20">
         <div className="border-l-4 border-primary pl-4">
           <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Suivi PPM</h1>
@@ -205,30 +205,34 @@ export const PPMView: React.FC = () => {
         </div>
       </div>
 
-      {/* TABLEAU AVEC Z-INDEX CORRIGÉS */}
-      <div className={`${theme.card} flex flex-col relative overflow-visible z-10`}>
-        <div ref={topScrollRef} onScroll={handleTopScroll} className="overflow-x-auto overflow-y-hidden custom-scrollbar border-b border-white/5 sticky top-0 z-50 h-4">
+      {/* TABLEAU AVEC Z-INDEX CORRIGÉS (z-[60] > z-[50] > z-[40]) ET SCROLLBAR FIX (overflow-hidden) */}
+      <div className={`${theme.card} flex flex-col relative overflow-hidden z-10`}>
+        <div ref={topScrollRef} onScroll={handleTopScroll} className="overflow-x-auto overflow-y-hidden custom-scrollbar border-b border-white/5 sticky top-0 z-[70] h-4">
           <div className="h-[1px] min-w-[3600px]"></div>
         </div>
         <div ref={tableContainerRef} onScroll={handleTableScroll} className="overflow-auto custom-scrollbar max-h-[75vh]">
           <table className="w-full text-left border-collapse min-w-[3600px] table-fixed">
             <thead>
               <tr className="z-30">
-                {/* Coin En-tête : Z-INDEX 45 */}
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} sticky left-0 top-0 ${getSolidBg()} z-45 w-[420px] align-middle text-center`}>Dossier & Objet</th>
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-40 w-[180px] align-middle`}>Budget Estimé</th>
+                {/* Coin En-tête (Sticky Left/Top) : Z-INDEX 60 */}
+                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} sticky left-0 top-0 ${getSolidBg()} z-[60] w-[420px] align-middle text-center`}>Dossier & Objet</th>
+                
+                {/* En-têtes Scrollables (Sticky Top) : Z-INDEX 50 */}
+                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-[50] w-[180px] align-middle`}>Budget Estimé</th>
                 {JALONS_PPM_CONFIG.map(jalon => (
-                  <th key={jalon.key} colSpan={2} className={`p-6 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center ${getSolidBg()} sticky top-0 z-40 align-middle`}>{jalon.label}</th>
+                  <th key={jalon.key} colSpan={2} className={`p-6 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center ${getSolidBg()} sticky top-0 z-[50] align-middle`}>{jalon.label}</th>
                 ))}
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-40 w-[200px] align-middle`}>Synthèse Délais</th>
-                <th rowSpan={2} className={`p-8 border-b border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky right-0 top-0 ${getSolidBg()} z-45 w-[100px] align-middle`}>Détails</th>
+                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-[50] w-[200px] align-middle`}>Synthèse Délais</th>
+                
+                {/* Coin En-tête (Sticky Right/Top) : Z-INDEX 60 */}
+                <th rowSpan={2} className={`p-8 border-b border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky right-0 top-0 ${getSolidBg()} z-[60] w-[100px] align-middle`}>Détails</th>
               </tr>
               <tr className="z-30">
-                {/* Ligne PRÉVUE/RÉALISÉE : Z-INDEX 40 */}
+                {/* Sous-En-têtes (Sticky Top) : Z-INDEX 50 */}
                 {JALONS_PPM_CONFIG.map(jalon => (
                   <React.Fragment key={`${jalon.key}-sub`}>
-                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textSecondary} text-center uppercase sticky top-[82px] ${getSolidBg()} z-40`}>Prévue</th>
-                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textAccent} text-center uppercase sticky top-[82px] ${getSolidBg()} z-40`}>Réalisée</th>
+                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textSecondary} text-center uppercase sticky top-[82px] ${getSolidBg()} z-[50]`}>Prévue</th>
+                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textAccent} text-center uppercase sticky top-[82px] ${getSolidBg()} z-[50]`}>Réalisée</th>
                   </React.Fragment>
                 ))}
               </tr>
@@ -250,8 +254,8 @@ export const PPMView: React.FC = () => {
                     onDoubleClick={() => setDetailMarketId(m.id)} 
                     className={`group transition-all cursor-pointer hover:bg-white/10 ${isAborted ? 'opacity-80 grayscale-[0.5]' : ''} ${isHighlighted ? 'bg-primary/10 ring-4 ring-primary ring-inset animate-pulse' : ''}`}
                   >
-                    {/* Colonne de gauche fixe : Z-INDEX 35 */}
-                    <td className={`p-8 border-r border-white/5 sticky left-0 z-35 ${getSolidBg()}`}>
+                    {/* Colonne de gauche fixe (Sticky Left) : Z-INDEX 40 */}
+                    <td className={`p-8 border-r border-white/5 sticky left-0 z-[40] ${getSolidBg()}`}>
                       <div className="flex flex-col gap-2">
                         <span className={`text-[10px] font-black px-3 py-1 ${theme.buttonShape} w-fit ${m.is_annule ? 'bg-danger text-white' : m.is_infructueux ? 'bg-warning text-black' : 'bg-primary text-white'}`}>{m.numDossier}</span>
                         <span className={`text-xs font-black ${theme.textMain} line-clamp-2 uppercase whitespace-normal leading-snug`}>{m.objet}</span>
@@ -292,7 +296,8 @@ export const PPMView: React.FC = () => {
                         <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter"><span className={theme.textSecondary}>Réalisé :</span><span className={delaiRealise !== null ? theme.textAccent : theme.textSecondary}>{delaiRealise !== null ? `${delaiRealise} j` : '-'}</span></div>
                       </div>
                     </td>
-                    <td className={`p-6 text-center sticky right-0 z-35 ${getSolidBg()} w-[100px]`}><button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape}`}><ExternalLink size={18} /></button></td>
+                    {/* Colonne de droite fixe (Sticky Right) : Z-INDEX 40 */}
+                    <td className={`p-6 text-center sticky right-0 z-[40] ${getSolidBg()} w-[100px]`}><button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape}`}><ExternalLink size={18} /></button></td>
                   </tr>
                 );
               }) : (<tr><td colSpan={100} className="p-40 text-center font-black uppercase text-slate-400">Aucun marché trouvé</td></tr>)}
@@ -304,7 +309,7 @@ export const PPMView: React.FC = () => {
       {/* MODAL DE DÉTAILS - Z-INDEX 1000 */}
       {selectedMarket && (
         <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-2 md:p-4">
-           {/* ... Contenu de la modale inchangé ... */}
+           {/* ... Contenu de la modale ... */}
            <div className={`relative w-full max-w-[1400px] h-[95vh] ${theme.card} shadow-2xl overflow-hidden flex flex-col animate-zoom-in border border-white/10`}>
               <div className="p-8 border-b border-white/5 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-6">
@@ -318,7 +323,7 @@ export const PPMView: React.FC = () => {
               </div>
 
               <div className="flex-1 flex divide-x divide-white/5 overflow-hidden">
-                {/* VOLET GAUCHE */}
+                {/* ... VOLET GAUCHE ... */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
                       <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme.textAccent}`}>Phase Passation détaillée</h3>
@@ -327,6 +332,7 @@ export const PPMView: React.FC = () => {
                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12">
                       <div className="mb-12 flex justify-center"><CircularProgress percent={calculateProgress(selectedMarket).passation} color={theme.textAccent} icon={FileBox} /></div>
                       <div className="space-y-10">
+                         {/* ... Alerts ... */}
                          {(selectedMarket.is_annule || selectedMarket.is_infructueux || selectedMarket.has_recours) && (
                            <div className="p-8 rounded-[2rem] bg-slate-950 border border-white/10 space-y-6 shadow-2xl animate-in slide-in-from-top-4">
                               <div className="flex items-center gap-3 text-red-500 font-black uppercase text-[11px] tracking-widest"><AlertTriangle size={20}/> Statut Spécifique du Dossier</div>
@@ -409,7 +415,7 @@ export const PPMView: React.FC = () => {
                    </div>
                 </div>
 
-                {/* VOLET DROIT: EXÉCUTION DÉTAILLÉE */}
+                {/* ... VOLET DROIT ... */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
                       <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] text-green-500`}>Phase Exécution (Financier & Contractuel)</h3>
