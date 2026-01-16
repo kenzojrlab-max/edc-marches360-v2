@@ -22,7 +22,8 @@ import { Settings } from './pages/Settings';
 import { Execution } from './pages/Execution';
 import { Documents } from './pages/Documents';
 import { DocumentsManage } from './pages/DocumentsManage';
-import { Loader } from './components/Loader'; // Import du nouveau Loader
+import { Profile } from './pages/Profile'; // NOUVEAU IMPORT
+import { Loader } from './components/Loader';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -68,6 +69,8 @@ const AppContent: React.FC = () => {
                       <Route path="documents" element={<Documents />} />
                       <Route path="documents-manage" element={<DocumentsManage />} />
                       <Route path="settings" element={<Settings />} />
+                      {/* NOUVELLE ROUTE PROFIL */}
+                      <Route path="profile" element={<Profile />} />
                     </Route>
                   </Routes>
                 </HashRouter>

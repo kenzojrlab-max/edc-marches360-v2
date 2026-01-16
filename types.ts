@@ -190,4 +190,5 @@ export interface User {
   projets_autorises?: string[];
   statut: 'actif' | 'inactif';
   created_at: string;
+  photoURL?: string; // NOUVEAU : Pour l'avatar personnalisé
 }

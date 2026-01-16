@@ -12,6 +12,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>; 
   register: (userData: Omit<User, 'id' | 'created_at'>) => void;
   updateUserRole: (userId: string, role: UserRole) => void;
+  updateUserProfile: (userId: string, data: Partial<User>) => void; // NOUVEAU
   deleteUser: (userId: string) => void;
   logout: () => void;
   isAdmin: boolean;
@@ -100,7 +101,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: UserRole.GUEST, 
           statut: 'actif',
           created_at: new Date().toISOString(),
-          fonction: 'Non définie'
+          fonction: 'Non définie',
+          photoURL: fbUser.photoURL || undefined
         };
         
         const newUsersList = [...users, newUser];
@@ -136,6 +138,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // NOUVELLE FONCTION : Mise à jour du profil utilisateur (Nom, Fonction, Avatar)
+  const updateUserProfile = (userId: string, data: Partial<User>) => {
+    const updated = users.map(u => u.id === userId ? { ...u, ...data } : u);
+    setUsers(updated);
+    storage.saveUsers(updated);
+    
+    // Mise à jour de la session courante si c'est l'utilisateur connecté
+    if (user?.id === userId) {
+      const newUser = { ...user, ...data };
+      setUser(newUser);
+      storage.setSession(newUser);
+    }
+  };
+
   const deleteUser = (userId: string) => {
     const updated = users.filter(u => u.id !== userId);
     setUsers(updated);
@@ -162,7 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{
-      user, users, login, loginWithGoogle, register, updateUserRole, deleteUser, logout,
+      user, users, login, loginWithGoogle, register, updateUserRole, updateUserProfile, deleteUser, logout,
       isSuperAdmin: user?.role === UserRole.SUPER_ADMIN,
       isAdmin: user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN,
       isGuest: user?.role === UserRole.GUEST,

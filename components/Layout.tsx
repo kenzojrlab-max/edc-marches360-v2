@@ -21,7 +21,8 @@ import {
   Zap,
   Monitor,
   Layers,
-  GlassWater
+  GlassWater,
+  User as UserIcon // Renommé pour éviter conflit avec le type User
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMarkets } from '../contexts/MarketContext';
@@ -122,6 +123,8 @@ export const Layout: React.FC = () => {
     { to: '/execution', icon: PlayCircle, label: 'Exécution des Marchés', visible: isAdmin },
     { to: '/documents-manage', icon: Files, label: 'Gestion documentaire', visible: isSuperAdmin },
     { to: '/settings', icon: Settings, label: 'Paramètres', visible: isSuperAdmin },
+    // NOUVEAU ITEM DE MENU
+    { to: '/profile', icon: UserIcon, label: 'Mon Profil', visible: true },
   ].filter(item => item.visible);
 
   return (
@@ -274,13 +277,21 @@ export const Layout: React.FC = () => {
               )}
             </div>
             
-            <div className={`flex items-center gap-3 border-l border-white/10 pl-4`}>
+            <div 
+              className={`flex items-center gap-3 border-l border-white/10 pl-4 cursor-pointer`}
+              onClick={() => navigate('/profile')} // Click rapide vers le profil
+            >
               <div className="text-right hidden sm:block">
                 <p className={`${theme.textMain} text-sm font-bold`}>{user?.name?.split(' ')[0]}</p>
                 <p className={`${theme.textSecondary} text-[10px] uppercase font-bold tracking-tight`}>{user?.role?.replace('_', ' ')}</p>
               </div>
               <div className={`w-10 h-10 ${theme.buttonShape} overflow-hidden border-2 border-white/10 shadow-lg`}>
-                <img src={`https://picsum.photos/seed/${user?.id}/100`} alt="Avatar" className="w-full h-full object-cover" />
+                {/* Utilisation de photoURL si dispo, sinon fallback vers picsum basé sur l'ID */}
+                <img 
+                  src={user?.photoURL || `https://picsum.photos/seed/${user?.id}/100`} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover" 
+                />
               </div>
             </div>
           </div>
