@@ -123,7 +123,6 @@ export const Layout: React.FC = () => {
     { to: '/execution', icon: PlayCircle, label: 'Exécution des Marchés', visible: isAdmin },
     { to: '/documents-manage', icon: Files, label: 'Gestion documentaire', visible: isSuperAdmin },
     { to: '/settings', icon: Settings, label: 'Paramètres', visible: isSuperAdmin },
-    // NOUVEAU ITEM DE MENU
     { to: '/profile', icon: UserIcon, label: 'Mon Profil', visible: true },
   ].filter(item => item.visible);
 
@@ -195,9 +194,14 @@ export const Layout: React.FC = () => {
             <button onClick={() => setIsMobileMenuOpen(true)} className={`p-2 ${theme.textSecondary} lg:hidden hover:bg-white/5 rounded-xl`}>
               <Menu size={24} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
             </button>
-            <h2 className={`${theme.textMain} text-lg md:text-xl font-bold truncate uppercase tracking-tight`}>
-              Bonjour, {user?.name?.split(' ')[0]}
-            </h2>
+            <div className="flex flex-col justify-center">
+              <h2 className={`${theme.textMain} text-lg md:text-xl font-bold truncate uppercase tracking-tight leading-none`}>
+                Bonjour, {user?.name?.split(' ')[0]}
+              </h2>
+              <p className={`${theme.textSecondary} text-[10px] font-bold uppercase tracking-widest mt-0.5 animate-in fade-in`}>
+                {user?.fonction || ''}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 md:gap-4">
