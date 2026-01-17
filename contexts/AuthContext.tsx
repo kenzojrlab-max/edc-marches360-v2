@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-// import { storage as localStorageUtils } from '../utils/storage'; // SUPPRIMÉ
 import { generateUUID } from '../utils/uid';
+import { Loader } from '../components/Loader'; // AJOUT : Import du Loader
 import { 
   signInWithPopup, 
   GoogleAuthProvider, 
@@ -43,46 +43,44 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // État de chargement réel
 
-  // 1. Gestion de la session Firebase Auth (Auth State Listener)
+  // 1. Gestion de la session Firebase Auth
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // L'utilisateur est connecté, on récupère son profil Firestore
         const userRef = doc(db, "users", firebaseUser.uid);
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
           setUser(userSnap.data() as User);
         } else {
-          // Cas où l'utilisateur est dans Auth mais pas dans Firestore
           console.warn("Utilisateur authentifié mais profil Firestore introuvable.");
         }
       } else {
-        // Déconnexion
         setUser(null);
       }
-      setLoading(false);
+      setLoading(false); // Fin du chargement une fois l'auth vérifiée
     });
 
     return () => unsubscribe();
   }, []);
 
-  // 2. Synchronisation de la liste des utilisateurs (Pour l'Admin)
+  // 2. Synchronisation de la liste des utilisateurs (CORRIGÉ : Sécurisé par rôle)
   useEffect(() => {
-    // SÉCURITÉ : On ne charge la liste que si l'utilisateur est ADMIN ou SUPER_ADMIN
+    // Si pas connecté ou pas admin, on ne charge rien !
     if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN)) {
-      setUsers([]); // On vide la liste pour les non-admins
+      setUsers([]);
       return;
     }
 
+    // Seuls les admins exécutent ce code
     const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const usersData = snapshot.docs.map(doc => doc.data() as User);
       setUsers(usersData);
     });
     return () => unsubscribe();
-  }, [user]); // Ajout de 'user' en dépendance pour réagir au login/logout
+  }, [user]); // Dépendance 'user' essentielle ici
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
@@ -176,7 +174,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     await signOut(auth);
     setUser(null);
-    // localStorage.removeItem('edc_session'); // SUPPRIMÉ : Inutile avec Firebase
   };
 
   const can = (action: string): boolean => {
@@ -193,6 +190,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Affichage du Loader tant que l'état d'auth n'est pas résolu
+  if (loading) {
+    return <Loader />;
+  }
+
   return (
     <AuthContext.Provider value={{
       user, users, login, loginWithGoogle, register, updateUserRole, updateUserProfile, deleteUser, logout,
@@ -201,7 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isGuest: user?.role === UserRole.GUEST,
       can: can as any
     }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
