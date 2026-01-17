@@ -16,8 +16,8 @@ import { Marche, User, PieceJointe } from "../types";
 // Clés pour le stockage local (Données légères uniquement)
 const STORAGE_KEYS = {
   MARKETS: 'edc_markets',
-  USERS: 'edc_users',
-  SESSION: 'edc_session'
+  // USERS: 'edc_users', // SUPPRIMÉ
+  // SESSION: 'edc_session' // SUPPRIMÉ
 };
 
 export const storage = {
@@ -131,6 +131,9 @@ export const storage = {
   saveMarkets: (markets: Marche[]) => {
     localStorage.setItem(STORAGE_KEYS.MARKETS, JSON.stringify(markets));
   },
+  
+  // USERS & SESSION : SUPPRIMÉS POUR EVITER CONFLITS AVEC FIREBASE AUTH
+  /*
   getUsers: (): User[] => {
     const data = localStorage.getItem(STORAGE_KEYS.USERS);
     return data ? JSON.parse(data) : [];
@@ -145,4 +148,5 @@ export const storage = {
   setSession: (user: User | null) => {
     localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
   }
+  */
 };

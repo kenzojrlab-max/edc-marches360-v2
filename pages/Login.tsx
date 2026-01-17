@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // AJOUT: useEffect
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -6,8 +6,7 @@ import { BulleInput } from '../components/BulleInput';
 import { Modal } from '../components/Modal';
 import { Lock, Mail, ArrowRight, User, Briefcase, LogIn, RefreshCcw, Save } from 'lucide-react';
 import { UserRole } from '../types';
-import { storage } from '../utils/storage';
-// AJOUT : Imports nécessaires pour le reset mot de passe Firebase
+// import { storage } from '../utils/storage'; // SUPPRIMÉ : Plus besoin
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebase";
 
@@ -15,7 +14,6 @@ export const Login: React.FC = () => {
   const [isSignUpActive, setIsSignUpActive] = useState(false);
   const { theme, themeType } = useTheme();
   
-  // 1. Initialisation des champs VIDES
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -28,21 +26,26 @@ export const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login, loginWithGoogle, register } = useAuth();
+  // On récupère 'user' du contexte pour surveiller la connexion
+  const { login, loginWithGoogle, register, user } = useAuth();
   const navigate = useNavigate();
+
+  // AJOUT : Redirection automatique dès que l'utilisateur est détecté par le contexte
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    await new Promise(r => setTimeout(r, 500));
-    // Connexion avec les identifiants saisis
     const success = await login(email, password);
-    if (success) {
-      navigate('/');
-    } else {
+    if (!success) {
       setError('Identifiants incorrects.');
     }
+    // Si success est vrai, le useEffect ci-dessus déclenchera la redirection
     setLoading(false);
   };
 
@@ -50,7 +53,8 @@ export const Login: React.FC = () => {
     setLoading(true);
     await loginWithGoogle();
     setLoading(false);
-    if (storage.getSession()) navigate('/');
+    // SUPPRIMÉ : if (storage.getSession()) navigate('/'); 
+    // La redirection est gérée par le useEffect
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -61,7 +65,7 @@ export const Login: React.FC = () => {
     }
     setLoading(true);
     try {
-      register({
+      await register({
         name,
         email,
         password,
@@ -69,27 +73,23 @@ export const Login: React.FC = () => {
         role: UserRole.GUEST,
         statut: 'actif'
       });
+      // Après inscription, on connecte l'utilisateur
       await login(email, password);
-      navigate('/');
     } catch (err) {
       setError("Erreur lors de l'inscription.");
     }
     setLoading(false);
   };
 
-  // MODIFICATION : Nouvelle logique de reset mot de passe via Firebase
   const handleDoReset = async () => {
     if (!resetEmail) {
       alert("Veuillez saisir votre email.");
       return;
     }
     try {
-      // Envoi de l'email via Firebase Auth
       await sendPasswordResetEmail(auth, resetEmail);
       alert("📧 Un email de réinitialisation a été envoyé ! Vérifiez vos spams.");
       setShowResetModal(false);
-      // Note: Le champ 'Nouveau Passe' dans le modal n'est plus utilisé techniquement ici, 
-      // car Firebase envoie un lien pour changer le mot de passe sur une page web sécurisée.
     } catch (error: any) {
       console.error(error);
       alert("Erreur : " + error.message);
@@ -136,7 +136,6 @@ export const Login: React.FC = () => {
         
         {/* --- INSCRIPTION --- */}
         <div className={`form-container sign-up-container ${isSignUpActive ? 'mobile-active' : ''}`}>
-          {/* autoComplete="off" pour désactiver l'autofill global */}
           <form onSubmit={handleRegister} className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4" autoComplete="off">
             <h1 className={`text-xl font-black ${theme.textMain} tracking-tight uppercase`}>Créer un compte</h1>
             
@@ -162,7 +161,6 @@ export const Login: React.FC = () => {
 
         {/* --- CONNEXION --- */}
         <div className={`form-container sign-in-container ${!isSignUpActive ? 'mobile-active' : ''}`}>
-          {/* autoComplete="off" pour désactiver l'autofill global */}
           <form onSubmit={handleLogin} className="h-full flex flex-col items-center justify-center p-6 text-center space-y-6" autoComplete="off">
             <h1 className={`text-xl font-black ${theme.textMain} tracking-tight uppercase hidden md:block`}>Connexion</h1>
             
@@ -178,7 +176,6 @@ export const Login: React.FC = () => {
             </div>
 
             <div className="w-full space-y-3 text-left max-w-[260px]">
-              {/* autoComplete="new-password" force souvent le navigateur à ne pas remplir l'email/mdp */}
               <BulleInput icon={Mail} placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} label="" required autoComplete="new-password" />
               <div className="space-y-1">
                 <BulleInput icon={Lock} type="password" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} label="" required autoComplete="new-password" />
@@ -229,7 +226,6 @@ export const Login: React.FC = () => {
 
       <Modal isOpen={showResetModal} onClose={() => setShowResetModal(false)} title="Réinitialisation du compte" size="sm">
         <div className="space-y-6 pt-4">
-           {/* Contenu modal reset inchangé */}
            <div className="text-center space-y-2">
               <div className={`w-16 h-16 bg-blue-edc-50 text-blue-edc-900 ${theme.buttonShape} flex items-center justify-center mx-auto mb-4 shadow-inner`}><RefreshCcw size={28} /></div>
               <p className={`text-xs font-medium ${theme.textSecondary} leading-relaxed px-4`}>Saisissez votre email et le nouveau mot de passe.</p>

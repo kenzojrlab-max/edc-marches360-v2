@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { storage as localStorageUtils } from '../utils/storage'; // Renommé pour éviter conflit
+// import { storage as localStorageUtils } from '../utils/storage'; // SUPPRIMÉ
 import { generateUUID } from '../utils/uid';
 import { 
   signInWithPopup, 
@@ -56,8 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userSnap.exists()) {
           setUser(userSnap.data() as User);
         } else {
-          // Cas où l'utilisateur est dans Auth mais pas dans Firestore (ex: premier login Google sans création auto)
-          // On peut créer un profil par défaut ici si nécessaire, ou attendre le loginWithGoogle
+          // Cas où l'utilisateur est dans Auth mais pas dans Firestore
           console.warn("Utilisateur authentifié mais profil Firestore introuvable.");
         }
       } else {
@@ -94,12 +93,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const result = await signInWithPopup(auth, googleProvider);
       const fbUser = result.user;
       
-      // Vérifier si le document utilisateur existe déjà
       const userRef = doc(db, "users", fbUser.uid);
       const userSnap = await getDoc(userRef);
 
       if (!userSnap.exists()) {
-        // Création du profil utilisateur dans Firestore s'il n'existe pas
         const newUser: User = {
           id: fbUser.uid,
           name: fbUser.displayName || 'Utilisateur Google',
@@ -113,10 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await setDoc(userRef, newUser);
         setUser(newUser);
       } else {
-        // Mise à jour éventuelle (photo, nom)
         await updateDoc(userRef, {
           photoURL: fbUser.photoURL || undefined,
-          // On ne force pas la mise à jour du nom pour respecter les modifs admin
         });
       }
     } catch (error) {
@@ -127,11 +122,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (userData: Omit<User, 'id' | 'created_at'>) => {
     try {
-      // Création du compte dans Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password || 'password123'); // Fallback password si vide, mais le formulaire doit forcer
+      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password || 'password123'); 
       const fbUser = userCredential.user;
 
-      // Création du profil dans Firestore (SANS le mot de passe en clair)
       const newUser: User = {
         id: fbUser.uid,
         name: userData.name,
@@ -140,17 +133,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         statut: 'actif',
         fonction: userData.fonction,
         created_at: new Date().toISOString()
-        // Note: On ne stocke PAS le mot de passe dans Firestore
       };
 
       await setDoc(doc(db, "users", fbUser.uid), newUser);
-      
-      // Optionnel : Mettre à jour le profil Auth
-      // await updateProfile(fbUser, { displayName: userData.name });
 
     } catch (error: any) {
       console.error("Erreur inscription:", error);
-      throw new Error(error.message); // Propager l'erreur pour l'UI
+      throw new Error(error.message); 
     }
   };
 
@@ -172,10 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteUser = async (userId: string) => {
     try {
-      // Suppression du document Firestore
       await deleteDoc(doc(db, "users", userId));
-      // Note: La suppression du compte Auth nécessite le SDK Admin ou une Cloud Function
-      // Pour cette version client-side, on supprime juste l'accès aux données (Firestore)
     } catch (error) {
       console.error("Erreur deleteUser:", error);
     }
@@ -184,12 +170,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     await signOut(auth);
     setUser(null);
-    localStorage.removeItem('edc_session'); // Nettoyage legacy au cas où
+    // localStorage.removeItem('edc_session'); // SUPPRIMÉ : Inutile avec Firebase
   };
 
   const can = (action: string): boolean => {
     if (!user) return false;
-    // Si inactif, aucun droit
     if (user.statut !== 'actif') return false;
 
     switch (action) {

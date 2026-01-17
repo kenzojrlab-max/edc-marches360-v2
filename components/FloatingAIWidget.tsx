@@ -43,6 +43,9 @@ export const FloatingAIWidget: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [language] = useState('fr-FR'); // Par défaut français
 
+  // AJOUT : Référence pour stocker l'instance de reconnaissance vocale
+  const recognitionRef = useRef<any>(null);
+
   // --- ÉTATS RAPPORT ---
   const [reportConfig, setReportConfig] = useState({ projectId: 'all', year: 'all', type: 'general' as const });
   const [generatedReport, setGeneratedReport] = useState('');
@@ -67,6 +70,15 @@ export const FloatingAIWidget: React.FC = () => {
       setWindowPos({ x: nx, y: ny });
     }
   }, [isOpen]);
+
+  // AJOUT : Nettoyage automatique au démontage du composant
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   // --- GESTION DU DRAG & DROP ---
   const onIconMouseDown = (e: React.MouseEvent) => {
@@ -131,9 +143,17 @@ export const FloatingAIWidget: React.FC = () => {
       alert("Votre navigateur ne supporte pas la reconnaissance vocale.");
       return;
     }
-    if (isListening) { setIsListening(false); return; }
+    
+    // MODIFICATION : Utilisation de la ref pour arrêter proprement
+    if (isListening) { 
+      recognitionRef.current?.stop();
+      setIsListening(false); 
+      return; 
+    }
     
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition; // Stockage dans la ref
+    
     recognition.lang = language;
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
