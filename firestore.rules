@@ -83,7 +83,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 5. Collection LOGS (Audit)
+    // 5. Collection DOCUMENTS (Gestion Documentaire) - AJOUT
+    match /documents/{docId} {
+      allow read: if isActif(); // Tout utilisateur actif peut voir les documents
+      allow write: if isAdmin(); // Seuls les admins peuvent ajouter/modifier/supprimer
+    }
+
+    // 6. Collection LOGS (Audit)
     match /logs/{logId} {
       allow read: if isAdmin(); // Seuls les admins voient les logs
       allow create: if isActif(); // Tout utilisateur actif peut créer un log (audit trail)

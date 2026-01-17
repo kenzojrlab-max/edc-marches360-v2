@@ -18,11 +18,15 @@ const app = initializeApp(firebaseConfig);
 
 // 2. Initialisation de App Check
 if (typeof window !== "undefined") {
-  // @ts-ignore
-  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  // CORRECTION : On active le token de debug UNIQUEMENT si on est en local (localhost)
+  // Cela évite l'erreur 403 en production.
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    // @ts-ignore
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  }
 
   initializeAppCheck(app, {
-    // Ta clé du site a été insérée ici 👇
+    // Ta clé du site reCAPTCHA v3
     provider: new ReCaptchaV3Provider('6LfWA04sAAAAAPBUXQaj3Tm55jEwHUk9oSRwOEFU'),
     isTokenAutoRefreshEnabled: true
   });
