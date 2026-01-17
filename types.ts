@@ -111,6 +111,8 @@ export interface ExecutionData {
   doc_mise_en_demeure_id?: string;
   doc_constat_carence_id?: string;
   doc_decision_resiliation_id?: string;
+  // CORRECTION ICI : Autorise l'accès dynamique par clé (ex: execution['doc_os_id'])
+  [key: string]: any;
 }
 
 export interface MarcheDates {
@@ -190,5 +192,5 @@ export interface User {
   projets_autorises?: string[];
   statut: 'actif' | 'inactif';
   created_at: string;
-  photoURL?: string; // NOUVEAU : Pour l'avatar personnalisé
+  photoURL?: string; 
 }

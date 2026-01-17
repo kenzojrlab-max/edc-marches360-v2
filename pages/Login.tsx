@@ -7,6 +7,9 @@ import { Modal } from '../components/Modal';
 import { Lock, Mail, ArrowRight, User, Briefcase, LogIn, RefreshCcw, Save } from 'lucide-react';
 import { UserRole } from '../types';
 import { storage } from '../utils/storage';
+// AJOUT : Imports nécessaires pour le reset mot de passe Firebase
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../firebase";
 
 export const Login: React.FC = () => {
   const [isSignUpActive, setIsSignUpActive] = useState(false);
@@ -74,24 +77,23 @@ export const Login: React.FC = () => {
     setLoading(false);
   };
 
-  const handleDoReset = () => {
-    // ... (logique reset inchangée)
-    if (!resetEmail || !resetNewPassword) {
-      alert("Veuillez remplir tous les champs.");
+  // MODIFICATION : Nouvelle logique de reset mot de passe via Firebase
+  const handleDoReset = async () => {
+    if (!resetEmail) {
+      alert("Veuillez saisir votre email.");
       return;
     }
-    const allUsers = storage.getUsers();
-    const userIndex = allUsers.findIndex(u => u.email.toLowerCase() === resetEmail.toLowerCase());
-    if (userIndex === -1) {
-      alert("Aucun compte associé à cet email n'a été trouvé.");
-      return;
+    try {
+      // Envoi de l'email via Firebase Auth
+      await sendPasswordResetEmail(auth, resetEmail);
+      alert("📧 Un email de réinitialisation a été envoyé ! Vérifiez vos spams.");
+      setShowResetModal(false);
+      // Note: Le champ 'Nouveau Passe' dans le modal n'est plus utilisé techniquement ici, 
+      // car Firebase envoie un lien pour changer le mot de passe sur une page web sécurisée.
+    } catch (error: any) {
+      console.error(error);
+      alert("Erreur : " + error.message);
     }
-    allUsers[userIndex].password = resetNewPassword;
-    storage.saveUsers(allUsers);
-    alert("✅ Mot de passe réinitialisé.");
-    setShowResetModal(false);
-    setResetEmail('');
-    setResetNewPassword('');
   };
 
   return (
