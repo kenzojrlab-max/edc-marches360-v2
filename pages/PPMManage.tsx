@@ -87,10 +87,9 @@ export const PPMManage: React.FC = () => {
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 1. Vérification de sécurité : Projet sélectionné ?
     if (!importProjectId) {
       alert("Veuillez d'abord sélectionner un projet dans la liste déroulante ci-dessus.");
-      e.target.value = ''; // Reset l'input pour pouvoir recliquer
+      e.target.value = '';
       return;
     }
 
@@ -100,7 +99,7 @@ export const PPMManage: React.FC = () => {
     setIsImporting(true);
     const reader = new FileReader();
     
-    reader.onload = async (evt) => { // Async pour attendre addMarkets
+    reader.onload = async (evt) => {
       try {
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
@@ -109,11 +108,13 @@ export const PPMManage: React.FC = () => {
         
         const dataRows = rows.slice(1).filter(r => r.some(cell => cell !== null && cell !== ''));
         const project = projects.find(p => p.id === importProjectId);
+        const baseTime = new Date().getTime(); // Temps de base pour l'ordre
 
-        const newMarkets: Marche[] = dataRows.map((row) => {
+        // CORRECTION ICI : Ajout de l'index 'i' pour garantir l'ordre chronologique
+        const newMarkets: Marche[] = dataRows.map((row, i) => {
           const dates_prevues: any = {};
-          JALONS_PPM_KEYS.forEach((key, i) => {
-            dates_prevues[key] = excelDateToISO(row[9 + i]);
+          JALONS_PPM_KEYS.forEach((key, k) => {
+            dates_prevues[key] = excelDateToISO(row[9 + k]);
           });
 
           return {
@@ -139,14 +140,13 @@ export const PPMManage: React.FC = () => {
             has_recours: false,
             execution: { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 },
             created_by: user?.id || 'system',
-            date_creation: new Date().toISOString()
+            // DATE CRÉATION INCRÉMENTALE : Garantit que row 1 est plus vieux que row 2
+            date_creation: new Date(baseTime + (i * 10)).toISOString() 
           };
         });
 
-        // Utilisation du addMarkets du contexte (qui gère le batching Firestore)
         if (newMarkets.length > 0) {
            await addMarkets(newMarkets);
-           // addLog est déjà appelé dans le contexte, pas besoin de le doubler
            setIsImporting(false);
            setShowImportModal(false);
            alert(`${newMarkets.length} marchés importés avec succès.`);
@@ -270,13 +270,12 @@ export const PPMManage: React.FC = () => {
               onClick={() => { if(!importProjectId) alert("Veuillez sélectionner un projet cible avant de cliquer ici."); }}
               className={`p-10 border-4 border-dashed ${themeType === 'glass' ? 'border-white/10' : 'border-slate-100'} ${theme.buttonShape} text-center space-y-4 hover:border-accent transition-all cursor-pointer relative`}
             >
-               {/* CORRECTION: Retrait du disabled, gestion par onClick parent ou validation interne */}
                <input 
                  type="file" 
                  className="absolute inset-0 opacity-0 cursor-pointer" 
                  accept=".xlsx" 
                  onChange={handleFileUpload} 
-                 disabled={isImporting} // On ne désactive que pendant le chargement, pas avant
+                 disabled={isImporting}
                />
                <Upload className="mx-auto text-slate-300" size={32} />
                <p className={`text-xs font-black uppercase ${theme.textSecondary}`}>

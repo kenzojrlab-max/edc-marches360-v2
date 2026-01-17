@@ -8,7 +8,7 @@ interface MarketContextType {
   markets: Marche[];
   deletedMarkets: Marche[];
   addMarket: (market: Marche) => void;
-  addMarkets: (newMarkets: Marche[]) => void;
+  addMarkets: (newMarkets: Marche[]) => Promise<void>;
   updateMarket: (id: string, updates: Partial<Marche>) => void;
   updateMarketDoc: (marketId: string, jalonKey: string, docId: string) => void;
   removeMarket: (id: string) => void;
@@ -28,12 +28,10 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   const { addLog } = useLogs();
 
-  // Écoute temps réel des Marchés Actifs
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "markets"), (snapshot) => {
       const marketsData = snapshot.docs.map(doc => {
         const m = doc.data() as Marche;
-        // Garantir que les objets imbriqués existent pour éviter les crashs
         return {
           ...m,
           dates_prevues: m.dates_prevues || {},
@@ -43,12 +41,14 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           execution: m.execution || { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 }
         };
       });
+      // CORRECTION : Tri par date_creation pour respecter l'ordre d'import
+      marketsData.sort((a, b) => new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime());
+      
       setMarkets(marketsData);
     });
     return () => unsubscribe();
   }, []);
 
-  // Écoute temps réel de la Corbeille
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "deleted_markets"), (snapshot) => {
       const deletedData = snapshot.docs.map(doc => doc.data() as Marche);
@@ -59,45 +59,66 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addMarket = async (market: Marche) => {
     try {
-      const safeMarket = { ...market, docs: market.docs || {}, comments: market.comments || {} };
+      const safeMarket = JSON.parse(JSON.stringify({ 
+        ...market, 
+        docs: market.docs || {}, 
+        comments: market.comments || {} 
+      }));
       await setDoc(doc(db, "markets", market.id), safeMarket);
       addLog('Passation', 'Inscription Marché', `Marché ${market.numDossier} inscrit.`);
     } catch (error) {
       console.error("Erreur addMarket:", error);
+      alert("Erreur lors de l'ajout du marché. Vérifiez la console.");
     }
   };
 
   const addMarkets = async (newMarkets: Marche[]) => {
     try {
-      // Firestore limite les batchs à 500 opérations, on découpe si nécessaire (ici simplifié)
-      const batch = writeBatch(db);
-      newMarkets.forEach(m => {
-        const docRef = doc(db, "markets", m.id);
-        const safeMarket = { ...m, docs: m.docs || {}, comments: m.comments || {} };
-        batch.set(docRef, safeMarket);
-      });
-      await batch.commit();
+      const BATCH_SIZE = 450;
+      const chunks = [];
+      
+      for (let i = 0; i < newMarkets.length; i += BATCH_SIZE) {
+        chunks.push(newMarkets.slice(i, i + BATCH_SIZE));
+      }
+
+      console.log(`Début import : ${newMarkets.length} marchés en ${chunks.length} lots.`);
+
+      for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach(m => {
+          const docRef = doc(db, "markets", m.id);
+          const safeMarket = JSON.parse(JSON.stringify({ 
+            ...m, 
+            docs: m.docs || {}, 
+            comments: m.comments || {} 
+          }));
+          batch.set(docRef, safeMarket);
+        });
+        await batch.commit();
+        console.log(`Lot importé (${chunk.length} éléments)`);
+      }
+
       addLog('Passation', 'Import Excel', `${newMarkets.length} marchés importés.`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erreur addMarkets:", error);
+      alert(`Erreur d'importation : ${error.message || "Erreur inconnue"}`);
     }
   };
 
   const updateMarket = async (id: string, updates: Partial<Marche>) => {
     try {
       const marketRef = doc(db, "markets", id);
-      // Logique métier locale pour le statut
       let finalUpdates = { ...updates };
       const currentMarket = markets.find(m => m.id === id);
       
-      // Si on met à jour les dates, on recalcule le statut global
       if (finalUpdates.dates_realisees && currentMarket) {
          const mergedDates = { ...currentMarket.dates_realisees, ...finalUpdates.dates_realisees };
          if (mergedDates.signature_marche) finalUpdates.statut_global = StatutGlobal.SIGNE;
          else if (Object.values(mergedDates).some(v => v)) finalUpdates.statut_global = StatutGlobal.EN_COURS;
       }
 
-      await updateDoc(marketRef, finalUpdates);
+      const safeUpdates = JSON.parse(JSON.stringify(finalUpdates));
+      await updateDoc(marketRef, safeUpdates);
     } catch (error) {
       console.error("Erreur updateMarket:", error);
     }
@@ -106,7 +127,6 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateMarketDoc = async (marketId: string, jalonKey: string, docId: string) => {
     try {
       const marketRef = doc(db, "markets", marketId);
-      // Notation pointée pour mettre à jour une clé spécifique d'une Map dans Firestore
       await updateDoc(marketRef, {
         [`docs.${jalonKey}`]: docId
       });
@@ -121,10 +141,9 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!target) return;
 
       const batch = writeBatch(db);
-      // 1. Supprimer de "markets"
       batch.delete(doc(db, "markets", id));
-      // 2. Ajouter dans "deleted_markets"
-      batch.set(doc(db, "deleted_markets", id), target);
+      const safeTarget = JSON.parse(JSON.stringify(target));
+      batch.set(doc(db, "deleted_markets", id), safeTarget);
       
       await batch.commit();
     } catch (error) {
@@ -140,7 +159,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const batch = writeBatch(db);
       targets.forEach(m => {
         batch.delete(doc(db, "markets", m.id));
-        batch.set(doc(db, "deleted_markets", m.id), m);
+        const safeMarket = JSON.parse(JSON.stringify(m));
+        batch.set(doc(db, "deleted_markets", m.id), safeMarket);
       });
 
       await batch.commit();
@@ -157,7 +177,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const batch = writeBatch(db);
       batch.delete(doc(db, "deleted_markets", id));
-      batch.set(doc(db, "markets", id), target);
+      const safeTarget = JSON.parse(JSON.stringify(target));
+      batch.set(doc(db, "markets", id), safeTarget);
       
       await batch.commit();
     } catch (error) {
