@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Marche, StatutGlobal } from '../types';
 import { useLogs } from './LogsContext';
 import { db } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+// AJOUT : Import de query et where pour le filtrage
+import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
 
 interface MarketContextType {
   markets: Marche[];
@@ -29,7 +30,18 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { addLog } = useLogs();
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "markets"), (snapshot) => {
+    // CORRECTION : On filtre pour ne charger que les marchés de l'année en cours
+    const currentYear = new Date().getFullYear();
+    const startOfYear = `${currentYear}-01-01`;
+
+    // Création de la requête optimisée
+    const marketsQuery = query(
+      collection(db, "markets"),
+      where("date_creation", ">=", startOfYear)
+    );
+
+    // On écoute la requête filtrée (marketsQuery) au lieu de toute la collection
+    const unsubscribe = onSnapshot(marketsQuery, (snapshot) => {
       const marketsData = snapshot.docs.map(doc => {
         const m = doc.data() as Marche;
         return {
@@ -59,12 +71,11 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addMarket = async (market: Marche) => {
     try {
-      // CORRECTION: Remplacement de JSON.parse/stringify par le spread operator (...) beaucoup plus performant
-      const safeMarket = { 
+      const safeMarket = JSON.parse(JSON.stringify({ 
         ...market, 
         docs: market.docs || {}, 
         comments: market.comments || {} 
-      };
+      }));
       await setDoc(doc(db, "markets", market.id), safeMarket);
       addLog('Passation', 'Inscription Marché', `Marché ${market.numDossier} inscrit.`);
     } catch (error) {
@@ -82,36 +93,37 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         chunks.push(newMarkets.slice(i, i + BATCH_SIZE));
       }
 
-      console.log(`Début import : ${newMarkets.length} marchés en ${chunks.length} lots.`);
+      // NETTOYAGE PROD
+      // console.log(`Début import : ${newMarkets.length} marchés en ${chunks.length} lots.`);
 
       for (const chunk of chunks) {
         const batch = writeBatch(db);
         chunk.forEach(m => {
           const docRef = doc(db, "markets", m.id);
           
-          // CORRECTION MAJEURE ICI (POINT 5 & PERF) : 
-          // Remplacement de la copie JSON lourde par une copie superficielle (shallow copy).
-          // On extrait docs et comments pour les traiter à part.
-          const { docs, comments, ...restOfMarket } = m;
+          // CORRECTION MAJEURE ICI (POINT 5) : Gestion des doublons et protection des données
           
-          // On prépare l'objet final 'safeMarket'
-          const safeMarket: any = { ...restOfMarket };
+          // 1. On crée une copie propre des données à importer
+          const safeMarket = JSON.parse(JSON.stringify(m));
 
-          // Logique de protection : on n'inclut le champ 'docs' que s'il contient quelque chose.
-          // Sinon, on ne le met pas dans l'objet, ce qui, avec { merge: true }, préserve les données existantes en base.
-          if (docs && Object.keys(docs).length > 0) {
-            safeMarket.docs = docs;
+          // 2. IMPORTANT : On supprime les champs docs et comments de l'objet à envoyer
+          // SI ET SEULEMENT SI ils sont vides dans l'import.
+          // Cela empêche d'écraser les fichiers/commentaires existants en base avec du "vide".
+          if (!safeMarket.docs || Object.keys(safeMarket.docs).length === 0) {
+            delete safeMarket.docs;
           }
-          
-          if (comments && Object.keys(comments).length > 0) {
-            safeMarket.comments = comments;
+          if (!safeMarket.comments || Object.keys(safeMarket.comments).length === 0) {
+            delete safeMarket.comments;
           }
 
           // 3. On utilise { merge: true }
+          // Si le marché existe : on met à jour SEULEMENT les champs présents dans safeMarket (montant, dates...)
+          // Si le marché n'existe pas : on le crée.
           batch.set(docRef, safeMarket, { merge: true });
         });
         await batch.commit();
-        console.log(`Lot importé (${chunk.length} éléments)`);
+        // NETTOYAGE PROD
+        // console.log(`Lot importé (${chunk.length} éléments)`);
       }
 
       addLog('Passation', 'Import Excel', `${newMarkets.length} marchés importés/mis à jour.`);
@@ -133,8 +145,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
          else if (Object.values(mergedDates).some(v => v)) finalUpdates.statut_global = StatutGlobal.EN_COURS;
       }
 
-      // CORRECTION: Optimisation ici aussi
-      const safeUpdates = { ...finalUpdates };
+      const safeUpdates = JSON.parse(JSON.stringify(finalUpdates));
       await updateDoc(marketRef, safeUpdates);
     } catch (error) {
       console.error("Erreur updateMarket:", error);
@@ -159,8 +170,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const batch = writeBatch(db);
       batch.delete(doc(db, "markets", id));
-      // CORRECTION: Optimisation
-      const safeTarget = { ...target };
+      const safeTarget = JSON.parse(JSON.stringify(target));
       batch.set(doc(db, "deleted_markets", id), safeTarget);
       
       await batch.commit();
@@ -177,8 +187,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const batch = writeBatch(db);
       targets.forEach(m => {
         batch.delete(doc(db, "markets", m.id));
-        // CORRECTION: Optimisation
-        const safeMarket = { ...m };
+        const safeMarket = JSON.parse(JSON.stringify(m));
         batch.set(doc(db, "deleted_markets", m.id), safeMarket);
       });
 
@@ -196,8 +205,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const batch = writeBatch(db);
       batch.delete(doc(db, "deleted_markets", id));
-      // CORRECTION: Optimisation
-      const safeTarget = { ...target };
+      const safeTarget = JSON.parse(JSON.stringify(target));
       batch.set(doc(db, "markets", id), safeTarget);
       
       await batch.commit();

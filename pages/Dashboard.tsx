@@ -18,7 +18,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 // Hooks personnalisés
 import { useDashboardStats } from '../hooks/useDashboardStats';
-import { useMarketFilter } from '../hooks/useMarketFilter'; // AJOUT
+import { useMarketFilter } from '../hooks/useMarketFilter'; 
 
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 
@@ -35,7 +35,7 @@ export const Dashboard: React.FC = () => {
   const { theme, themeType } = useTheme();
   const navigate = useNavigate();
 
-  // --- CORRECTION : Utilisation du Hook de filtrage (Code propre et centralisé) ---
+  // --- Filtres (via Hook) ---
   const {
     selectedYear, setSelectedYear,
     selectedProjectId, setSelectedProjectId,
@@ -45,9 +45,10 @@ export const Dashboard: React.FC = () => {
     filteredMarkets
   } = useMarketFilter(markets, projects);
 
-  // --- Appel du Hook pour les calculs statistiques ---
+  // --- Stats (via Hook) - CORRECTION : On récupère les valeurs calculées ici ---
   const { 
-    delayStats, funnelData, budgetStats, procedureData, functionStats, historicalData, COLORS 
+    delayStats, funnelData, budgetStats, procedureData, functionStats, historicalData, COLORS,
+    totalAvenants, ppmExecutionRate, alertsList 
   } = useDashboardStats(filteredMarkets, markets, projects);
 
   const yearsRange = React.useMemo(() => {
@@ -87,8 +88,9 @@ export const Dashboard: React.FC = () => {
               <AlertTriangle size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
               <p className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary}`}>Qualité Études</p>
            </div>
+           {/* CORRECTION : Affichage direct de la valeur calculée par le hook */}
            <h3 className={`text-3xl font-black ${theme.textMain}`}>
-              {filteredMarkets.reduce((acc, m) => acc + (m.execution?.avenants?.length || 0), 0)}
+              {totalAvenants}
               <span className={`text-sm font-bold ${theme.textSecondary} ml-2`}>Avenants</span>
            </h3>
         </div>
@@ -98,7 +100,8 @@ export const Dashboard: React.FC = () => {
               <Activity size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
               <p className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary}`}>Exécution PPM</p>
            </div>
-           <h3 className={`text-3xl font-black ${theme.textMain}`}>{((filteredMarkets.filter(m => m.dates_realisees.lancement_ao).length / (filteredMarkets.length || 1)) * 100).toFixed(1)}%</h3>
+           {/* CORRECTION : Affichage direct du pourcentage calculé par le hook */}
+           <h3 className={`text-3xl font-black ${theme.textMain}`}>{ppmExecutionRate}%</h3>
         </div>
 
         <div className={`${theme.card} p-8 hover:scale-[1.02] transition-transform ${delayStats.real > delayStats.planned ? 'border-danger/50' : ''}`}>
@@ -236,7 +239,8 @@ export const Dashboard: React.FC = () => {
           <p className={`text-xs font-bold ${theme.textSecondary}`}>Dossiers en retard sur le planning prévisionnel</p>
         </div>
         <div className="space-y-4">
-          {filteredMarkets.filter(m => !m.dates_realisees.signature_marche && !m.is_annule && !m.is_infructueux).slice(0, 5).map((m, i) => (
+          {/* CORRECTION : Utilisation de la liste pré-filtrée par le hook */}
+          {alertsList.map((m, i) => (
             <div key={i} onClick={() => navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`)} className={`flex items-center justify-between p-6 ${theme.buttonShape} bg-black/5 border border-white/5 hover:border-danger/30 transition-all cursor-pointer group`}>
               <div className="flex items-center gap-5">
                 <div className={`w-12 h-12 ${theme.card} flex items-center justify-center text-danger shadow-sm group-hover:scale-110 transition-transform`}><Clock size={20} /></div>
@@ -251,7 +255,7 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
           ))}
-          {filteredMarkets.length === 0 && <div className="p-10 text-center text-slate-400 font-black uppercase italic text-xs">Aucune alerte en cours</div>}
+          {alertsList.length === 0 && <div className="p-10 text-center text-slate-400 font-black uppercase italic text-xs">Aucune alerte en cours</div>}
         </div>
       </div>
     </div>
