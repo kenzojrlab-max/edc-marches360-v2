@@ -1,18 +1,35 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { storage } from '../utils/storage';
+import { storage as localStorageUtils } from '../utils/storage'; // Renommé pour éviter conflit
 import { generateUUID } from '../utils/uid';
-import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
-import { auth } from "../firebase"; 
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  User as FirebaseUser
+} from "firebase/auth";
+import { 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc, 
+  deleteDoc, 
+  collection, 
+  onSnapshot 
+} from "firebase/firestore";
+import { auth, db, googleProvider } from "../firebase"; 
 
 interface AuthContextType {
   user: User | null;
   users: User[];
   login: (email: string, password: string) => Promise<boolean>;
   loginWithGoogle: () => Promise<void>; 
-  register: (userData: Omit<User, 'id' | 'created_at'>) => void;
+  register: (userData: Omit<User, 'id' | 'created_at'>) => Promise<void>;
   updateUserRole: (userId: string, role: UserRole) => void;
-  updateUserProfile: (userId: string, data: Partial<User>) => void; // NOUVEAU
+  updateUserProfile: (userId: string, data: Partial<User>) => void;
   deleteUser: (userId: string) => void;
   logout: () => void;
   isAdmin: boolean;
@@ -24,81 +41,65 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(storage.getSession());
-  const [users, setUsers] = useState<User[]>(storage.getUsers());
-  
-  // CORRECTION : useRef pour s'assurer que l'initialisation ne s'exécute qu'une seule fois
-  const isInitialized = useRef(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // CORRECTION : useEffect avec tableau de dépendances VIDE []
-  // S'exécute une seule fois au montage du composant
+  // 1. Gestion de la session Firebase Auth (Auth State Listener)
   useEffect(() => {
-    // Éviter la double exécution en mode strict de React
-    if (isInitialized.current) return;
-    isInitialized.current = true;
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        // L'utilisateur est connecté, on récupère son profil Firestore
+        const userRef = doc(db, "users", firebaseUser.uid);
+        const userSnap = await getDoc(userRef);
 
-    const adminEmail = 'juniorngassa@edc.cm';
-    const currentUsers = storage.getUsers(); // Lire directement depuis le storage
-    const existingUserIndex = currentUsers.findIndex(u => u.email.toLowerCase() === adminEmail.toLowerCase());
-
-    // CORRECTION ICI : Vérifier si l'ID '1' est déjà pris par un autre utilisateur pour éviter les doublons
-    const idOneTaken = currentUsers.some(u => u.id === '1' && u.email.toLowerCase() !== adminEmail.toLowerCase());
-
-    const superAdminUser: User = {
-      // Si l'utilisateur existe déjà, on garde son ID.
-      // Sinon, on tente de lui donner '1', SAUF si '1' est déjà pris, auquel cas on génère un UUID.
-      id: existingUserIndex >= 0 ? currentUsers[existingUserIndex].id : (idOneTaken ? generateUUID() : '1'),
-      name: 'Junior Ngassa',
-      email: adminEmail,
-      role: UserRole.SUPER_ADMIN,
-      statut: 'actif',
-      password: 'password',
-      created_at: new Date().toISOString()
-    };
-
-    let newUsersList = [...currentUsers];
-    let needsUpdate = false;
-
-    if (existingUserIndex >= 0) {
-      // Vérifier si une mise à jour est vraiment nécessaire
-      const existingUser = currentUsers[existingUserIndex];
-      if (existingUser.role !== UserRole.SUPER_ADMIN || existingUser.password !== 'password') {
-        newUsersList[existingUserIndex] = superAdminUser;
-        needsUpdate = true;
+        if (userSnap.exists()) {
+          setUser(userSnap.data() as User);
+        } else {
+          // Cas où l'utilisateur est dans Auth mais pas dans Firestore (ex: premier login Google sans création auto)
+          // On peut créer un profil par défaut ici si nécessaire, ou attendre le loginWithGoogle
+          console.warn("Utilisateur authentifié mais profil Firestore introuvable.");
+        }
+      } else {
+        // Déconnexion
+        setUser(null);
       }
-    } else {
-      // L'utilisateur n'existe pas, on l'ajoute
-      newUsersList.push(superAdminUser);
-      needsUpdate = true;
-    }
+      setLoading(false);
+    });
 
-    // Seulement mettre à jour si nécessaire
-    if (needsUpdate) {
-      setUsers(newUsersList);
-      storage.saveUsers(newUsersList);
-      console.log("✅ Compte Super Admin juniorngassa@edc.cm restauré/mis à jour.");
-    }
-  }, []); // TABLEAU VIDE = exécution unique au montage
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Synchronisation de la liste des utilisateurs (Pour l'Admin)
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
+      const usersData = snapshot.docs.map(doc => doc.data() as User);
+      setUsers(usersData);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (found && (found.password === password || (!found.password && password === 'password'))) {
-      setUser(found);
-      storage.setSession(found);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       return true;
+    } catch (error) {
+      console.error("Erreur login:", error);
+      return false;
     }
-    return false;
   };
 
   const loginWithGoogle = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, googleProvider);
       const fbUser = result.user;
+      
+      // Vérifier si le document utilisateur existe déjà
+      const userRef = doc(db, "users", fbUser.uid);
+      const userSnap = await getDoc(userRef);
 
-      let appUser = users.find(u => u.email.toLowerCase() === fbUser.email?.toLowerCase());
-
-      if (!appUser) {
+      if (!userSnap.exists()) {
+        // Création du profil utilisateur dans Firestore s'il n'existe pas
         const newUser: User = {
           id: fbUser.uid,
           name: fbUser.displayName || 'Utilisateur Google',
@@ -109,68 +110,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           fonction: 'Non définie',
           photoURL: fbUser.photoURL || undefined
         };
-        
-        const newUsersList = [...users, newUser];
-        setUsers(newUsersList);
-        storage.saveUsers(newUsersList);
-        appUser = newUser;
+        await setDoc(userRef, newUser);
+        setUser(newUser);
+      } else {
+        // Mise à jour éventuelle (photo, nom)
+        await updateDoc(userRef, {
+          photoURL: fbUser.photoURL || undefined,
+          // On ne force pas la mise à jour du nom pour respecter les modifs admin
+        });
       }
-
-      setUser(appUser);
-      storage.setSession(appUser);
-
     } catch (error) {
       console.error("Erreur connexion Google:", error);
       alert("La connexion avec Google a échoué.");
     }
   };
 
-  const register = (userData: Omit<User, 'id' | 'created_at'>) => {
-    const newUser = { ...userData, id: generateUUID(), created_at: new Date().toISOString() };
-    const updated = [...users, newUser];
-    setUsers(updated);
-    storage.saveUsers(updated);
-  };
+  const register = async (userData: Omit<User, 'id' | 'created_at'>) => {
+    try {
+      // Création du compte dans Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password || 'password123'); // Fallback password si vide, mais le formulaire doit forcer
+      const fbUser = userCredential.user;
 
-  const updateUserRole = (userId: string, role: UserRole) => {
-    const updated = users.map(u => u.id === userId ? { ...u, role } : u);
-    setUsers(updated);
-    storage.saveUsers(updated);
-    if (user?.id === userId) {
-      const newUser = { ...user, role };
-      setUser(newUser);
-      storage.setSession(newUser);
+      // Création du profil dans Firestore (SANS le mot de passe en clair)
+      const newUser: User = {
+        id: fbUser.uid,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role || UserRole.GUEST,
+        statut: 'actif',
+        fonction: userData.fonction,
+        created_at: new Date().toISOString()
+        // Note: On ne stocke PAS le mot de passe dans Firestore
+      };
+
+      await setDoc(doc(db, "users", fbUser.uid), newUser);
+      
+      // Optionnel : Mettre à jour le profil Auth
+      // await updateProfile(fbUser, { displayName: userData.name });
+
+    } catch (error: any) {
+      console.error("Erreur inscription:", error);
+      throw new Error(error.message); // Propager l'erreur pour l'UI
     }
   };
 
-  // NOUVELLE FONCTION : Mise à jour du profil utilisateur (Nom, Fonction, Avatar)
-  const updateUserProfile = (userId: string, data: Partial<User>) => {
-    const updated = users.map(u => u.id === userId ? { ...u, ...data } : u);
-    setUsers(updated);
-    storage.saveUsers(updated);
-    
-    // Mise à jour de la session courante si c'est l'utilisateur connecté
-    if (user?.id === userId) {
-      const newUser = { ...user, ...data };
-      setUser(newUser);
-      storage.setSession(newUser);
+  const updateUserRole = async (userId: string, role: UserRole) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { role });
+    } catch (error) {
+      console.error("Erreur updateUserRole:", error);
     }
   };
 
-  const deleteUser = (userId: string) => {
-    const updated = users.filter(u => u.id !== userId);
-    setUsers(updated);
-    storage.saveUsers(updated);
+  const updateUserProfile = async (userId: string, data: Partial<User>) => {
+    try {
+      await updateDoc(doc(db, "users", userId), data);
+    } catch (error) {
+      console.error("Erreur updateUserProfile:", error);
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      // Suppression du document Firestore
+      await deleteDoc(doc(db, "users", userId));
+      // Note: La suppression du compte Auth nécessite le SDK Admin ou une Cloud Function
+      // Pour cette version client-side, on supprime juste l'accès aux données (Firestore)
+    } catch (error) {
+      console.error("Erreur deleteUser:", error);
+    }
   };
 
   const logout = async () => {
     await signOut(auth);
     setUser(null);
-    storage.setSession(null);
+    localStorage.removeItem('edc_session'); // Nettoyage legacy au cas où
   };
 
   const can = (action: string): boolean => {
     if (!user) return false;
+    // Si inactif, aucun droit
+    if (user.statut !== 'actif') return false;
+
     switch (action) {
       case 'WRITE': return [UserRole.SUPER_ADMIN, UserRole.ADMIN].includes(user.role);
       case 'DOWNLOAD': return user.role !== UserRole.GUEST;
@@ -189,7 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isGuest: user?.role === UserRole.GUEST,
       can: can as any
     }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
