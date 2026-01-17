@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Projet } from '../types';
 import { useLogs } from './LogsContext';
-import { db } from '../firebase'; // Import Firebase
+import { db, auth } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface ProjectContextType {
   projects: Projet[];
@@ -15,13 +16,25 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<Projet[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { addLog } = useLogs(); 
 
-  // Synchronisation temps réel avec Firestore
+  // AJOUT : Écoute de l'état d'authentification
   useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  // CORRECTION : On n'écoute les projets QUE si l'utilisateur est connecté
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setProjects([]);
+      return;
+    }
+
     const unsubscribe = onSnapshot(collection(db, "projects"), (snapshot) => {
-      // CORRECTION ICI : On fusionne doc.data() avec l'ID du document (doc.id)
-      // Cela garantit que p.id n'est jamais undefined
       const projectsData = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id
@@ -29,11 +42,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       setProjects(projectsData);
     }, (error) => {
-      console.error("Erreur lecture projets:", error);
+      console.warn("Accès aux projets refusé:", error.code);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated]);
 
   const addProject = async (project: Projet) => {
     try {

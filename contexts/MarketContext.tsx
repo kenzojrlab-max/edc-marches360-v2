@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Marche, StatutGlobal } from '../types';
 import { useLogs } from './LogsContext';
-import { db } from '../firebase';
-// AJOUT : Import de query et where pour le filtrage
+import { db, auth } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface MarketContextType {
   markets: Marche[];
@@ -26,21 +26,33 @@ const MarketContext = createContext<MarketContextType | undefined>(undefined);
 export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [markets, setMarkets] = useState<Marche[]>([]);
   const [deletedMarkets, setDeletedMarkets] = useState<Marche[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   const { addLog } = useLogs();
 
+  // AJOUT : Écoute de l'état d'authentification
   useEffect(() => {
-    // CORRECTION : On filtre pour ne charger que les marchés de l'année en cours
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  // CORRECTION : On n'écoute les marchés QUE si l'utilisateur est connecté
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setMarkets([]);
+      return;
+    }
+
     const currentYear = new Date().getFullYear();
     const startOfYear = `${currentYear}-01-01`;
 
-    // Création de la requête optimisée
     const marketsQuery = query(
       collection(db, "markets"),
       where("date_creation", ">=", startOfYear)
     );
 
-    // On écoute la requête filtrée (marketsQuery) au lieu de toute la collection
     const unsubscribe = onSnapshot(marketsQuery, (snapshot) => {
       const marketsData = snapshot.docs.map(doc => {
         const m = doc.data() as Marche;
@@ -53,21 +65,32 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           execution: m.execution || { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 }
         };
       });
-      // CORRECTION : Tri par date_creation pour respecter l'ordre d'import
       marketsData.sort((a, b) => new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime());
       
       setMarkets(marketsData);
+    }, (error) => {
+      console.warn("Accès aux marchés refusé:", error.code);
     });
-    return () => unsubscribe();
-  }, []);
 
+    return () => unsubscribe();
+  }, [isAuthenticated]);
+
+  // CORRECTION : On n'écoute les marchés supprimés QUE si l'utilisateur est connecté
   useEffect(() => {
+    if (!isAuthenticated) {
+      setDeletedMarkets([]);
+      return;
+    }
+
     const unsubscribe = onSnapshot(collection(db, "deleted_markets"), (snapshot) => {
       const deletedData = snapshot.docs.map(doc => doc.data() as Marche);
       setDeletedMarkets(deletedData);
+    }, (error) => {
+      console.warn("Accès aux marchés supprimés refusé:", error.code);
     });
+
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated]);
 
   const addMarket = async (market: Marche) => {
     try {
@@ -93,22 +116,13 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         chunks.push(newMarkets.slice(i, i + BATCH_SIZE));
       }
 
-      // NETTOYAGE PROD
-      // console.log(`Début import : ${newMarkets.length} marchés en ${chunks.length} lots.`);
-
       for (const chunk of chunks) {
         const batch = writeBatch(db);
         chunk.forEach(m => {
           const docRef = doc(db, "markets", m.id);
           
-          // CORRECTION MAJEURE ICI (POINT 5) : Gestion des doublons et protection des données
-          
-          // 1. On crée une copie propre des données à importer
           const safeMarket = JSON.parse(JSON.stringify(m));
 
-          // 2. IMPORTANT : On supprime les champs docs et comments de l'objet à envoyer
-          // SI ET SEULEMENT SI ils sont vides dans l'import.
-          // Cela empêche d'écraser les fichiers/commentaires existants en base avec du "vide".
           if (!safeMarket.docs || Object.keys(safeMarket.docs).length === 0) {
             delete safeMarket.docs;
           }
@@ -116,14 +130,9 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             delete safeMarket.comments;
           }
 
-          // 3. On utilise { merge: true }
-          // Si le marché existe : on met à jour SEULEMENT les champs présents dans safeMarket (montant, dates...)
-          // Si le marché n'existe pas : on le crée.
           batch.set(docRef, safeMarket, { merge: true });
         });
         await batch.commit();
-        // NETTOYAGE PROD
-        // console.log(`Lot importé (${chunk.length} éléments)`);
       }
 
       addLog('Passation', 'Import Excel', `${newMarkets.length} marchés importés/mis à jour.`);

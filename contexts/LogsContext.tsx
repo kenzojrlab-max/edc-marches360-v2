@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuditLog, UserRole } from '../types';
-// On n'utilise plus storage ici car on passe à Firebase Auth
-// import { storage } from '../utils/storage'; 
-import { db, auth } from '../firebase'; // Ajout de 'auth'
+import { db, auth } from '../firebase';
 import { collection, addDoc, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface LogsContextType {
   auditLogs: AuditLog[];
@@ -14,28 +13,49 @@ const LogsContext = createContext<LogsContextType | undefined>(undefined);
 
 export const LogsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Chargement des logs depuis Firestore (Derniers 1000 logs)
+  // AJOUT : Écoute de l'état d'authentification
   useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  // CORRECTION : On n'écoute les logs QUE si l'utilisateur est connecté
+  useEffect(() => {
+    // Si pas connecté, on ne fait rien
+    if (!isAuthenticated) {
+      setAuditLogs([]);
+      return;
+    }
+
     const q = query(collection(db, "audit_logs"), orderBy("timestamp", "desc"), limit(1000));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const logs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AuditLog));
       setAuditLogs(logs);
+    }, (error) => {
+      // Gestion silencieuse : si l'utilisateur n'est pas admin, il n'a pas accès aux logs (c'est normal)
+      console.warn("Accès aux logs refusé (normal si vous n'êtes pas admin):", error.code);
     });
+
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated]);
 
   const addLog = async (module: string, action: string, details: string) => {
     try {
-      // MODIFICATION : On récupère l'utilisateur depuis Firebase Auth
       const user = auth.currentUser;
+      
+      // AJOUT : On ne crée un log que si l'utilisateur est connecté
+      if (!user) {
+        console.warn("addLog ignoré : utilisateur non connecté");
+        return;
+      }
       
       const newLog: Omit<AuditLog, 'id'> = {
         timestamp: new Date().toISOString(),
-        // On utilise le nom ou l'email Firebase, sinon 'Système'
         userName: user?.displayName || user?.email || 'Système',
-        // Pour le rôle, on met GUEST par défaut temporairement. 
-        // (La gestion fine des rôles se fera via les Custom Claims ou le profil Firestore plus tard)
         userRole: UserRole.GUEST, 
         module,
         action,
