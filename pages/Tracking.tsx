@@ -92,7 +92,8 @@ export const Tracking: React.FC = () => {
           <h1 className={`text-2xl md:text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Suivi des Marchés</h1>
           <p className={`${theme.textSecondary} font-medium text-sm italic`}>Pilotage opérationnel des jalons de passation.</p>
         </div>
-        <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 w-full md:w-auto relative z-[50]`}>
+        {/* CORRECTION Z-INDEX : z-[50] -> z-30 */}
+        <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 w-full md:w-auto relative z-30`}>
           <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden lg:flex`}>
             <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
             <span className="text-[10px] font-black uppercase tracking-widest">Pilotage</span>

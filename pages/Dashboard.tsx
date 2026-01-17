@@ -16,7 +16,7 @@ import { useProjects } from '../contexts/ProjectContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { useTheme } from '../contexts/ThemeContext';
 
-// Hook personnalisé (Correction)
+// Hook personnalisé
 import { useDashboardStats } from '../hooks/useDashboardStats';
 
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
@@ -59,7 +59,7 @@ export const Dashboard: React.FC = () => {
     });
   }, [markets, projects, selectedYear, selectedProjectId, selectedFonction]);
 
-  // --- Appel du Hook pour les calculs lourds (Correction) ---
+  // --- Appel du Hook pour les calculs lourds ---
   const { 
     delayStats, funnelData, budgetStats, procedureData, functionStats, historicalData, COLORS 
   } = useDashboardStats(filteredMarkets, markets, projects);
@@ -74,8 +74,8 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20 relative">
       
-      {/* 1. BARRE DE FILTRES */}
-      <div className={`${theme.card} p-6 flex flex-wrap items-center gap-6 mb-8 relative z-[500]`}>
+      {/* 1. BARRE DE FILTRES - CORRECTION Z-INDEX (z-[500] -> z-30) */}
+      <div className={`${theme.card} p-6 flex flex-wrap items-center gap-6 mb-8 relative z-30`}>
         <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden md:flex`}>
           <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
           <span className="text-xs font-black uppercase tracking-widest">Pilotage</span>

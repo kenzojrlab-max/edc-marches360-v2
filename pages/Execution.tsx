@@ -92,14 +92,15 @@ export const Execution: React.FC = () => {
 
   return (
     <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500 max-w-[1400px] mx-auto pb-40 relative">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 px-2 relative z-[200]">
+      {/* HEADER - CORRECTION Z-INDEX : z-[200] -> z-30 */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 px-2 relative z-30">
         <div>
           <h1 className={`text-2xl md:text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Exécution des Marchés</h1>
           <p className={`${theme.textSecondary} font-medium text-sm italic`}>Suivi financier et contractuel après signature.</p>
         </div>
         
-        <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 w-full md:w-auto relative z-[300]`}>
+        {/* CORRECTION Z-INDEX : z-[300] -> z-30 */}
+        <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 w-full md:w-auto relative z-30`}>
            <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden lg:flex`}>
             <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
             <span className="text-[10px] font-black uppercase tracking-widest">Pilotage</span>
