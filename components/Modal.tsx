@@ -2,70 +2,50 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
-interface Props {
+interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  footer?: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
 
-export const Modal: React.FC<Props> = ({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children, 
-  footer, 
-  size = 'md' 
-}) => {
-  const { theme } = useTheme();
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md' }) => {
+  const { theme, themeType } = useTheme();
+
   if (!isOpen) return null;
 
-  const sizes = {
+  const sizeClasses = {
     sm: 'max-w-md',
     md: 'max-w-2xl',
     lg: 'max-w-4xl',
-    xl: 'max-w-5xl'
+    xl: 'max-w-6xl',
+    full: 'max-w-[95vw] h-[90vh]'
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-2 md:p-4 overflow-hidden">
-      {/* Overlay */}
+    // CORRECTION : z-[100] pour être supérieur à la Sidebar (z-50) et au Header (z-40)
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-[4px] animate-in fade-in duration-200" 
-        onClick={onClose}
-      ></div>
-      
-      <div className={`
-        relative w-full ${sizes[size]} max-h-[98vh] md:max-h-[92vh] 
-        ${theme.card} 
-        flex flex-col animate-zoom-in overflow-hidden
-      `}>
-        {/* Header fixé */}
-        <div className={`px-6 md:px-8 py-4 md:py-6 border-b border-white/5 flex items-center justify-between shrink-0`}>
-          <h2 className={`text-lg md:text-xl font-black ${theme.textMain} line-clamp-1 uppercase tracking-tight`}>
-            {title}
-          </h2>
+        className={`
+          relative w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col 
+          ${theme.card} shadow-2xl animate-in zoom-in-95 duration-200
+          ${themeType === 'glass' ? 'border border-white/20' : ''}
+        `}
+      >
+        <div className="p-6 border-b border-white/10 flex items-center justify-between shrink-0">
+          <h2 className={`${theme.textMain} text-xl font-bold uppercase tracking-tight`}>{title}</h2>
           <button 
             onClick={onClose}
-            className={`p-2 md:p-3 transition-all ${theme.textSecondary} hover:${theme.textAccent}`}
+            className={`p-2 hover:bg-white/10 ${theme.buttonShape} transition-colors ${theme.textSecondary} hover:text-white`}
           >
-            <X size={24} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
+            <X size={20} />
           </button>
         </div>
-
-        {/* Body scrollable */}
-        <div className={`px-6 md:px-12 py-6 md:py-8 overflow-y-auto custom-scrollbar flex-1 pb-10`}>
+        
+        <div className="p-6 overflow-y-auto custom-scrollbar">
           {children}
         </div>
-
-        {/* Footer fixé */}
-        {footer && (
-          <div className={`px-6 md:px-8 py-4 md:py-6 bg-black/5 border-t border-white/5 flex items-center justify-end gap-4 shrink-0`}>
-            {footer}
-          </div>
-        )}
       </div>
     </div>
   );

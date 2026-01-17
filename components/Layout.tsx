@@ -1,35 +1,17 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
-  FileText, 
-  Activity, 
-  PlayCircle, 
-  Settings, 
-  LogOut,
-  Menu,
-  Bell,
-  Clock,
-  CheckCircle,
-  ChevronRight,
-  Settings2,
-  Library,
-  Files,
-  AlertTriangle,
-  X,
-  Palette,
-  Zap,
-  Monitor,
-  Layers,
-  GlassWater,
-  User as UserIcon // Renommé pour éviter conflit avec le type User
+  LayoutDashboard, FileText, Activity, PlayCircle, Settings, LogOut,
+  Menu, Bell, Clock, CheckCircle, ChevronRight, Settings2, Library,
+  Files, AlertTriangle, X, Palette, Zap, Monitor, Layers, GlassWater,
+  User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMarkets } from '../contexts/MarketContext';
 import { useTheme, ThemeType } from '../contexts/ThemeContext';
 import { JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { calculateDaysBetween } from '../utils/date';
-import { Marche, UserRole } from '../types';
+import { Marche } from '../types';
 import { FloatingAIWidget } from './FloatingAIWidget';
 
 export const Layout: React.FC = () => {
@@ -128,22 +110,17 @@ export const Layout: React.FC = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden relative`}>
-      {/* Sidebar - Z-INDEX CORRIGÉ: z-[1000] pour être au-dessus du Header et du contenu */}
+      {/* Sidebar - Z-Index 50 pour être au-dessus du Header (40) mais sous la Modale (60+) */}
       <aside className={`
-        fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-[1000] transition-transform duration-300 transform
+        fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 transform
         lg:translate-x-0 lg:static lg:inset-auto
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 bg-white ${theme.buttonShape} flex items-center justify-center p-1 shadow-md overflow-hidden`}>
-              <img 
-                src="/logo.png" 
-                alt="Logo EDC" 
-                className="w-full h-full object-contain" 
-              />
+              <img src="/logo.png" alt="Logo EDC" className="w-full h-full object-contain" />
             </div>
-            
             <div>
               <h1 className="text-lg font-bold leading-none text-white">EDC</h1>
               <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">Marchés 360</p>
@@ -182,14 +159,14 @@ export const Layout: React.FC = () => {
         </div>
       </aside>
 
-      {/* Overlay Mobile - Z-INDEX CORRIGÉ: z-[999] */}
+      {/* Overlay Mobile - Z-Index 45 (Sous la sidebar mais sur le reste) */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Header - Z-INDEX CORRIGÉ: z-[900] pour dépasser les filtres des pages (qui sont max z-[500]) */}
-        <header className={`h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[900] backdrop-blur-md`}>
+        {/* Header - Z-Index 40 */}
+        <header className={`h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 sticky top-0 z-40 backdrop-blur-md`}>
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(true)} className={`p-2 ${theme.textSecondary} lg:hidden hover:bg-white/5 rounded-xl`}>
               <Menu size={24} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
@@ -215,8 +192,7 @@ export const Layout: React.FC = () => {
                 <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Thème</span>
               </button>
               {showThemePicker && (
-                // Dropdown - Z-INDEX hérite du header (900) mais on met 60 pour stack context local
-                <div className={`absolute top-full right-0 mt-2 w-52 ${getMenuBg()} z-[60] p-2 animate-zoom-in rounded-2xl`}>
+                <div className={`absolute top-full right-0 mt-2 w-52 ${getMenuBg()} z-50 p-2 animate-zoom-in rounded-2xl`}>
                    {themeOptions.map((opt) => (
                     <button
                       key={opt.type}
@@ -247,8 +223,7 @@ export const Layout: React.FC = () => {
               </button>
 
               {showNotifications && (
-                // Dropdown - Z-INDEX local
-                <div className={`absolute top-full right-0 mt-2 w-80 md:w-96 ${getMenuBg()} z-[60] shadow-2xl animate-zoom-in p-2 rounded-2xl`}>
+                <div className={`absolute top-full right-0 mt-2 w-80 md:w-96 ${getMenuBg()} z-50 shadow-2xl animate-zoom-in p-2 rounded-2xl`}>
                   <div className="p-4 border-b border-white/10 flex items-center justify-between">
                     <h3 className={`${theme.textMain} font-black text-[10px] uppercase tracking-widest`}>Alertes PPM ({alerts.length})</h3>
                     <AlertTriangle size={14} className="text-red-500" />
@@ -283,14 +258,13 @@ export const Layout: React.FC = () => {
             
             <div 
               className={`flex items-center gap-3 border-l border-white/10 pl-4 cursor-pointer`}
-              onClick={() => navigate('/profile')} // Click rapide vers le profil
+              onClick={() => navigate('/profile')} 
             >
               <div className="text-right hidden sm:block">
                 <p className={`${theme.textMain} text-sm font-bold`}>{user?.name?.split(' ')[0]}</p>
                 <p className={`${theme.textSecondary} text-[10px] uppercase font-bold tracking-tight`}>{user?.role?.replace('_', ' ')}</p>
               </div>
               <div className={`w-10 h-10 ${theme.buttonShape} overflow-hidden border-2 border-white/10 shadow-lg`}>
-                {/* Utilisation de photoURL si dispo, sinon fallback vers picsum basé sur l'ID */}
                 <img 
                   src={user?.photoURL || `https://picsum.photos/seed/${user?.id}/100`} 
                   alt="Avatar" 
@@ -305,7 +279,7 @@ export const Layout: React.FC = () => {
           <Outlet />
         </section>
 
-        {/* AJOUT DU WIDGET ASSISTANT IA - Z-INDEX 9999 (Doit rester au-dessus de tout) */}
+        {/* Widget IA - Z-Index 100 (Très haut mais sous les modales) */}
         <FloatingAIWidget />
 
       </main>

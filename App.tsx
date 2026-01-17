@@ -23,7 +23,6 @@ import { Execution } from './pages/Execution';
 import { Documents } from './pages/Documents';
 import { DocumentsManage } from './pages/DocumentsManage';
 import { Profile } from './pages/Profile';
-// Note : Le Loader est retiré d'ici car il est maintenant géré par l'AuthProvider
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -32,9 +31,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const AppContent: React.FC = () => {
-  // PLUS DE DELAI ARTIFICIEL ICI.
-  // L'AuthProvider gère maintenant l'affichage du Loader pendant le chargement réel.
-
   return (
     <AuthProvider>
       <LogsProvider>
