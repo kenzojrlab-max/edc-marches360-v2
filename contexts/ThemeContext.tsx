@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+// 1. DÉFINITIONS LOCALES (Pour corriger l'erreur d'import)
 export type ThemeType = 'minimal' | 'cyber' | 'clay' | 'retro' | 'glass';
 
-interface ThemeStyles {
+export interface ThemeStyles {
   name: string;
+  mode: 'light' | 'dark'; // Nouveau : Permet de savoir si le thème est clair ou sombre
   card: string;
   buttonShape: string;
   buttonPrimary: string;
@@ -21,6 +23,7 @@ interface ThemeStyles {
 const themes: Record<ThemeType, ThemeStyles> = {
   minimal: {
     name: 'Luxe Minimal',
+    mode: 'light',
     card: 'bg-white border border-black shadow-none rounded-none',
     buttonShape: 'rounded-none',
     buttonPrimary: 'bg-black text-white hover:bg-slate-800 transition-colors',
@@ -36,6 +39,7 @@ const themes: Record<ThemeType, ThemeStyles> = {
   },
   cyber: {
     name: 'Neon Cyber',
+    mode: 'dark',
     card: 'bg-[#050b1a] border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)] rounded-sm',
     buttonShape: 'rounded-sm',
     buttonPrimary: 'bg-cyan-500 text-black font-black hover:bg-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]',
@@ -51,21 +55,25 @@ const themes: Record<ThemeType, ThemeStyles> = {
   },
   clay: {
     name: 'Soft Clay',
-    card: 'bg-[#f0f2f5] border-none shadow-[10px_10px_20px_#ccd0d4,-10px_-10px_20px_#ffffff] rounded-[3rem]',
-    buttonShape: 'rounded-[2rem]',
-    buttonPrimary: 'bg-[#1e3a8a] text-white shadow-[5px_5px_10px_rgba(0,0,0,0.1)] hover:scale-105',
-    buttonSecondary: 'bg-[#f0f2f5] text-slate-600 shadow-[5px_5px_10px_#ccd0d4,-5px_-5px_10px_#ffffff] hover:shadow-inner',
-    buttonDanger: 'bg-red-50 text-red-600 shadow-[5px_5px_10px_#ccd0d4,-5px_-5px_10px_#ffffff]',
-    input: 'bg-[#f0f2f5] border-none shadow-inner rounded-2xl px-5 py-3',
-    textMain: 'text-slate-800',
-    textSecondary: 'text-slate-500',
+    mode: 'light',
+    // CORRECTION VISUELLE : Ajout de 'border border-slate-200' pour bien voir les cartes
+    card: 'bg-white border border-slate-200 shadow-[10px_10px_20px_#e2e8f0,-10px_-10px_20px_#ffffff] rounded-[2rem]',
+    buttonShape: 'rounded-[1.5rem]',
+    buttonPrimary: 'bg-[#1e3a8a] text-white shadow-lg shadow-blue-900/20 hover:scale-105 hover:shadow-blue-900/40 transition-all',
+    buttonSecondary: 'bg-white text-slate-600 border border-slate-200 shadow-sm hover:bg-slate-50',
+    buttonDanger: 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100',
+    // CORRECTION VISUELLE : Ajout de bordures aux inputs
+    input: 'bg-slate-50 border border-slate-200 shadow-inner rounded-2xl px-5 py-3 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400',
+    textMain: 'text-slate-700',
+    textSecondary: 'text-slate-400',
     textAccent: 'text-[#1e3a8a]',
     iconStroke: 2,
     iconStyle: 'opacity-80',
-    bgPage: 'bg-[#f0f2f5]'
+    bgPage: 'bg-[#f8fafc]'
   },
   retro: {
     name: 'Retro Pop',
+    mode: 'light',
     card: 'bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-none',
     buttonShape: 'rounded-none',
     buttonPrimary: 'bg-[#ffff00] border-[3px] border-black text-black font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none',
@@ -81,6 +89,7 @@ const themes: Record<ThemeType, ThemeStyles> = {
   },
   glass: {
     name: 'Glass Frost',
+    mode: 'dark',
     card: 'bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl rounded-[2.5rem]',
     buttonShape: 'rounded-2xl',
     buttonPrimary: 'bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border border-white/30',
