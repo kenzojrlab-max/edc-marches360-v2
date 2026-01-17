@@ -1,10 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-// 1. Importe GoogleAuthProvider
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+// 1. Import des modules App Check
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
-// Utilisation des variables d'environnement pour la sécurité et la flexibilité
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -16,9 +16,19 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+// 2. Initialisation de App Check
+if (typeof window !== "undefined") {
+  // @ts-ignore
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+
+  initializeAppCheck(app, {
+    // Ta clé du site a été insérée ici 👇
+    provider: new ReCaptchaV3Provider('6LfWA04sAAAAAPBUXQaj3Tm55jEwHUk9oSRwOEFU'),
+    isTokenAutoRefreshEnabled: true
+  });
+}
+
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
-
-// 2. Initialise et exporte le fournisseur Google
 export const googleProvider = new GoogleAuthProvider();

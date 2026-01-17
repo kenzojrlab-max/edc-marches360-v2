@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuditLog, UserRole } from '../types';
-import { storage } from '../utils/storage'; // Gardé pour getSession() qui reste en local pour l'instant
-import { generateUUID } from '../utils/uid';
-import { db } from '../firebase';
+// On n'utilise plus storage ici car on passe à Firebase Auth
+// import { storage } from '../utils/storage'; 
+import { db, auth } from '../firebase'; // Ajout de 'auth'
 import { collection, addDoc, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
 interface LogsContextType {
@@ -27,11 +27,16 @@ export const LogsProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addLog = async (module: string, action: string, details: string) => {
     try {
-      const session = storage.getSession(); // L'utilisateur courant reste en localStorage pour l'instant
+      // MODIFICATION : On récupère l'utilisateur depuis Firebase Auth
+      const user = auth.currentUser;
+      
       const newLog: Omit<AuditLog, 'id'> = {
         timestamp: new Date().toISOString(),
-        userName: session?.name || 'Système',
-        userRole: session?.role || UserRole.GUEST,
+        // On utilise le nom ou l'email Firebase, sinon 'Système'
+        userName: user?.displayName || user?.email || 'Système',
+        // Pour le rôle, on met GUEST par défaut temporairement. 
+        // (La gestion fine des rôles se fera via les Custom Claims ou le profil Firestore plus tard)
+        userRole: UserRole.GUEST, 
         module,
         action,
         details
