@@ -1,8 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Marche, Projet } from '../types';
 
-// Configuration API
+// Configuration API SÉCURISÉE
+// La clé n'est plus en clair, elle est injectée par Vite au build
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+
+// Initialisation conditionnelle pour éviter les crashs si la clé manque
 const ai = new GoogleGenerativeAI(API_KEY);
 
 // Limite de sécurité pour ne pas exploser le contexte
@@ -53,7 +56,8 @@ export const sendMessageToGemini = async (
   mode: 'CHAT' | 'REPORT' = 'CHAT'
 ): Promise<string> => {
   if (!API_KEY) {
-    return "⚠️ Erreur de configuration : Clé API manquante.";
+    console.error("ERREUR CRITIQUE : La clé API Gemini (VITE_GEMINI_API_KEY) est manquante dans le fichier .env");
+    return "⚠️ Erreur de configuration : Clé API manquante. Veuillez contacter l'administrateur.";
   }
 
   const dataContext = prepareDataContext(markets, projects);

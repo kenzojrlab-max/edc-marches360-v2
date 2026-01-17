@@ -3,6 +3,7 @@ import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useMarketLogic } from '../hooks/useMarketLogic'; // IMPORT DU HOOK
 import { 
   Search, ExternalLink, X, FileBox, FileCheck, Activity, Lock, 
   FileText, TrendingUp, AlertTriangle, 
@@ -41,6 +42,10 @@ export const PPMView: React.FC = () => {
   const { projects } = useProjects();
   const { can } = useAuth();
   const { theme, themeType } = useTheme();
+  
+  // Utilisation du Hook de logique
+  const { isJalonApplicable, isJalonActive, isPhaseAccessible } = useMarketLogic();
+
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [detailMarketId, setDetailMarketId] = useState<string | null>(null);
@@ -124,24 +129,24 @@ export const PPMView: React.FC = () => {
     return 'bg-white';
   };
 
-  // CORRECTION : Logique de calcul du progrès mise à jour
   const calculateProgress = (m: Marche) => {
-    const isEDC = m.source_financement === SourceFinancement.BUDGET_EDC;
     const allBaseKeys = JALONS_GROUPS.flatMap(g => g.keys);
 
-    // Filtrer les étapes pertinentes pour ce marché spécifique
+    // Filtrer les étapes pertinentes avec le Hook
     const relevantKeys = allBaseKeys.filter(key => {
-        // Règle 1 : Si Budget EDC, masquer les ANOs
-        if (isEDC && key.includes('ano')) return false;
-        // Règle 2 : Si pas d'additif, masquer l'étape additif
+        // Règle 1 : Applicabilité (ANO)
+        if (!isJalonApplicable(m, key)) return false;
+        
+        // Règle 2 : Additif
         if (key === 'additif' && !m.has_additif) return false;
-        // Règle 3 : Exclure les exceptions (gérées dans les alertes) du calcul de base
+        
+        // Règle 3 : Exceptions graphiques (non comptées dans le % global)
         if (key === 'annule' || key === 'infructueux' || key === 'recours') return false;
+        
         return true;
     });
 
     const completedCount = relevantKeys.filter(k => !!m.dates_realisees[k as keyof typeof m.dates_realisees] || !!m.docs?.[k]).length;
-    // Calculer le pourcentage sur la base des étapes pertinentes uniquement
     const passPercent = relevantKeys.length > 0 ? (completedCount / relevantKeys.length) * 100 : 0;
     
     const exec = m.execution;
@@ -157,22 +162,6 @@ export const PPMView: React.FC = () => {
   };
 
   const selectedMarket = markets.find(m => m.id === detailMarketId);
-
-  // FONCTION SUPPRIMÉE : getVisibleJalonsOfGroup n'est plus utilisée, remplacée par un filtre direct dans le JSX
-
-  const isGroupVisible = (group: typeof JALONS_GROUPS[0], m: Marche) => {
-    const groups = JALONS_GROUPS;
-    const currentIdx = groups.indexOf(group);
-    if (m.is_infructueux) {
-      const stopIdx = groups.findIndex(g => g.keys.includes('infructueux'));
-      return currentIdx <= stopIdx;
-    }
-    if (m.is_annule) {
-      const stopIdx = groups.findIndex(g => g.keys.includes('annule'));
-      return currentIdx <= stopIdx;
-    }
-    return true;
-  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-40 relative">
@@ -203,7 +192,7 @@ export const PPMView: React.FC = () => {
         </div>
       </div>
 
-      {/* TABLEAU AVEC Z-INDEX CORRIGÉS (z-[60] > z-[50] > z-[40]) ET SCROLLBAR FIX (overflow-hidden) */}
+      {/* TABLEAU */}
       <div className={`${theme.card} flex flex-col relative overflow-hidden z-10`}>
         <div ref={topScrollRef} onScroll={handleTopScroll} className="overflow-x-auto overflow-y-hidden custom-scrollbar border-b border-white/5 sticky top-0 z-[70] h-4">
           <div className="h-[1px] min-w-[3600px]"></div>
@@ -212,21 +201,15 @@ export const PPMView: React.FC = () => {
           <table className="w-full text-left border-collapse min-w-[3600px] table-fixed">
             <thead>
               <tr className="z-30">
-                {/* Coin En-tête (Sticky Left/Top) : Z-INDEX 60 */}
                 <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} sticky left-0 top-0 ${getSolidBg()} z-[60] w-[420px] align-middle text-center`}>Dossier & Objet</th>
-                
-                {/* En-têtes Scrollables (Sticky Top) : Z-INDEX 50 */}
                 <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-[50] w-[180px] align-middle`}>Budget Estimé</th>
                 {JALONS_PPM_CONFIG.map(jalon => (
                   <th key={jalon.key} colSpan={2} className={`p-6 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center ${getSolidBg()} sticky top-0 z-[50] align-middle`}>{jalon.label}</th>
                 ))}
                 <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-[50] w-[200px] align-middle`}>Synthèse Délais</th>
-                
-                {/* Coin En-tête (Sticky Right/Top) : Z-INDEX 60 */}
                 <th rowSpan={2} className={`p-8 border-b border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky right-0 top-0 ${getSolidBg()} z-[60] w-[100px] align-middle`}>Détails</th>
               </tr>
               <tr className="z-30">
-                {/* Sous-En-têtes (Sticky Top) : Z-INDEX 50 */}
                 {JALONS_PPM_CONFIG.map(jalon => (
                   <React.Fragment key={`${jalon.key}-sub`}>
                     <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textSecondary} text-center uppercase sticky top-[82px] ${getSolidBg()} z-[50]`}>Prévue</th>
@@ -252,7 +235,6 @@ export const PPMView: React.FC = () => {
                     onDoubleClick={() => setDetailMarketId(m.id)} 
                     className={`group transition-all cursor-pointer hover:bg-white/10 ${isAborted ? 'opacity-80 grayscale-[0.5]' : ''} ${isHighlighted ? 'bg-primary/10 ring-4 ring-primary ring-inset animate-pulse' : ''}`}
                   >
-                    {/* Colonne de gauche fixe (Sticky Left) : Z-INDEX 40 */}
                     <td className={`p-8 border-r border-white/5 sticky left-0 z-[40] ${getSolidBg()}`}>
                       <div className="flex flex-col gap-2">
                         <span className={`text-[10px] font-black px-3 py-1 ${theme.buttonShape} w-fit ${m.is_annule ? 'bg-danger text-white' : m.is_infructueux ? 'bg-warning text-black' : 'bg-primary text-white'}`}>{m.numDossier}</span>
@@ -267,8 +249,8 @@ export const PPMView: React.FC = () => {
                     </td>
                     <td className={`p-8 border-r border-white/5 text-sm font-black ${theme.textMain} text-right`}>{(m.montant_prevu || 0).toLocaleString()} <span className="text-[9px] opacity-30">FCFA</span></td>
                     {JALONS_PPM_CONFIG.map(jalon => {
-                      const isEDC = m.source_financement === SourceFinancement.BUDGET_EDC;
-                      if (isEDC && jalon.key.includes('ano')) return <td key={jalon.key} colSpan={2} className={`p-4 border-r border-white/5 text-center text-[9px] font-black ${theme.textSecondary} opacity-20 italic`}>N/A</td>;
+                      if (!isJalonApplicable(m, jalon.key)) return <td key={jalon.key} colSpan={2} className={`p-4 border-r border-white/5 text-center text-[9px] font-black ${theme.textSecondary} opacity-20 italic`}>N/A</td>;
+                      
                       const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
                       const r = m.dates_realisees[jalon.key as keyof typeof m.dates_realisees];
                       const comment = m.comments?.[jalon.key];
@@ -294,7 +276,6 @@ export const PPMView: React.FC = () => {
                         <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter"><span className={theme.textSecondary}>Réalisé :</span><span className={delaiRealise !== null ? theme.textAccent : theme.textSecondary}>{delaiRealise !== null ? `${delaiRealise} j` : '-'}</span></div>
                       </div>
                     </td>
-                    {/* Colonne de droite fixe (Sticky Right) : Z-INDEX 40 */}
                     <td className={`p-6 text-center sticky right-0 z-[40] ${getSolidBg()} w-[100px]`}><button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape}`}><ExternalLink size={18} /></button></td>
                   </tr>
                 );
@@ -304,10 +285,9 @@ export const PPMView: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL DE DÉTAILS - Z-INDEX 1000 */}
+      {/* MODAL DE DÉTAILS */}
       {selectedMarket && (
         <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-2 md:p-4">
-           {/* ... Contenu de la modale ... */}
            <div className={`relative w-full max-w-[1400px] h-[95vh] ${theme.card} shadow-2xl overflow-hidden flex flex-col animate-zoom-in border border-white/10`}>
               <div className="p-8 border-b border-white/5 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-6">
@@ -321,7 +301,6 @@ export const PPMView: React.FC = () => {
               </div>
 
               <div className="flex-1 flex divide-x divide-white/5 overflow-hidden">
-                {/* ... VOLET GAUCHE ... */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
                       <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme.textAccent}`}>Phase Passation détaillée</h3>
@@ -359,31 +338,21 @@ export const PPMView: React.FC = () => {
                            </div>
                          )}
 
-                         {JALONS_GROUPS.filter(g => isGroupVisible(g, selectedMarket)).map((group) => (
+                         {JALONS_GROUPS.filter(g => isPhaseAccessible(selectedMarket, g.id)).map((group) => (
                            <div key={group.id} className="space-y-4">
                               <h4 className={`text-[9px] font-black uppercase tracking-widest ${theme.textSecondary} px-4 py-1 rounded-full w-fit bg-black/5`}>{group.label}</h4>
                               <div className="grid grid-cols-1 gap-2">
-                                 {/* CORRECTION : Filtrage dynamique des étapes pour l'affichage */}
                                  {group.keys.filter(key => {
-                                    const isEDC = selectedMarket.source_financement === SourceFinancement.BUDGET_EDC;
-                                    // Règle 1 : Masquer ANO si EDC
-                                    if (key.includes('ano') && isEDC) return false;
-                                    // Règle 3 : Masquer les exceptions (gérées en alerte) de la liste principale
-                                    if (key === 'annule' || key === 'infructueux' || key === 'recours') return false;
-                                    // Règle 2 : Masquer Additif si inexistant
+                                    // Utilisation du Hook pour le filtrage
+                                    if (!isJalonApplicable(selectedMarket, key)) return false;
+                                    
+                                    // Exceptions
+                                    if (['annule', 'infructueux', 'recours'].includes(key)) return false;
                                     if (key === 'additif' && !selectedMarket.has_additif) return false;
                                     
-                                    // Logique existante pour arrêter l'affichage si le dossier est clos prématurément
-                                    if (selectedMarket.is_infructueux) {
-                                      const stopIdx = JALONS_GROUPS.flatMap(g => g.keys).indexOf('infructueux');
-                                      const currentIdx = JALONS_GROUPS.flatMap(g => g.keys).indexOf(key);
-                                      if (currentIdx > stopIdx) return false;
-                                    }
-                                    if (selectedMarket.is_annule) {
-                                      const stopIdx = JALONS_GROUPS.flatMap(g => g.keys).indexOf('annule');
-                                      const currentIdx = JALONS_GROUPS.flatMap(g => g.keys).indexOf(key);
-                                      if (currentIdx > stopIdx) return false;
-                                    }
+                                    // Arrêt workflow
+                                    if (!isJalonActive(selectedMarket, key)) return false;
+                                    
                                     return true;
                                  }).map(key => {
                                     const date = selectedMarket.dates_realisees[key as keyof typeof selectedMarket.dates_realisees];
@@ -435,7 +404,7 @@ export const PPMView: React.FC = () => {
                    </div>
                 </div>
 
-                {/* ... VOLET DROIT ... */}
+                {/* VOLET DROIT - IDENTIQUE AU PRÉCÉDENT, JUSTE COPIER LE CONTENU */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
                       <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] text-green-500`}>Phase Exécution (Financier & Contractuel)</h3>
@@ -459,8 +428,7 @@ export const PPMView: React.FC = () => {
                         </div>
                       ) : (
                         <div className="space-y-10 animate-in slide-in-from-right-4 pb-20">
-                           
-                           {/* DÉTAILS DU CONTRAT */}
+                           {/* DÉTAILS DU CONTRAT - MÊME CODE QUE PRÉCÉDEMMENT */}
                            <section className={`p-8 ${theme.card} border-white/5 space-y-6 relative`}>
                               <div className="flex items-center gap-3 text-green-500"><FileText size={20}/><h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Synthèse Contractuelle</h4></div>
                               <div className="grid grid-cols-2 gap-8">
@@ -472,8 +440,8 @@ export const PPMView: React.FC = () => {
                                  <FileManager existingDocId={selectedMarket.execution.doc_caution_bancaire_id} onUpload={() => {}} disabled />
                               </div>
                            </section>
-
-                           {/* DÉCOMPTES & PAIEMENTS */}
+                           
+                           {/* DÉCOMPTES */}
                            <section className="space-y-4">
                               <div className="flex items-center justify-between px-4"><h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Receipt size={14}/> Décomptes ({selectedMarket.execution.decomptes.length})</h4><span className="text-xs font-black text-green-500">{selectedMarket.execution.decomptes.reduce((acc, d) => acc + d.montant, 0).toLocaleString()} FCFA</span></div>
                               <div className="space-y-2">
@@ -489,11 +457,10 @@ export const PPMView: React.FC = () => {
                                       </div>
                                    </div>
                                  ))}
-                                 {selectedMarket.execution.decomptes.length === 0 && <p className="text-[10px] font-bold text-slate-500 italic px-6 py-4 bg-black/20 rounded-2xl border border-dashed border-white/10 text-center">Aucun décompte enregistré.</p>}
                               </div>
                            </section>
 
-                           {/* AVENANTS DÉTAILLÉS */}
+                           {/* AVENANTS */}
                            <section className="space-y-4">
                               <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><TrendingUp size={14}/> Historique des Avenants</h4>
                               <div className="space-y-3">
@@ -515,11 +482,10 @@ export const PPMView: React.FC = () => {
                                       </div>
                                    </div>
                                  ))}
-                                 {selectedMarket.execution.avenants.length === 0 && <p className="text-[10px] font-bold text-slate-500 italic px-4">Aucun avenant notifié.</p>}
                               </div>
                            </section>
 
-                           {/* WORKFLOW DE RÉSILIATION */}
+                           {/* RÉSILIATION */}
                            {selectedMarket.execution.is_resilie && (
                              <section className="p-8 bg-red-500/5 rounded-[2.5rem] border border-red-500/20 space-y-6 animate-in zoom-in-95">
                                 <div className="flex items-center gap-3 text-red-500 font-black uppercase text-[11px] tracking-widest"><AlertTriangle size={20}/> Procédure de Résiliation</div>
@@ -539,7 +505,7 @@ export const PPMView: React.FC = () => {
                              </section>
                            )}
 
-                           {/* DOCUMENTS OFFICIELS D'EXÉCUTION */}
+                           {/* DOCS OFFICIELS */}
                            <section className="space-y-4">
                               <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><ShieldCheck size={14}/> Garanties & Documents Officiels</h4>
                               <div className="grid grid-cols-1 gap-2">

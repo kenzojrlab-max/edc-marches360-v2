@@ -125,7 +125,8 @@ export const FloatingAIWidget: React.FC = () => {
   };
 
   const toggleListening = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitRecognition;
+    // CORRECTION ICI : Utilisation de webkitSpeechRecognition au lieu de webkitRecognition
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("Votre navigateur ne supporte pas la reconnaissance vocale.");
       return;

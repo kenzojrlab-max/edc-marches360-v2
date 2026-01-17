@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useMarkets } from '../contexts/MarketContext';
-import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
+import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useMarketLogic } from '../hooks/useMarketLogic'; // IMPORT DU HOOK
 import { 
   Save, Search, CheckCircle2, Clock, Activity, Settings2, ChevronRight,
   ArrowLeft, ArrowRight, UserCheck, Banknote, AlertTriangle, XCircle, Ban, RefreshCcw, Calendar, FileText, Gavel, Layers, History
@@ -15,12 +16,13 @@ import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { SourceFinancement, StatutGlobal } from '../types';
 
 export const Tracking: React.FC = () => {
-  // CORRECTION : Éclatement des contextes
   const { markets, updateMarket, updateMarketDoc, updateJalon } = useMarkets();
   const { projects } = useProjects();
-  
   const { can } = useAuth();
   const { theme, themeType } = useTheme();
+  
+  // Utilisation du Hook
+  const { isJalonApplicable, isJalonActive, isPhaseAccessible } = useMarketLogic();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedYear, setSelectedYear] = useState<string>(''); 
@@ -82,32 +84,6 @@ export const Tracking: React.FC = () => {
 
   const selectedMarket = markets.find(m => m.id === selectedMarketId);
   const activePhase = JALONS_GROUPS.find(g => g.id === activePhaseId);
-
-  const isPhaseAccessible = (phaseId: string) => {
-    if (!selectedMarket) return true;
-    const groups = JALONS_GROUPS;
-    const activeIndex = groups.findIndex(g => g.id === phaseId);
-    if (selectedMarket.is_infructueux) {
-      const stopIndex = groups.findIndex(g => g.keys.includes('infructueux'));
-      return activeIndex <= stopIndex;
-    }
-    if (selectedMarket.is_annule) {
-      const stopIndex = groups.findIndex(g => g.keys.includes('annule'));
-      return activeIndex <= stopIndex;
-    }
-    return true;
-  };
-
-  const getVisibleJalonsOfPhase = (phase: typeof activePhase) => {
-    if (!phase || !selectedMarket) return [];
-    const visible = [];
-    for (const key of phase.keys) {
-      visible.push(key);
-      if (key === 'infructueux' && selectedMarket.is_infructueux) break;
-      if (key === 'annule' && selectedMarket.is_annule) break;
-    }
-    return visible;
-  };
 
   return (
     <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500 max-w-[1400px] mx-auto pb-40">
@@ -184,7 +160,8 @@ export const Tracking: React.FC = () => {
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="w-full lg:w-64 flex lg:flex-col gap-2 overflow-x-auto pb-2 shrink-0">
               {JALONS_GROUPS.map((group) => {
-                const accessible = isPhaseAccessible(group.id);
+                // Utilisation du Hook pour l'accessibilité de la phase
+                const accessible = isPhaseAccessible(selectedMarket, group.id);
                 return (
                   <button 
                     key={group.id} 
@@ -206,18 +183,18 @@ export const Tracking: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                {getVisibleJalonsOfPhase(activePhase).map((key) => {
-                  const isANORestricted = key.includes('ano') && selectedMarket.source_financement === SourceFinancement.BUDGET_EDC;
+                {activePhase?.keys.filter(k => isJalonActive(selectedMarket, k)).map((key) => {
                   
-                  // LOGIQUE DE VERROUILLAGE HISTORIQUE (CORRECTION)
+                  // Utilisation du Hook pour savoir si le champ doit être grisé/désactivé (ex: ANO pour Budget EDC)
+                  const isRestricted = !isJalonApplicable(selectedMarket, key);
+                  
+                  // LOGIQUE DE VERROUILLAGE HISTORIQUE
                   const parentProject = projects.find(p => p.id === selectedMarket.projet_id);
                   const currentVal = selectedMarket.dates_realisees[key as keyof typeof selectedMarket.dates_realisees];
                   let isHistorical = false;
                   
                   if (currentVal && parentProject) {
                     const dateYear = new Date(currentVal).getFullYear();
-                    // Si l'année de la date enregistrée est strictement inférieure à l'exercice du projet actuel
-                    // Cela signifie que c'est une donnée héritée/passée
                     if (dateYear < parentProject.exercice) {
                       isHistorical = true;
                     }
@@ -311,14 +288,14 @@ export const Tracking: React.FC = () => {
                     <div 
                       key={key} 
                       className={`p-4 ${theme.card} border-white/5 flex items-center justify-between gap-4 
-                        ${isANORestricted ? 'opacity-30 pointer-events-none grayscale' : ''}
+                        ${isRestricted ? 'opacity-30 pointer-events-none grayscale' : ''}
                         ${isHistorical ? 'opacity-70 bg-black/5' : ''} 
                       `}
                     >
                        <div className="flex flex-col">
                          <p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none truncate pr-2`}>
                            {JALONS_LABELS[key] || key} 
-                           {isANORestricted && <span className="text-[8px] italic opacity-60 ml-2">(N/A)</span>}
+                           {isRestricted && <span className="text-[8px] italic opacity-60 ml-2">(N/A)</span>}
                          </p>
                          {isHistorical && (
                            <span className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase mt-1">
@@ -333,13 +310,13 @@ export const Tracking: React.FC = () => {
                               type="date" 
                               value={currentVal || ''} 
                               onChange={e => updateJalon(selectedMarket.id, 'realisees', key, e.target.value)} 
-                              disabled={!can('WRITE') || isANORestricted || isHistorical} 
+                              disabled={!can('WRITE') || isRestricted || isHistorical} 
                             />
                           </div>
                           <FileManager 
                             existingDocId={selectedMarket.docs?.[key]} 
                             onUpload={(id) => updateMarketDoc(selectedMarket.id, key, id)} 
-                            disabled={!can('WRITE') || isANORestricted || isHistorical} 
+                            disabled={!can('WRITE') || isRestricted || isHistorical} 
                           />
                        </div>
                     </div>
@@ -357,7 +334,7 @@ export const Tracking: React.FC = () => {
                    <ArrowLeft size={14} /> Précédent
                  </button>
                  <button 
-                  disabled={JALONS_GROUPS.indexOf(activePhase!) === JALONS_GROUPS.length - 1 || !isPhaseAccessible(JALONS_GROUPS[JALONS_GROUPS.indexOf(activePhase!) + 1].id)} 
+                  disabled={JALONS_GROUPS.indexOf(activePhase!) === JALONS_GROUPS.length - 1 || !isPhaseAccessible(selectedMarket, JALONS_GROUPS[JALONS_GROUPS.indexOf(activePhase!) + 1].id)} 
                   onClick={() => setActivePhaseId(JALONS_GROUPS[JALONS_GROUPS.indexOf(activePhase!) + 1].id)} 
                   className={`flex items-center gap-2 text-[10px] font-black uppercase ${theme.textAccent} disabled:opacity-0 transition-all hover:translate-x-[4px]`}
                  >
