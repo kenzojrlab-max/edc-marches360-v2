@@ -1,57 +1,88 @@
 import React, { useState } from 'react';
-import { useLibrary } from '../contexts/LibraryContext'; // NOUVEAU CONTEXTE
+import { useLibrary } from '../contexts/LibraryContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { BulleInput } from '../components/BulleInput';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { Modal } from '../components/Modal';
-import { ChevronLeft, Plus, Upload, Trash2, Library } from 'lucide-react';
+import { ChevronLeft, Plus, Upload, Trash2, Library, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LibraryDocument } from '../types';
+import { storage } from '../utils/storage';
 
 const CATEGORIES = ["Rapports d'Audits", "Gestion & Performance", "Réglementation & Manuels", "Modèles & Lettres Types"];
 
 export const DocumentsManage: React.FC = () => {
   const navigate = useNavigate();
-  
-  // CORRECTION : Utilisation du contexte dédié Library
   const { addLibraryDoc, libraryDocs, removeLibraryDoc } = useLibrary();
-  
   const { user } = useAuth();
   const { theme, themeType } = useTheme();
+  
   const [showModal, setShowModal] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({ titre: '', categorie: '', description: '' });
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) setFile(e.target.files[0]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !formData.titre || !formData.categorie) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
+    setIsUploading(true);
+
+    try {
+      // Upload vers Firebase Storage
+      const uploadedDoc = await storage.uploadFile(file, 'library_docs');
+
       const newDoc: LibraryDocument = {
-        id: `DOC-${Date.now()}`,
+        id: uploadedDoc.id,
         titre: formData.titre,
         categorie: formData.categorie,
         description: formData.description,
         format: file.name.split('.').pop()?.toUpperCase() || 'FILE',
-        url: base64,
+        url: uploadedDoc.url,
         taille: (file.size / 1024 / 1024).toFixed(2) + ' MB',
         date_upload: new Date().toISOString().split('T')[0],
         auteur: user?.name || 'Inconnu',
         uploaded_by: user?.id || ''
       };
+
       addLibraryDoc(newDoc);
       setShowModal(false);
       setFile(null);
       setFormData({ titre: '', categorie: '', description: '' });
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Erreur d'upload:", error);
+      alert("Une erreur est survenue lors de l'envoi du document.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // --- CORRECTION ICI ---
+  const handleDelete = async (doc: LibraryDocument) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
+      
+      // VÉRIFICATION DE SÉCURITÉ :
+      // On vérifie si le document est hébergé sur le Cloud (URL commençant par http/https)
+      const isCloudDoc = doc.url && doc.url.startsWith('http');
+
+      if (isCloudDoc) {
+        try {
+          // Suppression distante uniquement pour les vrais fichiers cloud
+          await storage.deleteDoc(doc.id, doc.url);
+        } catch (error) {
+          console.warn("Info: Suppression cloud non applicable ou échouée", error);
+          // On continue vers la suppression locale même si le cloud échoue
+        }
+      }
+      
+      // Suppression locale (Pour mettre à jour l'affichage)
+      removeLibraryDoc(doc.id);
+    }
   };
 
   return (
@@ -110,7 +141,7 @@ export const DocumentsManage: React.FC = () => {
                           </td>
                           <td className="p-8 text-right">
                              <button 
-                               onClick={() => removeLibraryDoc(doc.id)}
+                               onClick={() => handleDelete(doc)} 
                                className={`p-3 text-slate-400 hover:text-danger hover:bg-danger/10 ${theme.buttonShape} transition-all`}
                              >
                                 <Trash2 size={20} />
@@ -126,7 +157,7 @@ export const DocumentsManage: React.FC = () => {
          </div>
       </div>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Ajouter un Document" size="md">
+      <Modal isOpen={showModal} onClose={() => !isUploading && setShowModal(false)} title="Ajouter un Document" size="md">
          <form onSubmit={handleSubmit} className="space-y-6">
             <BulleInput 
               label="Titre du Document" 
@@ -134,12 +165,14 @@ export const DocumentsManage: React.FC = () => {
               value={formData.titre}
               onChange={e => setFormData({...formData, titre: e.target.value})}
               required
+              disabled={isUploading}
             />
             <CustomBulleSelect 
               label="Catégorie"
               value={formData.categorie}
               options={CATEGORIES.map(c => ({ value: c, label: c }))}
               onChange={v => setFormData({...formData, categorie: v})}
+              disabled={isUploading}
             />
             <BulleInput 
               textarea 
@@ -147,10 +180,11 @@ export const DocumentsManage: React.FC = () => {
               placeholder="Détail du contenu..." 
               value={formData.description}
               onChange={e => setFormData({...formData, description: e.target.value})}
+              disabled={isUploading}
             />
             
-            <div className={`p-10 border-4 border-dashed border-white/10 ${theme.buttonShape} text-center space-y-4 hover:border-accent transition-all cursor-pointer group relative`}>
-               <input type="file" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" required />
+            <div className={`p-10 border-4 border-dashed border-white/10 ${theme.buttonShape} text-center space-y-4 hover:border-accent transition-all cursor-pointer group relative ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+               <input type="file" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" required disabled={isUploading} />
                <Upload className={`mx-auto text-slate-300 group-hover:${theme.textAccent} transition-all`} size={32} />
                <div>
                   <p className={`text-sm font-black ${theme.textMain}`}>{file ? file.name : "Glissez votre fichier ici"}</p>
@@ -159,8 +193,11 @@ export const DocumentsManage: React.FC = () => {
             </div>
 
             <div className="pt-4 flex justify-end gap-4">
-               <button type="button" onClick={() => setShowModal(false)} className={`px-8 py-3 rounded-2xl text-xs font-black uppercase ${theme.textSecondary}`}>Annuler</button>
-               <button type="submit" className={`${theme.buttonPrimary} px-10 py-3 ${theme.buttonShape} text-xs font-black uppercase shadow-lg shadow-primary/20`}>Publier</button>
+               <button type="button" onClick={() => setShowModal(false)} disabled={isUploading} className={`px-8 py-3 rounded-2xl text-xs font-black uppercase ${theme.textSecondary} disabled:opacity-50`}>Annuler</button>
+               <button type="submit" disabled={isUploading} className={`${theme.buttonPrimary} px-10 py-3 ${theme.buttonShape} text-xs font-black uppercase shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-70 disabled:cursor-wait`}>
+                 {isUploading ? <Loader2 className="animate-spin" size={16} /> : null}
+                 {isUploading ? 'Envoi...' : 'Publier'}
+               </button>
             </div>
          </form>
       </Modal>
