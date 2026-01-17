@@ -30,7 +30,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
-const AppContent: React.FC = () => {
+// CORRECTION : Création d'un composant wrapper pour les Providers (Provider Composition)
+// Cela isole la logique des données de la logique d'affichage (Routes) et évite les re-rendus intempestifs.
+const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <AuthProvider>
       <LogsProvider>
@@ -38,29 +40,37 @@ const AppContent: React.FC = () => {
           <ProjectProvider>
             <LibraryProvider>
               <MarketProvider>
-                <HashRouter>
-                  <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                      <Route index element={<Dashboard />} />
-                      <Route path="ppm-view" element={<PPMView />} />
-                      <Route path="ppm-manage" element={<PPMManage />} />
-                      <Route path="ppm-manage/:projectId" element={<ProjectPlanManage />} />
-                      <Route path="tracking" element={<Tracking />} />
-                      <Route path="execution" element={<Execution />} />
-                      <Route path="documents" element={<Documents />} />
-                      <Route path="documents-manage" element={<DocumentsManage />} />
-                      <Route path="settings" element={<Settings />} />
-                      <Route path="profile" element={<Profile />} />
-                    </Route>
-                  </Routes>
-                </HashRouter>
+                {children}
               </MarketProvider>
             </LibraryProvider>
           </ProjectProvider>
         </ConfigProvider>
       </LogsProvider>
     </AuthProvider>
+  );
+};
+
+const AppContent: React.FC = () => {
+  return (
+    <AppProviders>
+      <HashRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route index element={<Dashboard />} />
+            <Route path="ppm-view" element={<PPMView />} />
+            <Route path="ppm-manage" element={<PPMManage />} />
+            <Route path="ppm-manage/:projectId" element={<ProjectPlanManage />} />
+            <Route path="tracking" element={<Tracking />} />
+            <Route path="execution" element={<Execution />} />
+            <Route path="documents" element={<Documents />} />
+            <Route path="documents-manage" element={<DocumentsManage />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
+        </Routes>
+      </HashRouter>
+    </AppProviders>
   );
 };
 

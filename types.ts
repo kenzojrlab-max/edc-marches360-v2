@@ -111,8 +111,6 @@ export interface ExecutionData {
   doc_mise_en_demeure_id?: string;
   doc_constat_carence_id?: string;
   doc_decision_resiliation_id?: string;
-  // CORRECTION ICI : Autorise l'accès dynamique par clé (ex: execution['doc_os_id'])
-  [key: string]: any;
 }
 
 export interface MarcheDates {

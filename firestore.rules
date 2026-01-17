@@ -1,57 +1,98 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper pour vérifier si l'utilisateur est connecté
+
+    // --- FONCTIONS UTILITAIRES (Sécurité Serveur) ---
+
+    // 1. Vérifie si l'utilisateur est connecté
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    // Helper pour vérifier si l'utilisateur est admin ou super admin
-    function isAdmin() {
+
+    // 2. Récupère les données du profil utilisateur en base
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // 3. Vérifie si l'utilisateur est 'actif' (Même logique que AuthContext)
+    function isActif() {
       return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'SUPER_ADMIN']);
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().statut == 'actif';
     }
 
-    // Utilisateurs : Règles de sécurité renforcées
+    // 4. Vérifie les rôles (Même logique que AuthContext.can)
+    function hasRole(roles) {
+      return isActif() && (getUserData().role in roles);
+    }
+
+    // --- DÉFINITION DES PERMISSIONS ---
+
+    function isSuperAdmin() {
+      return hasRole(['SUPER_ADMIN']); // Droit absolu
+    }
+    
+    function isAdmin() {
+      return hasRole(['SUPER_ADMIN', 'ADMIN']); // Droits WRITE, IMPORT
+    }
+
+    function canDownload() {
+      // Droit DOWNLOAD : Tout le monde sauf GUEST
+      return isActif() && getUserData().role != 'GUEST';
+    }
+
+    // --- RÈGLES PAR COLLECTION ---
+
+    // 1. Collection USERS (Gestion des utilisateurs)
     match /users/{userId} {
-      // Lecture : Seulement son propre profil OU si on est admin
-      allow read: if request.auth.uid == userId || isAdmin();
+      // Lecture : Admin (pour la liste) ou soi-même (pour charger son profil)
+      allow read: if isActif() && (isAdmin() || request.auth.uid == userId);
       
-      // Création : Autorisé à l'inscription
-      allow create: if request.auth.uid == userId || isAdmin();
-      
-      // Mise à jour : L'utilisateur ne peut modifier QUE sa photo ou son mot de passe
-      allow update: if (request.auth.uid == userId && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'password'])) 
-                    || isAdmin();
-      
-      // Suppression : Réservé uniquement aux Admins
-      allow delete: if isAdmin();
+      // Création : Soi-même (inscription) ou Super Admin
+      allow create: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+
+      // Modification : Super Admin uniquement (MANAGE_USERS) ou soi-même (photo/profil)
+      // Note: On bloque la modification du champ 'role' par l'utilisateur lui-même pour éviter l'élévation de privilège
+      allow update: if isActif() && (
+        isSuperAdmin() || 
+        (request.auth.uid == userId && request.resource.data.role == resource.data.role)
+      );
+
+      // Suppression : Super Admin uniquement
+      allow delete: if isActif() && isSuperAdmin();
     }
 
-    // Marchés : Lecture pour tous les connectés, Écriture pour les Admins/SuperAdmin
+    // 2. Collection MARKETS (Marchés)
     match /markets/{marketId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-    
-    // Projets : Idem
-    match /projects/{projectId} {
-      allow read: if isAuthenticated();
+      // DOWNLOAD : Tout le monde sauf Guest
+      allow read: if canDownload();
+      
+      // WRITE / IMPORT : Admin et Super Admin
       allow write: if isAdmin();
     }
 
-    // Documents (Métadonnées)
-    match /documents/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin(); // Ou si l'utilisateur a le droit d'upload
+    // 3. Collection DELETED_MARKETS (Corbeille/Archives)
+    match /deleted_markets/{marketId} {
+      allow read: if canDownload();
+      allow write: if isAdmin(); // Seul un admin peut supprimer ou restaurer
     }
     
-    // Logs : Écriture seule (pour tracer les actions), lecture Admin seulement
-    match /audit_logs/{logId} {
-      allow create: if isAuthenticated();
-      allow read: if isAdmin();
+    // 4. Collection PROJECTS (Projets)
+    match /projects/{projectId} {
+      allow read: if canDownload();
+      allow write: if isAdmin();
+    }
+
+    // 5. Collection LOGS (Audit)
+    match /logs/{logId} {
+      allow read: if isAdmin(); // Seuls les admins voient les logs
+      allow create: if isActif(); // Tout utilisateur actif peut créer un log (audit trail)
+      allow update, delete: if false; // Impossible de modifier ou supprimer un log (Intégrité)
+    }
+    
+    // Bloquer tout accès aux collections non définies par sécurité
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
