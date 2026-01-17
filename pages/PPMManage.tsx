@@ -14,6 +14,13 @@ import { ChevronLeft, FileSpreadsheet, Plus, Download, Upload, MousePointer2, Se
 import { generateUUID } from '../utils/uid';
 import * as XLSX from 'xlsx';
 
+// AJOUT : Fonction de nettoyage pour sécuriser les imports Excel
+const sanitizeInput = (str: any): string => {
+  if (typeof str !== 'string') return String(str || "");
+  // Enlève les balises HTML potentielles et limite la taille à 500 caractères
+  return str.replace(/<[^>]*>?/gm, '').trim().substring(0, 500);
+};
+
 export const PPMManage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isSuperAdmin } = useAuth();
@@ -110,7 +117,7 @@ export const PPMManage: React.FC = () => {
         const project = projects.find(p => p.id === importProjectId);
         const baseTime = new Date().getTime(); // Temps de base pour l'ordre
 
-        // CORRECTION ICI : Ajout de l'index 'i' pour garantir l'ordre chronologique
+        // CORRECTION ICI : Utilisation de sanitizeInput pour nettoyer les données
         const newMarkets: Marche[] = dataRows.map((row, i) => {
           const dates_prevues: any = {};
           JALONS_PPM_KEYS.forEach((key, k) => {
@@ -120,14 +127,15 @@ export const PPMManage: React.FC = () => {
           return {
             id: generateUUID(),
             projet_id: importProjectId,
-            numDossier: String(row[0] || "N/A").trim(),
-            objet: String(row[1] || "Sans Objet").trim(),
-            fonction: String(row[2] || FONCTIONS[0]).trim(),
-            activite: String(row[3] || "").trim(),
-            typeAO: (row[4] as AOType) || AOType.AON,
-            typePrestation: (row[5] as MarketType) || MarketType.TRAVAUX,
+            // Application de la sécurisation sur les champs texte
+            numDossier: sanitizeInput(row[0] || "N/A"),
+            objet: sanitizeInput(row[1] || "Sans Objet"),
+            fonction: sanitizeInput(row[2] || FONCTIONS[0]),
+            activite: sanitizeInput(row[3] || ""),
+            typeAO: (sanitizeInput(row[4]) as AOType) || AOType.AON,
+            typePrestation: (sanitizeInput(row[5]) as MarketType) || MarketType.TRAVAUX,
             montant_prevu: parseFloat(String(row[6] || "0").replace(/\s/g, '').replace(',', '.')) || 0,
-            imputation_budgetaire: String(row[8] || "").trim(),
+            imputation_budgetaire: sanitizeInput(row[8] || ""),
             source_financement: project?.sourceFinancement || SourceFinancement.BUDGET_EDC,
             dates_prevues: dates_prevues,
             dates_realisees: {},
@@ -180,6 +188,7 @@ export const PPMManage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 animate-in slide-in-from-right-4 duration-500 pb-40 relative">
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
         <div className="flex items-center gap-5">
           <button onClick={() => navigate(-1)} className={`p-4 ${theme.card} ${theme.buttonShape} hover:scale-105 transition-all text-slate-400`}><ChevronLeft size={20} /></button>
