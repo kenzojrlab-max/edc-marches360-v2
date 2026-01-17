@@ -20,8 +20,9 @@ export const PPMManage: React.FC = () => {
   const { user, isSuperAdmin } = useAuth(); // Ajout de isSuperAdmin
   const { theme, themeType } = useTheme();
   
-  // CORRECTION : Éclatement des contextes
-  const { addMarkets } = useMarkets();
+  // CORRECTION : On récupère aussi la nouvelle fonction removeMarketsByProjectId
+  const { addMarkets, removeMarketsByProjectId } = useMarkets();
+  
   const { projects, addProject, removeProject } = useProjects(); // Ajout de removeProject
   const { addLog } = useLogs();
   
@@ -219,6 +220,7 @@ export const PPMManage: React.FC = () => {
                        onClick={(e) => {
                          e.stopPropagation();
                          if (window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ? Cette action est irréversible.")) {
+                           removeMarketsByProjectId(p.id); // CORRECTION : Suppression en cascade des marchés associés
                            removeProject(p.id);
                          }
                        }} 

@@ -41,8 +41,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const currentUsers = storage.getUsers(); // Lire directement depuis le storage
     const existingUserIndex = currentUsers.findIndex(u => u.email.toLowerCase() === adminEmail.toLowerCase());
 
+    // CORRECTION ICI : Vérifier si l'ID '1' est déjà pris par un autre utilisateur pour éviter les doublons
+    const idOneTaken = currentUsers.some(u => u.id === '1' && u.email.toLowerCase() !== adminEmail.toLowerCase());
+
     const superAdminUser: User = {
-      id: existingUserIndex >= 0 ? currentUsers[existingUserIndex].id : '1',
+      // Si l'utilisateur existe déjà, on garde son ID.
+      // Sinon, on tente de lui donner '1', SAUF si '1' est déjà pris, auquel cas on génère un UUID.
+      id: existingUserIndex >= 0 ? currentUsers[existingUserIndex].id : (idOneTaken ? generateUUID() : '1'),
       name: 'Junior Ngassa',
       email: adminEmail,
       role: UserRole.SUPER_ADMIN,

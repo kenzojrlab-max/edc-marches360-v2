@@ -11,6 +11,7 @@ interface MarketContextType {
   updateMarket: (id: string, updates: Partial<Marche>) => void;
   updateMarketDoc: (marketId: string, jalonKey: string, docId: string) => void;
   removeMarket: (id: string) => void;
+  removeMarketsByProjectId: (projectId: string) => void; // NOUVELLE FONCTION AJOUTÉE
   restoreMarket: (id: string) => void;
   permanentDeleteMarket: (id: string) => void;
   getMarketById: (id: string) => Marche | undefined;
@@ -98,6 +99,31 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
+  // --- NOUVELLE FONCTION IMPLÉMENTÉE ---
+  const removeMarketsByProjectId = (projectId: string) => {
+    // Identifier les marchés concernés
+    const targets = markets.filter(m => m.projet_id === projectId);
+    
+    if (targets.length === 0) return;
+
+    // Supprimer de la liste active
+    setMarkets(prev => {
+      const updated = prev.filter(m => m.projet_id !== projectId);
+      storage.saveMarkets(updated);
+      return updated;
+    });
+
+    // Ajouter à la corbeille (cascade soft delete)
+    setDeletedMarkets(prev => {
+      const updated = [...targets, ...prev];
+      localStorage.setItem('edc_deleted_markets', JSON.stringify(updated));
+      return updated;
+    });
+    
+    addLog('Système', 'Suppression en cascade', `${targets.length} marchés archivés suite à la suppression du projet ${projectId}.`);
+  };
+  // --------------------------------------
+
   const restoreMarket = (id: string) => {
     const target = deletedMarkets.find(m => m.id === id);
     if (!target) return;
@@ -156,7 +182,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   return (
     <MarketContext.Provider value={{
       markets, deletedMarkets, addMarket, addMarkets, updateMarket, updateMarketDoc, 
-      removeMarket, restoreMarket, permanentDeleteMarket, getMarketById, updateJalon, updateComment
+      removeMarket, removeMarketsByProjectId, restoreMarket, permanentDeleteMarket, getMarketById, updateJalon, updateComment
     }}>
       {children}
     </MarketContext.Provider>

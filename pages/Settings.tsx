@@ -16,7 +16,11 @@ import {
   Search, 
   Database, 
   Layers, 
-  Plus
+  Plus,
+  AlertTriangle,
+  RefreshCcw,
+  CheckSquare, // Pour l'icône de sélection
+  Square       // Pour l'icône de sélection vide
 } from 'lucide-react';
 import { formatDate } from '../utils/date';
 
@@ -31,13 +35,16 @@ export const Settings: React.FC = () => {
   } = useConfig();
 
   const { auditLogs, addLog } = useLogs();
-  const { theme, themeType } = useTheme();
+  const { theme } = useTheme(); // themeType retiré si non utilisé, sinon le garder
   
-  const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'logs' | 'trash' | 'config'>(can('MANAGE_USERS') ? 'users' : 'logs');
+  const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'logs' | 'trash' | 'maintenance'>(can('MANAGE_USERS') ? 'users' : 'logs');
   
   const [pendingRoles, setPendingRoles] = useState<Record<string, UserRole>>({});
   const [newItemName, setNewItemName] = useState('');
   const [logSearch, setLogSearch] = useState('');
+
+  // --- NOUVEAU STATE POUR LA SÉLECTION MULTIPLE ---
+  const [selectedTrashIds, setSelectedTrashIds] = useState<string[]>([]);
 
   const saveRole = (userId: string) => {
     const role = pendingRoles[userId];
@@ -82,6 +89,55 @@ export const Settings: React.FC = () => {
     if (type === 'prestation') removeMarketType(label);
   };
 
+  const handlePurgeData = () => {
+    if (window.confirm("⚠️ ATTENTION : Vous allez supprimer TOUS les Projets, Marchés et Documents liés.\n\nCette action est irréversible et permet de repartir sur une base propre.\n\nVoulez-vous continuer ?")) {
+      localStorage.removeItem('edc_projects');
+      localStorage.removeItem('edc_markets');
+      localStorage.removeItem('edc_deleted_markets');
+      localStorage.removeItem('edc_library');
+      window.location.reload();
+    }
+  };
+
+  const handleFactoryReset = () => {
+    if (window.confirm("⛔ DANGER : RÉINITIALISATION D'USINE\n\nTout sera effacé : Utilisateurs, Configuration, Logs, Données.\nVous serez déconnecté.\n\nConfirmer ?")) {
+      localStorage.clear();
+      window.location.reload();
+    }
+  };
+
+  // --- LOGIQUE DE SÉLECTION MULTIPLE ---
+  const toggleSelectAllTrash = () => {
+    if (selectedTrashIds.length === deletedMarkets.length) {
+      setSelectedTrashIds([]);
+    } else {
+      setSelectedTrashIds(deletedMarkets.map(m => m.id));
+    }
+  };
+
+  const toggleSelectTrash = (id: string) => {
+    setSelectedTrashIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkRestore = () => {
+    if (window.confirm(`Voulez-vous vraiment restaurer ces ${selectedTrashIds.length} éléments ?`)) {
+      selectedTrashIds.forEach(id => restoreMarket(id));
+      setSelectedTrashIds([]);
+      addLog('Corbeille', 'Restauration en masse', `${selectedTrashIds.length} éléments restaurés.`);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (window.confirm(`ATTENTION : Suppression définitive de ${selectedTrashIds.length} éléments.\nCette action est irréversible.\n\nContinuer ?`)) {
+      selectedTrashIds.forEach(id => permanentDeleteMarket(id));
+      setSelectedTrashIds([]);
+      addLog('Corbeille', 'Suppression en masse', `${selectedTrashIds.length} éléments supprimés définitivement.`);
+    }
+  };
+  // -------------------------------------
+
   const filteredLogs = useMemo(() => {
     return auditLogs.filter(log => 
       log.userName.toLowerCase().includes(logSearch.toLowerCase()) || 
@@ -98,11 +154,11 @@ export const Settings: React.FC = () => {
           <p className={`${theme.textSecondary} font-medium text-sm`}>Administration des accès et structure du registre.</p>
         </div>
         
-        <div className={`${theme.card} p-1.5 flex flex-wrap items-center gap-2 w-fit shadow-sm`}>
+        <div className={`${theme.card} p-1.5 flex flex-nowrap items-center gap-2 w-full md:w-fit shadow-sm overflow-x-auto`}>
           {can('MANAGE_USERS') && (
             <button
               onClick={() => setActiveTab('users')}
-              className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none ${
+              className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${
                 activeTab === 'users' ? theme.buttonPrimary : `${theme.textSecondary} hover:bg-black/5`
               }`}
             >
@@ -111,7 +167,7 @@ export const Settings: React.FC = () => {
           )}
           <button
             onClick={() => setActiveTab('structure')}
-            className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none ${
+            className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${
               activeTab === 'structure' ? theme.buttonPrimary : `${theme.textSecondary} hover:bg-black/5`
             }`}
           >
@@ -119,7 +175,7 @@ export const Settings: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('logs')}
-            className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none ${
+            className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${
               activeTab === 'logs' ? theme.buttonPrimary : `${theme.textSecondary} hover:bg-black/5`
             }`}
           >
@@ -127,11 +183,19 @@ export const Settings: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('trash')}
-            className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none ${
+            className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${
               activeTab === 'trash' ? theme.buttonPrimary : `${theme.textSecondary} hover:bg-black/5`
             }`}
           >
             <Trash2 size={16} /> Corbeille
+          </button>
+          <button
+            onClick={() => setActiveTab('maintenance')}
+            className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${
+              activeTab === 'maintenance' ? 'bg-red-500 text-white' : `${theme.textSecondary} hover:bg-red-500/10 hover:text-red-500`
+            }`}
+          >
+            <Activity size={16} /> Maintenance
           </button>
         </div>
       </div>
@@ -139,7 +203,6 @@ export const Settings: React.FC = () => {
       <div className="min-h-[400px]">
         {activeTab === 'users' && (
           <div className="space-y-8 px-2 animate-in fade-in duration-200">
-            {/* CORRECTION : overflow-visible maintenu */}
             <div className={`${theme.card} overflow-visible shadow-sm`}>
               <div className="overflow-x-auto custom-scrollbar pb-40">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
@@ -153,15 +216,13 @@ export const Settings: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {/* MODIFICATION ICI : On utilise l'index pour repérer le dernier élément */}
                     {users.map((u, index) => {
                       const hasPending = !!pendingRoles[u.id];
                       const displayedRole = pendingRoles[u.id] || u.role;
-                      // Si c'est le dernier élément, on passe direction='up'
                       const isLastItem = index === users.length - 1;
 
                       return (
-                        <tr key={u.id} className="hover:bg-white/5 transition-all group">
+                        <tr key={`${u.id}-${index}`} className="hover:bg-white/5 transition-all group">
                           <td className="p-8">
                             <div className="flex items-center gap-4">
                               <div className={`w-14 h-14 ${theme.buttonShape} bg-black/5 border border-white/10 flex items-center justify-center font-black ${theme.textAccent} uppercase text-lg`}>
@@ -188,7 +249,6 @@ export const Settings: React.FC = () => {
                                   options={Object.values(UserRole).map(r => ({ value: r, label: r }))}
                                   onChange={(val) => setPendingRoles(prev => ({ ...prev, [u.id]: val as UserRole }))}
                                   disabled={u.id === currentUser?.id}
-                                  // CORRECTION : Passage de la direction UP si dernier élément
                                   direction={isLastItem ? 'up' : 'down'}
                                 />
                               </div>
@@ -238,7 +298,7 @@ export const Settings: React.FC = () => {
                 <input 
                   type="text" 
                   placeholder="Nouvelle fonction..." 
-                  className={`${theme.input} flex-1 text-[10px] font-bold ${themeType === 'glass' ? 'text-white' : ''}`}
+                  className={`${theme.input} flex-1 text-[10px] font-bold`} // themeType removed as it's not critical here
                   value={newItemName}
                   onChange={e => setNewItemName(e.target.value)}
                 />
@@ -263,7 +323,7 @@ export const Settings: React.FC = () => {
                 <input 
                   type="text" 
                   placeholder="Ex: AON, AOI..." 
-                  className={`${theme.input} flex-1 text-[10px] font-bold ${themeType === 'glass' ? 'text-white' : ''}`}
+                  className={`${theme.input} flex-1 text-[10px] font-bold`}
                   value={newItemName}
                   onChange={e => setNewItemName(e.target.value)}
                 />
@@ -288,7 +348,7 @@ export const Settings: React.FC = () => {
                 <input 
                   type="text" 
                   placeholder="Ex: Travaux..." 
-                  className={`${theme.input} flex-1 text-[10px] font-bold ${themeType === 'glass' ? 'text-white' : ''}`}
+                  className={`${theme.input} flex-1 text-[10px] font-bold`}
                   value={newItemName}
                   onChange={e => setNewItemName(e.target.value)}
                 />
@@ -302,11 +362,11 @@ export const Settings: React.FC = () => {
           <div className="space-y-6 px-2 animate-in fade-in duration-200">
             <div className={`${theme.card} flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 shadow-sm`}>
               <div className="relative flex-1 max-w-md">
-                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${themeType === 'glass' ? 'text-white' : 'text-slate-400'}`} size={18} />
+                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-400`} size={18} />
                 <input 
                   type="text" 
                   placeholder="Rechercher dans l'historique..." 
-                  className={`${theme.input} w-full pl-12 pr-6 py-3 font-bold ${themeType === 'glass' ? 'text-white placeholder:text-white/40' : ''}`}
+                  className={`${theme.input} w-full pl-12 pr-6 py-3 font-bold`}
                   value={logSearch}
                   onChange={e => setLogSearch(e.target.value)}
                 />
@@ -355,6 +415,7 @@ export const Settings: React.FC = () => {
           </div>
         )}
 
+        {/* --- MODIFICATION ICI : SECTION CORBEILLE --- */}
         {activeTab === 'trash' && (
           <div className="px-2 animate-in fade-in duration-200">
              <div className={`${theme.card} p-10 space-y-8`}>
@@ -366,38 +427,109 @@ export const Settings: React.FC = () => {
                          <p className={`text-xs font-bold ${theme.textSecondary}`}>Restauration ou purge définitive des dossiers.</p>
                       </div>
                    </div>
+                   
+                   {/* Barre d'actions groupées */}
+                   {selectedTrashIds.length > 0 && (
+                     <div className="flex items-center gap-2 animate-in slide-in-from-right-4 fade-in">
+                       <button onClick={handleBulkRestore} className={`px-4 py-2.5 bg-success text-white ${theme.buttonShape} text-[10px] font-black uppercase shadow-lg hover:scale-105 transition-all flex items-center gap-2`}>
+                         <RefreshCcw size={14} /> Restaurer ({selectedTrashIds.length})
+                       </button>
+                       <button onClick={handleBulkDelete} className={`px-4 py-2.5 bg-danger text-white ${theme.buttonShape} text-[10px] font-black uppercase shadow-lg hover:scale-105 transition-all flex items-center gap-2`}>
+                         <Trash2 size={14} /> Supprimer ({selectedTrashIds.length})
+                       </button>
+                     </div>
+                   )}
                 </div>
 
                 <div className="overflow-hidden bg-black/5 rounded-[2rem] border border-white/5">
                   <table className="w-full text-left border-collapse">
                      <thead>
                         <tr className={`bg-black/10 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest`}>
+                           {/* Case à cocher "Tout sélectionner" */}
+                           <th className="p-6 w-16 text-center">
+                             <button onClick={toggleSelectAllTrash} className={`transition-transform hover:scale-110 ${selectedTrashIds.length === deletedMarkets.length && deletedMarkets.length > 0 ? theme.textAccent : 'text-slate-400'}`}>
+                               {selectedTrashIds.length === deletedMarkets.length && deletedMarkets.length > 0 ? <CheckSquare size={20} /> : <Square size={20} />}
+                             </button>
+                           </th>
                            <th className="p-6">Dossier</th>
                            <th className="p-6 text-right">Actions</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-white/5">
-                        {deletedMarkets.length > 0 ? deletedMarkets.map(m => (
-                          <tr key={m.id} className="hover:bg-white/5 transition-all">
-                             <td className="p-6">
-                                <div>
-                                   <p className={`text-[11px] font-black ${theme.textAccent} uppercase tracking-tighter mb-1`}>{m.numDossier}</p>
-                                   <p className={`text-xs font-bold ${theme.textMain} line-clamp-1`}>{m.objet}</p>
-                                </div>
-                             </td>
-                             <td className="p-6 text-right">
-                                <div className="flex items-center justify-end gap-3">
-                                   <button onClick={() => restoreMarket(m.id)} className={`px-4 py-2 ${theme.buttonPrimary} rounded-xl text-[9px] font-black uppercase tracking-widest transition-all`}>Restaurer</button>
-                                   <button onClick={() => permanentDeleteMarket(m.id)} className={`p-2.5 text-slate-400 hover:text-danger hover:bg-danger/10 ${theme.buttonShape} transition-all`}><Trash2 size={16} /></button>
-                                </div>
-                             </td>
-                          </tr>
-                        )) : (
-                          <tr><td colSpan={2} className="p-16 text-center font-black text-slate-300 uppercase italic">Corbeille vide</td></tr>
+                        {deletedMarkets.length > 0 ? deletedMarkets.map(m => {
+                          const isSelected = selectedTrashIds.includes(m.id);
+                          return (
+                            <tr key={m.id} className={`transition-all hover:bg-white/5 ${isSelected ? 'bg-white/5' : ''}`}>
+                               {/* Case à cocher Individuelle */}
+                               <td className="p-6 text-center">
+                                 <button onClick={() => toggleSelectTrash(m.id)} className={`transition-transform hover:scale-110 ${isSelected ? theme.textAccent : 'text-slate-400'}`}>
+                                   {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
+                                 </button>
+                               </td>
+                               <td className="p-6">
+                                  <div onClick={() => toggleSelectTrash(m.id)} className="cursor-pointer">
+                                     <p className={`text-[11px] font-black ${theme.textAccent} uppercase tracking-tighter mb-1`}>{m.numDossier}</p>
+                                     <p className={`text-xs font-bold ${theme.textMain} line-clamp-1`}>{m.objet}</p>
+                                  </div>
+                               </td>
+                               <td className="p-6 text-right">
+                                  <div className="flex items-center justify-end gap-3">
+                                     <button onClick={() => restoreMarket(m.id)} className={`px-4 py-2 ${theme.buttonPrimary} rounded-xl text-[9px] font-black uppercase tracking-widest transition-all`}>Restaurer</button>
+                                     <button onClick={() => permanentDeleteMarket(m.id)} className={`p-2.5 text-slate-400 hover:text-danger hover:bg-danger/10 ${theme.buttonShape} transition-all`}><Trash2 size={16} /></button>
+                                  </div>
+                               </td>
+                            </tr>
+                          );
+                        }) : (
+                          <tr><td colSpan={3} className="p-16 text-center font-black text-slate-300 uppercase italic">Corbeille vide</td></tr>
                         )}
                      </tbody>
                   </table>
                </div>
+             </div>
+          </div>
+        )}
+
+        {activeTab === 'maintenance' && (
+          <div className="px-2 animate-in fade-in duration-200">
+             <div className={`${theme.card} p-12 border-red-500/10`}>
+                <div className="flex items-center gap-4 mb-8 text-red-500">
+                   <AlertTriangle size={32} />
+                   <div>
+                      <h3 className="text-xl font-black uppercase tracking-tight">Zone de Maintenance</h3>
+                      <p className={`text-xs font-bold ${theme.textSecondary}`}>Actions destructives irréversibles.</p>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="p-8 bg-black/5 rounded-[2rem] border border-white/5 flex flex-col items-start gap-4">
+                      <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-slate-300"><Database size={24}/></div>
+                      <div>
+                         <h4 className={`text-sm font-black ${theme.textMain} uppercase`}>Purger les Données</h4>
+                         <p className={`text-[10px] ${theme.textSecondary} mt-2 leading-relaxed`}>
+                            Supprime tous les <strong>Projets</strong>, <strong>Marchés</strong> et <strong>Documents</strong>.<br/>
+                            Conserve vos utilisateurs et la configuration.
+                         </p>
+                      </div>
+                      <button onClick={handlePurgeData} className="mt-auto w-full py-3 bg-white text-black font-black text-xs uppercase rounded-xl hover:bg-slate-200 transition-colors">
+                         Nettoyer la base
+                      </button>
+                   </div>
+
+                   <div className="p-8 bg-red-500/5 rounded-[2rem] border border-red-500/20 flex flex-col items-start gap-4">
+                      <div className="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500"><RefreshCcw size={24}/></div>
+                      <div>
+                         <h4 className="text-sm font-black text-red-500 uppercase">Réinitialisation Totale</h4>
+                         <p className={`text-[10px] ${theme.textSecondary} mt-2 leading-relaxed`}>
+                            Supprime <strong>ABSOLUMENT TOUT</strong> (Utilisateurs, Logs, Config...).<br/>
+                            L'application reviendra à son état initial.
+                         </p>
+                      </div>
+                      <button onClick={handleFactoryReset} className="mt-auto w-full py-3 bg-red-500 text-white font-black text-xs uppercase rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">
+                         Reset Usine
+                      </button>
+                   </div>
+                </div>
              </div>
           </div>
         )}
