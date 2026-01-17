@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
-import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
+import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useMarketFilter } from '../hooks/useMarketFilter'; // AJOUT
 import { Decompte, Avenant } from '../types';
 import { BulleInput } from '../components/BulleInput';
 import { FileManager } from '../components/FileManager';
@@ -17,49 +18,30 @@ import {
 export const Execution: React.FC = () => {
   const navigate = useNavigate();
   
-  // CORRECTION : Éclatement des contextes
   const { markets, updateMarket } = useMarkets();
   const { projects } = useProjects();
   
   const { isGuest, can } = useAuth();
   const { theme, themeType } = useTheme();
   
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedYear, setSelectedYear] = useState<string>('');
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  
+  // --- CORRECTION : Utilisation du Hook de filtrage + Filtre spécifique Exécution ---
+  const {
+    searchTerm, setSearchTerm,
+    selectedYear, setSelectedYear,
+    selectedProjectId, setSelectedProjectId,
+    yearOptions,
+    projectOptions,
+    filteredMarkets: baseFilteredMarkets // On renomme pour appliquer le filtre supplémentaire
+  } = useMarketFilter(markets, projects);
+
+  // Filtre spécifique pour l'exécution : on masque les annulés/infructueux
+  const filteredMarkets = useMemo(() => {
+    return baseFilteredMarkets.filter(m => !m.is_annule && !m.is_infructueux);
+  }, [baseFilteredMarkets]);
+
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'contractual' | 'financial'>('contractual');
   const [showSuccess, setShowSuccess] = useState(false);
-
-  // Génération dynamique des années basées sur les exercices des projets
-  const availableYears = useMemo(() => {
-    const years = Array.from(new Set(projects.map(p => p.exercice.toString())));
-    return (years as string[]).sort((a, b) => b.localeCompare(a));
-  }, [projects]);
-
-  const yearOptions = [
-    { value: '', label: 'Tous les exercices' },
-    ...availableYears.map(y => ({ value: y, label: y }))
-  ];
-
-  const projectOptions = useMemo(() => {
-    return [{ value: '', label: 'Tous les projets' }, ...projects.map(p => ({ value: p.id, label: p.libelle }))];
-  }, [projects]);
-
-  const filteredMarkets = useMemo(() => {
-    return markets.filter(m => {
-      const parentProject = projects.find(p => p.id === m.projet_id);
-      const isNotAborted = !m.is_annule && !m.is_infructueux;
-      const matchSearch = (m.numDossier || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (m.objet || "").toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchYear = !selectedYear || parentProject?.exercice.toString() === selectedYear;
-      const matchProject = !selectedProjectId || m.projet_id === selectedProjectId;
-      
-      return isNotAborted && matchSearch && matchYear && matchProject;
-    });
-  }, [markets, projects, searchTerm, selectedYear, selectedProjectId]);
 
   const selectedMarket = markets.find(m => m.id === selectedMarketId);
 

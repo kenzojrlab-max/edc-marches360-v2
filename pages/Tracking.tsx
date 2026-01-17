@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useMarketLogic } from '../hooks/useMarketLogic'; 
+import { useMarketFilter } from '../hooks/useMarketFilter'; // AJOUT
 import { 
   Save, Search, CheckCircle2, Clock, Activity, Settings2, ChevronRight,
   ArrowLeft, ArrowRight, UserCheck, Banknote, AlertTriangle, XCircle, Ban, Layers, History, FileText, Gavel
@@ -14,7 +15,6 @@ import { BulleInput } from '../components/BulleInput';
 import { FileManager } from '../components/FileManager';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { SourceFinancement, StatutGlobal } from '../types';
-// AJOUT : Import du Footer
 import Footer from '../components/Footer';
 
 export const Tracking: React.FC = () => {
@@ -25,26 +25,21 @@ export const Tracking: React.FC = () => {
   
   const { isJalonApplicable, isJalonActive, isPhaseAccessible } = useMarketLogic();
   
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedYear, setSelectedYear] = useState<string>(''); 
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  // --- CORRECTION : Utilisation du Hook de filtrage ---
+  const {
+    searchTerm, setSearchTerm,
+    selectedYear, setSelectedYear,
+    selectedProjectId, setSelectedProjectId,
+    yearOptions,
+    projectOptions,
+    filteredMarkets
+  } = useMarketFilter(markets, projects);
   
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
   const [activePhaseId, setActivePhaseId] = useState<string>(JALONS_GROUPS[0].id);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const jalonsKeys = JALONS_GROUPS.flatMap(g => g.keys);
-
-  const availableYears = useMemo(() => {
-    const years = Array.from(new Set(projects.map(p => p.exercice.toString())));
-    return (years as string[]).sort((a, b) => b.localeCompare(a));
-  }, [projects]);
-
-  const yearOptions = [{ value: '', label: 'Tous les exercices' }, ...availableYears.map(y => ({ value: y, label: y }))];
-
-  const projectOptions = useMemo(() => {
-    return [{ value: '', label: 'Tous les projets' }, ...projects.map(p => ({ value: p.id, label: p.libelle }))];
-  }, [projects]);
 
   const calculateAvancement = (m: any) => {
     if (m.is_annule) return { label: "Annulé", color: "bg-danger/10 text-danger" };
@@ -71,17 +66,6 @@ export const Tracking: React.FC = () => {
       setSelectedMarketId(null); 
     }, 1500);
   };
-
-  const filteredMarkets = useMemo(() => {
-    return markets.filter(m => {
-      const parentProject = projects.find(p => p.id === m.projet_id);
-      const matchSearch = (m.numDossier || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (m.objet || "").toLowerCase().includes(searchTerm.toLowerCase());
-      const matchYear = !selectedYear || parentProject?.exercice.toString() === selectedYear;
-      const matchProject = !selectedProjectId || m.projet_id === selectedProjectId;
-      return matchSearch && matchYear && matchProject;
-    });
-  }, [markets, projects, searchTerm, selectedYear, selectedProjectId]);
 
   const selectedMarket = markets.find(m => m.id === selectedMarketId);
   const activePhase = JALONS_GROUPS.find(g => g.id === activePhaseId);
@@ -339,7 +323,6 @@ export const Tracking: React.FC = () => {
         </Modal>
       )}
       
-      {/* AJOUT : Le composant Footer */}
       <Footer />
     </div>
   );

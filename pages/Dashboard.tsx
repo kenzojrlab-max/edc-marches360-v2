@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import { 
   TrendingUp, Filter, BarChart2, PieChart as PieChartIcon, 
   Activity, Briefcase, ChevronRight, Clock, AlertTriangle, 
@@ -16,13 +16,13 @@ import { useProjects } from '../contexts/ProjectContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { useTheme } from '../contexts/ThemeContext';
 
-// Hook personnalisé
+// Hooks personnalisés
 import { useDashboardStats } from '../hooks/useDashboardStats';
+import { useMarketFilter } from '../hooks/useMarketFilter'; // AJOUT
 
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 
 const formatCurrency = (val: number) => {
-  // CORRECTION : Ajout de 'FCFA' pour être plus explicite (Milliard et Million)
   if (val >= 1000000000) return (val / 1000000000).toFixed(1) + ' Mrd FCFA';
   if (val >= 1000000) return (val / 1000000).toFixed(0) + ' M FCFA';
   return val.toLocaleString();
@@ -35,37 +35,22 @@ export const Dashboard: React.FC = () => {
   const { theme, themeType } = useTheme();
   const navigate = useNavigate();
 
-  // --- Filtres UI ---
-  const [selectedYear, setSelectedYear] = useState<string>('');
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [selectedFonction, setSelectedFonction] = useState<string>('');
+  // --- CORRECTION : Utilisation du Hook de filtrage (Code propre et centralisé) ---
+  const {
+    selectedYear, setSelectedYear,
+    selectedProjectId, setSelectedProjectId,
+    selectedFonction, setSelectedFonction,
+    yearOptions,
+    projectOptions,
+    filteredMarkets
+  } = useMarketFilter(markets, projects);
 
-  const yearOptions = useMemo(() => {
-    const years = Array.from(new Set(projects.map(p => p.exercice.toString()))) as string[];
-    return [{ value: '', label: 'Tous les exercices' }, ...years.sort((a, b) => b.localeCompare(a)).map(y => ({ value: y, label: y }))];
-  }, [projects]);
-
-  const projectOptions = useMemo(() => {
-    return [{ value: '', label: 'Tous les projets' }, ...projects.map(p => ({ value: p.id, label: p.libelle }))];
-  }, [projects]);
-
-  // --- Filtrage des données (Logique UI) ---
-  const filteredMarkets = useMemo(() => {
-    return markets.filter(m => {
-      const parentProject = projects.find(p => p.id === m.projet_id);
-      const matchYear = !selectedYear || parentProject?.exercice.toString() === selectedYear;
-      const matchProject = !selectedProjectId || m.projet_id === selectedProjectId;
-      const matchFonction = !selectedFonction || m.fonction === selectedFonction;
-      return matchYear && matchProject && matchFonction;
-    });
-  }, [markets, projects, selectedYear, selectedProjectId, selectedFonction]);
-
-  // --- Appel du Hook pour les calculs lourds ---
+  // --- Appel du Hook pour les calculs statistiques ---
   const { 
     delayStats, funnelData, budgetStats, procedureData, functionStats, historicalData, COLORS 
   } = useDashboardStats(filteredMarkets, markets, projects);
 
-  const yearsRange = useMemo(() => {
+  const yearsRange = React.useMemo(() => {
     const years = historicalData.map(d => parseInt(d.year));
     if (years.length === 0) return new Date().getFullYear().toString();
     return `${Math.min(...years)} - ${Math.max(...years)}`;
@@ -75,7 +60,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20 relative">
       
-      {/* 1. BARRE DE FILTRES - CORRECTION Z-INDEX (z-[500] -> z-30) */}
+      {/* 1. BARRE DE FILTRES */}
       <div className={`${theme.card} p-6 flex flex-wrap items-center gap-6 mb-8 relative z-30`}>
         <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden md:flex`}>
           <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
