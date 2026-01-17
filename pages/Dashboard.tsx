@@ -22,8 +22,9 @@ import { useDashboardStats } from '../hooks/useDashboardStats';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 
 const formatCurrency = (val: number) => {
-  if (val >= 1000000000) return (val / 1000000000).toFixed(1) + ' Mrd';
-  if (val >= 1000000) return (val / 1000000).toFixed(0) + ' M';
+  // CORRECTION : Ajout de 'FCFA' pour être plus explicite (Milliard et Million)
+  if (val >= 1000000000) return (val / 1000000000).toFixed(1) + ' Mrd FCFA';
+  if (val >= 1000000) return (val / 1000000).toFixed(0) + ' M FCFA';
   return val.toLocaleString();
 };
 
