@@ -87,18 +87,32 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const batch = writeBatch(db);
         chunk.forEach(m => {
           const docRef = doc(db, "markets", m.id);
-          const safeMarket = JSON.parse(JSON.stringify({ 
-            ...m, 
-            docs: m.docs || {}, 
-            comments: m.comments || {} 
-          }));
-          batch.set(docRef, safeMarket);
+          
+          // CORRECTION MAJEURE ICI (POINT 5) : Gestion des doublons et protection des données
+          
+          // 1. On crée une copie propre des données à importer
+          const safeMarket = JSON.parse(JSON.stringify(m));
+
+          // 2. IMPORTANT : On supprime les champs docs et comments de l'objet à envoyer
+          // SI ET SEULEMENT SI ils sont vides dans l'import.
+          // Cela empêche d'écraser les fichiers/commentaires existants en base avec du "vide".
+          if (!safeMarket.docs || Object.keys(safeMarket.docs).length === 0) {
+            delete safeMarket.docs;
+          }
+          if (!safeMarket.comments || Object.keys(safeMarket.comments).length === 0) {
+            delete safeMarket.comments;
+          }
+
+          // 3. On utilise { merge: true }
+          // Si le marché existe : on met à jour SEULEMENT les champs présents dans safeMarket (montant, dates...)
+          // Si le marché n'existe pas : on le crée.
+          batch.set(docRef, safeMarket, { merge: true });
         });
         await batch.commit();
         console.log(`Lot importé (${chunk.length} éléments)`);
       }
 
-      addLog('Passation', 'Import Excel', `${newMarkets.length} marchés importés.`);
+      addLog('Passation', 'Import Excel', `${newMarkets.length} marchés importés/mis à jour.`);
     } catch (error: any) {
       console.error("Erreur addMarkets:", error);
       alert(`Erreur d'importation : ${error.message || "Erreur inconnue"}`);
