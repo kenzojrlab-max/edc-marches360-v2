@@ -1,50 +1,59 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Projet } from '../types';
 import { useLogs } from './LogsContext';
+import { db } from '../firebase'; // Import Firebase
+import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 interface ProjectContextType {
   projects: Projet[];
   addProject: (project: Projet) => void;
   updateProject: (id: string, updates: Partial<Projet>) => void;
-  removeProject: (id: string) => void; // NOUVEAU
+  removeProject: (id: string) => void;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<Projet[]>([]);
-  // Injection du contexte Logs pour tracer les actions
   const { addLog } = useLogs(); 
 
+  // Synchronisation temps réel avec Firestore
   useEffect(() => {
-    setProjects(JSON.parse(localStorage.getItem('edc_projects') || '[]'));
+    const unsubscribe = onSnapshot(collection(db, "projects"), (snapshot) => {
+      const projectsData = snapshot.docs.map(doc => doc.data() as Projet);
+      setProjects(projectsData);
+    }, (error) => {
+      console.error("Erreur lecture projets:", error);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const addProject = (project: Projet) => {
-    setProjects(prev => {
-      const updated = [...prev, project];
-      localStorage.setItem('edc_projects', JSON.stringify(updated));
+  const addProject = async (project: Projet) => {
+    try {
+      await setDoc(doc(db, "projects", project.id), project);
       addLog('Projets', 'Création', `Nouveau projet : ${project.libelle}`);
-      return updated;
-    });
+    } catch (error) {
+      console.error("Erreur ajout projet:", error);
+    }
   };
 
-  const updateProject = (id: string, updates: Partial<Projet>) => {
-    setProjects(prev => {
-      const updated = prev.map(p => p.id === id ? { ...p, ...updates } : p);
-      localStorage.setItem('edc_projects', JSON.stringify(updated));
-      return updated;
-    });
+  const updateProject = async (id: string, updates: Partial<Projet>) => {
+    try {
+      const projectRef = doc(db, "projects", id);
+      await updateDoc(projectRef, updates);
+    } catch (error) {
+      console.error("Erreur mise à jour projet:", error);
+    }
   };
 
-  // IMPLEMENTATION DE LA SUPPRESSION
-  const removeProject = (id: string) => {
-    setProjects(prev => {
-      const updated = prev.filter(p => p.id !== id);
-      localStorage.setItem('edc_projects', JSON.stringify(updated));
+  const removeProject = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "projects", id));
       addLog('Projets', 'Suppression', `Projet ID ${id} supprimé.`);
-      return updated;
-    });
+    } catch (error) {
+      console.error("Erreur suppression projet:", error);
+    }
   };
 
   return (
