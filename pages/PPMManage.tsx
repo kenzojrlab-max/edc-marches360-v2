@@ -1,14 +1,13 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
-import { useProjects } from '../contexts/ProjectContext'; // NOUVEAU
-import { useLogs } from '../contexts/LogsContext';       // NOUVEAU
+import { useProjects } from '../contexts/ProjectContext';
+import { useLogs } from '../contexts/LogsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { BulleInput } from '../components/BulleInput';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { Modal } from '../components/Modal';
-import { FileManager } from '../components/FileManager';
 import { FONCTIONS, JALONS_PPM_KEYS, JALONS_LABELS } from '../constants';
 import { AOType, MarketType, Marche, StatutGlobal, SourceFinancement, Projet } from '../types';
 import { ChevronLeft, FileSpreadsheet, Plus, Download, Upload, MousePointer2, Search, Layers, Trash2 } from 'lucide-react';
@@ -17,13 +16,12 @@ import * as XLSX from 'xlsx';
 
 export const PPMManage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isSuperAdmin } = useAuth(); // Ajout de isSuperAdmin
+  const { user, isSuperAdmin } = useAuth();
   const { theme, themeType } = useTheme();
   
-  // CORRECTION : On récupère aussi la nouvelle fonction removeMarketsByProjectId
   const { addMarkets, removeMarketsByProjectId } = useMarkets();
   
-  const { projects, addProject, removeProject } = useProjects(); // Ajout de removeProject
+  const { projects, addProject, removeProject } = useProjects();
   const { addLog } = useLogs();
   
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -89,12 +87,20 @@ export const PPMManage: React.FC = () => {
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 1. Vérification de sécurité : Projet sélectionné ?
+    if (!importProjectId) {
+      alert("Veuillez d'abord sélectionner un projet dans la liste déroulante ci-dessus.");
+      e.target.value = ''; // Reset l'input pour pouvoir recliquer
+      return;
+    }
+
     const file = e.target.files?.[0];
-    if (!file || !importProjectId) return;
+    if (!file) return;
 
     setIsImporting(true);
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    
+    reader.onload = async (evt) => { // Async pour attendre addMarkets
       try {
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
@@ -137,13 +143,21 @@ export const PPMManage: React.FC = () => {
           };
         });
 
-        addMarkets(newMarkets);
-        addLog('Passation', 'Import Excel', `${newMarkets.length} marchés importés dans le projet ${project?.libelle}`);
-        setIsImporting(false);
-        setShowImportModal(false);
-        alert(`${newMarkets.length} marchés importés avec succès.`);
+        // Utilisation du addMarkets du contexte (qui gère le batching Firestore)
+        if (newMarkets.length > 0) {
+           await addMarkets(newMarkets);
+           // addLog est déjà appelé dans le contexte, pas besoin de le doubler
+           setIsImporting(false);
+           setShowImportModal(false);
+           alert(`${newMarkets.length} marchés importés avec succès.`);
+        } else {
+           alert("Aucune donnée valide trouvée dans le fichier.");
+           setIsImporting(false);
+        }
+
       } catch (error) {
-        alert("Erreur d'importation. Vérifiez que le fichier respecte strictement le template.");
+        console.error(error);
+        alert("Erreur critique lors de l'importation. Vérifiez le format du fichier.");
         setIsImporting(false);
       }
     };
@@ -220,7 +234,7 @@ export const PPMManage: React.FC = () => {
                        onClick={(e) => {
                          e.stopPropagation();
                          if (window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ? Cette action est irréversible.")) {
-                           removeMarketsByProjectId(p.id); // CORRECTION : Suppression en cascade des marchés associés
+                           removeMarketsByProjectId(p.id);
                            removeProject(p.id);
                          }
                        }} 
@@ -252,10 +266,22 @@ export const PPMManage: React.FC = () => {
       <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title="Importation Excel">
          <div className="space-y-6">
             <CustomBulleSelect label="Projet cible" options={projects.map(p => ({ value: p.id, label: p.libelle }))} value={importProjectId} onChange={setImportProjectId} />
-            <div className={`p-10 border-4 border-dashed ${themeType === 'glass' ? 'border-white/10' : 'border-slate-100'} ${theme.buttonShape} text-center space-y-4 hover:border-accent transition-all cursor-pointer relative`}>
-               <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".xlsx" onChange={handleFileUpload} disabled={!importProjectId || isImporting} />
+            <div 
+              onClick={() => { if(!importProjectId) alert("Veuillez sélectionner un projet cible avant de cliquer ici."); }}
+              className={`p-10 border-4 border-dashed ${themeType === 'glass' ? 'border-white/10' : 'border-slate-100'} ${theme.buttonShape} text-center space-y-4 hover:border-accent transition-all cursor-pointer relative`}
+            >
+               {/* CORRECTION: Retrait du disabled, gestion par onClick parent ou validation interne */}
+               <input 
+                 type="file" 
+                 className="absolute inset-0 opacity-0 cursor-pointer" 
+                 accept=".xlsx" 
+                 onChange={handleFileUpload} 
+                 disabled={isImporting} // On ne désactive que pendant le chargement, pas avant
+               />
                <Upload className="mx-auto text-slate-300" size={32} />
-               <p className={`text-xs font-black uppercase ${theme.textSecondary}`}>{isImporting ? "Chargement..." : "Fichier PPM (.xlsx)"}</p>
+               <p className={`text-xs font-black uppercase ${theme.textSecondary}`}>
+                 {isImporting ? "Chargement en cours..." : (importProjectId ? "Cliquez pour choisir un fichier" : "Sélectionnez un projet d'abord")}
+               </p>
             </div>
             <button onClick={downloadTemplate} className={`w-full flex items-center justify-center gap-3 p-4 ${theme.buttonSecondary} ${theme.buttonShape} font-black uppercase tracking-widest text-[10px]`}>
                <Download size={18}/> Télécharger le template

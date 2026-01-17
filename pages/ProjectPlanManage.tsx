@@ -70,34 +70,45 @@ export const ProjectPlanManage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = () => {
-    if (!formData.numDossier || !formData.objet) return;
-    if (editingMarket) {
-      updateMarket(editingMarket.id, formData);
-    } else {
-      addMarket({ 
-        ...(formData as Marche), 
-        id: crypto.randomUUID(), 
-        projet_id: projectId!, 
-        source_financement: project.sourceFinancement, 
-        dates_realisees: {}, 
-        comments: formData.comments || {},
-        docs: formData.docs || {}, 
-        statut_global: StatutGlobal.PLANIFIE, 
-        is_infructueux: false, 
-        is_annule: false, 
-        execution: { 
-          decomptes: [], 
-          avenants: [], 
-          has_avenant: false, 
-          is_resilie: false, 
-          resiliation_step: 0 
-        }, 
-        created_by: user?.id || 'system', 
-        date_creation: new Date().toISOString() 
-      });
+  const handleSubmit = async () => {
+    // 1. Validation explicite
+    if (!formData.numDossier || !formData.objet) {
+      alert("Erreur : Le Numéro de Dossier et l'Objet sont obligatoires.");
+      return;
     }
-    setIsModalOpen(false);
+
+    try {
+      if (editingMarket) {
+        await updateMarket(editingMarket.id, formData); // Ajout de await par sécurité (même si le contexte gère)
+      } else {
+        await addMarket({ 
+          ...(formData as Marche), 
+          id: crypto.randomUUID(), 
+          projet_id: projectId!, 
+          source_financement: project.sourceFinancement, 
+          dates_realisees: {}, 
+          comments: formData.comments || {},
+          docs: formData.docs || {}, 
+          statut_global: StatutGlobal.PLANIFIE, 
+          is_infructueux: false, 
+          is_annule: false, 
+          execution: { 
+            decomptes: [], 
+            avenants: [], 
+            has_avenant: false, 
+            is_resilie: false, 
+            resiliation_step: 0 
+          }, 
+          created_by: user?.id || 'system', 
+          date_creation: new Date().toISOString() 
+        });
+      }
+      setIsModalOpen(false);
+      // Feedback visuel optionnel si besoin, mais la fermeture de la modale suffit généralement
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement", error);
+      alert("Une erreur est survenue lors de l'enregistrement.");
+    }
   };
 
   const updateFormDataDate = (key: string, val: string) => {
