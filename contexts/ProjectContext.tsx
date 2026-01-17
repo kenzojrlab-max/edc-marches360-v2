@@ -20,7 +20,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Synchronisation temps réel avec Firestore
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "projects"), (snapshot) => {
-      const projectsData = snapshot.docs.map(doc => doc.data() as Projet);
+      // CORRECTION ICI : On fusionne doc.data() avec l'ID du document (doc.id)
+      // Cela garantit que p.id n'est jamais undefined
+      const projectsData = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as Projet[];
+      
       setProjects(projectsData);
     }, (error) => {
       console.error("Erreur lecture projets:", error);
@@ -49,6 +55,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const removeProject = async (id: string) => {
     try {
+      if (!id) throw new Error("ID du projet introuvable");
       await deleteDoc(doc(db, "projects", id));
       addLog('Projets', 'Suppression', `Projet ID ${id} supprimé.`);
     } catch (error) {
