@@ -13,10 +13,21 @@ service cloud.firestore {
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'SUPER_ADMIN']);
     }
 
-    // Utilisateurs : Chacun peut lire son profil, seul l'admin peut écrire/supprimer
+    // Utilisateurs : Règles de sécurité renforcées
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if request.auth.uid == userId || isAdmin();
+      // Lecture : Seulement son propre profil OU si on est admin
+      allow read: if request.auth.uid == userId || isAdmin();
+      
+      // Création : Autorisé à l'inscription
+      allow create: if request.auth.uid == userId || isAdmin();
+      
+      // Mise à jour : L'utilisateur ne peut modifier QUE sa photo ou son mot de passe
+      allow update: if (request.auth.uid == userId && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'password'])) 
+                    || isAdmin();
+      
+      // Suppression : Réservé uniquement aux Admins
+      allow delete: if isAdmin();
     }
 
     // Marchés : Lecture pour tous les connectés, Écriture pour les Admins/SuperAdmin

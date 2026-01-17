@@ -71,12 +71,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 2. Synchronisation de la liste des utilisateurs (Pour l'Admin)
   useEffect(() => {
+    // SÉCURITÉ : On ne charge la liste que si l'utilisateur est ADMIN ou SUPER_ADMIN
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN)) {
+      setUsers([]); // On vide la liste pour les non-admins
+      return;
+    }
+
     const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const usersData = snapshot.docs.map(doc => doc.data() as User);
       setUsers(usersData);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]); // Ajout de 'user' en dépendance pour réagir au login/logout
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
