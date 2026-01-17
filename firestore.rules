@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper pour vérifier si l'utilisateur est connecté
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper pour vérifier si l'utilisateur est admin ou super admin
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'SUPER_ADMIN']);
+    }
+
+    // Utilisateurs : Chacun peut lire son profil, seul l'admin peut écrire/supprimer
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if request.auth.uid == userId || isAdmin();
+    }
+
+    // Marchés : Lecture pour tous les connectés, Écriture pour les Admins/SuperAdmin
+    match /markets/{marketId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Projets : Idem
+    match /projects/{projectId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Documents (Métadonnées)
+    match /documents/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin(); // Ou si l'utilisateur a le droit d'upload
+    }
+    
+    // Logs : Écriture seule (pour tracer les actions), lecture Admin seulement
+    match /audit_logs/{logId} {
+      allow create: if isAuthenticated();
+      allow read: if isAdmin();
+    }
+  }
+}
