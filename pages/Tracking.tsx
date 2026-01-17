@@ -3,10 +3,10 @@ import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { useMarketLogic } from '../hooks/useMarketLogic'; // IMPORT DU HOOK
+import { useMarketLogic } from '../hooks/useMarketLogic'; 
 import { 
   Save, Search, CheckCircle2, Clock, Activity, Settings2, ChevronRight,
-  ArrowLeft, ArrowRight, UserCheck, Banknote, AlertTriangle, XCircle, Ban, RefreshCcw, Calendar, FileText, Gavel, Layers, History
+  ArrowLeft, ArrowRight, UserCheck, Banknote, AlertTriangle, XCircle, Ban, Layers, History, FileText, Gavel
 } from 'lucide-react';
 import { JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { Modal } from '../components/Modal';
@@ -14,6 +14,8 @@ import { BulleInput } from '../components/BulleInput';
 import { FileManager } from '../components/FileManager';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { SourceFinancement, StatutGlobal } from '../types';
+// AJOUT : Import du Footer
+import Footer from '../components/Footer';
 
 export const Tracking: React.FC = () => {
   const { markets, updateMarket, updateMarketDoc, updateJalon } = useMarkets();
@@ -21,7 +23,6 @@ export const Tracking: React.FC = () => {
   const { can } = useAuth();
   const { theme, themeType } = useTheme();
   
-  // Utilisation du Hook
   const { isJalonApplicable, isJalonActive, isPhaseAccessible } = useMarketLogic();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,7 +93,6 @@ export const Tracking: React.FC = () => {
           <h1 className={`text-2xl md:text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Suivi des Marchés</h1>
           <p className={`${theme.textSecondary} font-medium text-sm italic`}>Pilotage opérationnel des jalons de passation.</p>
         </div>
-        {/* CORRECTION Z-INDEX : z-[50] -> z-30 */}
         <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 w-full md:w-auto relative z-30`}>
           <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden lg:flex`}>
             <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
@@ -161,7 +161,6 @@ export const Tracking: React.FC = () => {
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="w-full lg:w-64 flex lg:flex-col gap-2 overflow-x-auto pb-2 shrink-0">
               {JALONS_GROUPS.map((group) => {
-                // Utilisation du Hook pour l'accessibilité de la phase
                 const accessible = isPhaseAccessible(selectedMarket, group.id);
                 return (
                   <button 
@@ -185,11 +184,7 @@ export const Tracking: React.FC = () => {
 
               <div className="space-y-4">
                 {activePhase?.keys.filter(k => isJalonActive(selectedMarket, k)).map((key) => {
-                  
-                  // Utilisation du Hook pour savoir si le champ doit être grisé/désactivé (ex: ANO pour Budget EDC)
                   const isRestricted = !isJalonApplicable(selectedMarket, key);
-                  
-                  // LOGIQUE DE VERROUILLAGE HISTORIQUE
                   const parentProject = projects.find(p => p.id === selectedMarket.projet_id);
                   const currentVal = selectedMarket.dates_realisees[key as keyof typeof selectedMarket.dates_realisees];
                   let isHistorical = false;
@@ -201,7 +196,6 @@ export const Tracking: React.FC = () => {
                     }
                   }
 
-                  // RENDU DES CHAMPS SPÉCIFIQUES
                   if (key === 'infructueux') return (
                     <div key={key} className={`p-8 rounded-3xl ${themeType === 'glass' ? 'bg-white/5 border-white/10' : 'bg-warning/5 border-warning/10'} border space-y-4`}>
                        <div className="flex items-center justify-between">
@@ -284,7 +278,6 @@ export const Tracking: React.FC = () => {
                     </div>
                   );
                   
-                  // JALONS STANDARDS (DATES)
                   return (
                     <div 
                       key={key} 
@@ -325,7 +318,6 @@ export const Tracking: React.FC = () => {
                 })}
               </div>
 
-              {/* NAVIGATION ENTRE LES PHASES */}
               <div className="pt-6 border-t border-white/5 flex justify-between">
                  <button 
                   disabled={JALONS_GROUPS.indexOf(activePhase!) === 0} 
@@ -346,6 +338,9 @@ export const Tracking: React.FC = () => {
           </div>
         </Modal>
       )}
+      
+      {/* AJOUT : Le composant Footer */}
+      <Footer />
     </div>
   );
 };

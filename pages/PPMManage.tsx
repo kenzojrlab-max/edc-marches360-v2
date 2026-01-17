@@ -203,7 +203,7 @@ export const PPMManage: React.FC = () => {
         </div>
       </div>
 
-      <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 relative z-[100]`}>
+      <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 relative z-[10]`}>
         <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden lg:flex`}>
           <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
           <span className="text-[10px] font-black uppercase tracking-widest">Filtres</span>
