@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   Save, Search, CheckCircle2, Clock, Activity, Settings2, ChevronRight,
-  ArrowLeft, ArrowRight, UserCheck, Banknote, AlertTriangle, XCircle, Ban, RefreshCcw, Calendar, FileText, Gavel, Layers
+  ArrowLeft, ArrowRight, UserCheck, Banknote, AlertTriangle, XCircle, Ban, RefreshCcw, Calendar, FileText, Gavel, Layers, History
 } from 'lucide-react';
 import { JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { Modal } from '../components/Modal';
@@ -209,6 +209,20 @@ export const Tracking: React.FC = () => {
                 {getVisibleJalonsOfPhase(activePhase).map((key) => {
                   const isANORestricted = key.includes('ano') && selectedMarket.source_financement === SourceFinancement.BUDGET_EDC;
                   
+                  // LOGIQUE DE VERROUILLAGE HISTORIQUE (CORRECTION)
+                  const parentProject = projects.find(p => p.id === selectedMarket.projet_id);
+                  const currentVal = selectedMarket.dates_realisees[key as keyof typeof selectedMarket.dates_realisees];
+                  let isHistorical = false;
+                  
+                  if (currentVal && parentProject) {
+                    const dateYear = new Date(currentVal).getFullYear();
+                    // Si l'année de la date enregistrée est strictement inférieure à l'exercice du projet actuel
+                    // Cela signifie que c'est une donnée héritée/passée
+                    if (dateYear < parentProject.exercice) {
+                      isHistorical = true;
+                    }
+                  }
+
                   // RENDU DES CHAMPS SPÉCIFIQUES
                   if (key === 'infructueux') return (
                     <div key={key} className={`p-8 rounded-3xl ${themeType === 'glass' ? 'bg-white/5 border-white/10' : 'bg-warning/5 border-warning/10'} border space-y-4`}>
@@ -294,11 +308,39 @@ export const Tracking: React.FC = () => {
                   
                   // JALONS STANDARDS (DATES)
                   return (
-                    <div key={key} className={`p-4 ${theme.card} border-white/5 flex items-center justify-between gap-4 ${isANORestricted ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
-                       <p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none truncate pr-2`}>{JALONS_LABELS[key] || key} {isANORestricted && <span className="text-[8px] italic opacity-60 ml-2">(N/A)</span>}</p>
+                    <div 
+                      key={key} 
+                      className={`p-4 ${theme.card} border-white/5 flex items-center justify-between gap-4 
+                        ${isANORestricted ? 'opacity-30 pointer-events-none grayscale' : ''}
+                        ${isHistorical ? 'opacity-70 bg-black/5' : ''} 
+                      `}
+                    >
+                       <div className="flex flex-col">
+                         <p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none truncate pr-2`}>
+                           {JALONS_LABELS[key] || key} 
+                           {isANORestricted && <span className="text-[8px] italic opacity-60 ml-2">(N/A)</span>}
+                         </p>
+                         {isHistorical && (
+                           <span className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase mt-1">
+                             <History size={10} /> Historique ({new Date(currentVal).getFullYear()})
+                           </span>
+                         )}
+                       </div>
                        <div className="flex items-center gap-3 shrink-0">
-                          <div className="w-36"><BulleInput label="" type="date" value={selectedMarket.dates_realisees[key as keyof typeof selectedMarket.dates_realisees] || ''} onChange={e => updateJalon(selectedMarket.id, 'realisees', key, e.target.value)} disabled={!can('WRITE') || isANORestricted} /></div>
-                          <FileManager existingDocId={selectedMarket.docs?.[key]} onUpload={(id) => updateMarketDoc(selectedMarket.id, key, id)} disabled={!can('WRITE') || isANORestricted} />
+                          <div className="w-36">
+                            <BulleInput 
+                              label="" 
+                              type="date" 
+                              value={currentVal || ''} 
+                              onChange={e => updateJalon(selectedMarket.id, 'realisees', key, e.target.value)} 
+                              disabled={!can('WRITE') || isANORestricted || isHistorical} 
+                            />
+                          </div>
+                          <FileManager 
+                            existingDocId={selectedMarket.docs?.[key]} 
+                            onUpload={(id) => updateMarketDoc(selectedMarket.id, key, id)} 
+                            disabled={!can('WRITE') || isANORestricted || isHistorical} 
+                          />
                        </div>
                     </div>
                   );
