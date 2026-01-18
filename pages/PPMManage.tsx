@@ -124,6 +124,26 @@ export const PPMManage: React.FC = () => {
             dates_prevues[key] = excelDateToISO(row[9 + k]);
           });
 
+          // --- LOGIQUE MISE À JOUR POUR LA SOURCE DE FINANCEMENT ---
+          // On lit la colonne 7 (Source de financement) de l'Excel
+          const rawSource = sanitizeInput(row[7]); 
+          // Par défaut, on prend celle du projet
+          let finalSource = project?.sourceFinancement || SourceFinancement.BUDGET_EDC;
+          
+          if (rawSource && rawSource.trim().length > 0) {
+            // On nettoie la chaine (majuscules, espaces)
+            const normalizedSource = rawSource.toUpperCase().replace(/\s+/g, ' ').trim();
+            
+            // SI la cellule contient "BUDGET EDC" => C'est Budget EDC
+            if (normalizedSource.includes('BUDGET EDC')) {
+               finalSource = SourceFinancement.BUDGET_EDC;
+            } else {
+               // SINON (tout ce qui est différent, ex: BAD, BM, C2D...) => C'est BAILLEUR
+               finalSource = SourceFinancement.BAILLEUR;
+            }
+          }
+          // -----------------------------------------------------
+
           return {
             id: generateUUID(),
             projet_id: importProjectId,
@@ -136,7 +156,7 @@ export const PPMManage: React.FC = () => {
             typePrestation: (sanitizeInput(row[5]) as MarketType) || MarketType.TRAVAUX,
             montant_prevu: parseFloat(String(row[6] || "0").replace(/\s/g, '').replace(',', '.')) || 0,
             imputation_budgetaire: sanitizeInput(row[8] || ""),
-            source_financement: project?.sourceFinancement || SourceFinancement.BUDGET_EDC,
+            source_financement: finalSource, // Utilisation de la source calculée
             dates_prevues: dates_prevues,
             dates_realisees: {},
             comments: {},
