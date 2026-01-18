@@ -36,6 +36,10 @@ export const Layout: React.FC = () => {
     setIsMobileMenuOpen(false);
   }, [location]);
 
+  // ============================================================
+  // CORRECTION : Logique des alertes identique au tableau du Dashboard
+  // On exclut maintenant : Annulé, Infructueux, Résilié, et Signé
+  // ============================================================
   const alerts = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const activeAlerts: Array<{
@@ -48,7 +52,20 @@ export const Layout: React.FC = () => {
     const jalonsKeys = JALONS_GROUPS.flatMap(g => g.keys);
 
     markets.forEach(m => {
-      if (m.is_annule || m.dates_realisees.notification) return;
+      // ============================================================
+      // AVANT (incomplet) :
+      // if (m.is_annule || m.dates_realisees.notification) return;
+      //
+      // APRÈS (correction) :
+      // On exclut les marchés qui sont :
+      // - Annulés (is_annule)
+      // - Infructueux (is_infructueux)
+      // - Résiliés (execution?.is_resilie)
+      // - Déjà signés (dates_realisees.signature_marche)
+      // ============================================================
+      if (m.is_annule || m.is_infructueux || m.execution?.is_resilie || m.dates_realisees.signature_marche) {
+        return; // On ignore ce marché, pas d'alerte
+      }
 
       jalonsKeys.forEach(key => {
         const prevue = m.dates_prevues[key as keyof typeof m.dates_prevues];

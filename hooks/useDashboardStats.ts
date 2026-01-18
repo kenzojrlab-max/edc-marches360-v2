@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { Marche, Projet, StatutGlobal, SourceFinancement } from '../types';
+import { JALONS_GROUPS } from '../constants';
+import { calculateDaysBetween } from '../utils/date';
 
 export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[], projects: Projet[]) => {
   
@@ -137,11 +139,41 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
     return ((lances / filteredMarkets.length) * 100).toFixed(1);
   }, [filteredMarkets]);
 
-  // 9. Liste des alertes (Marchés non signés, non annulés/infructueux)
+  // 9. Liste des alertes (Marchés en retard réel, non annulés/infructueux/résiliés)
   const alertsList = useMemo(() => {
-    return filteredMarkets
-      .filter(m => !m.dates_realisees.signature_marche && !m.is_annule && !m.is_infructueux)
-      .slice(0, 5); // On garde les 5 premiers pour l'affichage
+    const today = new Date().toISOString().split('T')[0];
+    const jalonsKeys = JALONS_GROUPS.flatMap(g => g.keys);
+
+    // On pré-calcule le retard max pour chaque marché pour pouvoir trier
+    const marketsWithDelay = filteredMarkets.map(m => {
+        // A. EXCLUSIONS STRICTES
+        // Si Annulé, Infructueux, Résilié ou déjà Signé => Pas d'alerte critique PPM
+        if (m.is_annule || m.is_infructueux || m.execution?.is_resilie || m.dates_realisees.signature_marche) {
+            return { market: m, maxDelay: 0 };
+        }
+
+        // B. CALCUL DU RETARD (Logique identique à la cloche)
+        let maxDelay = 0;
+        jalonsKeys.forEach(key => {
+            const prevue = m.dates_prevues[key as keyof typeof m.dates_prevues];
+            const realisee = m.dates_realisees[key as keyof typeof m.dates_realisees];
+            
+            // Si une date est prévue, pas encore réalisée, et que la date est passée
+            if (prevue && !realisee && today > prevue) {
+                const delay = calculateDaysBetween(prevue, today);
+                if (delay > maxDelay) maxDelay = delay;
+            }
+        });
+
+        return { market: m, maxDelay };
+    });
+
+    // On ne garde que ceux qui ont un retard > 0 et on trie par urgence
+    return marketsWithDelay
+        .filter(item => item.maxDelay > 0)
+        .sort((a, b) => b.maxDelay - a.maxDelay) // Les plus gros retards en premier
+        .map(item => item.market)
+        .slice(0, 5); // On garde les 5 pires pour l'affichage
   }, [filteredMarkets]);
 
   return {

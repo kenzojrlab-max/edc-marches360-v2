@@ -3,7 +3,7 @@ import { Bot, X, MessageSquare, FileText, Minimize2, Maximize2, Move } from 'luc
 import { useTheme } from '../contexts/ThemeContext';
 import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
-import { sendMessageToGemini } from '../utils/aiAgent';
+import { sendMessageToGemini, getGreetingByTime } from '../utils/aiAgent';
 import { AIChatView } from './ai/AIChatView';
 import { AIReportView } from './ai/AIReportView';
 
@@ -33,8 +33,9 @@ export const FloatingAIWidget: React.FC = () => {
   const hasMoved = useRef(false);
 
   // --- ÉTATS CHAT & VOIX ---
+  // CORRECTION : Message initial avec salutation dynamique
   const [messages, setMessages] = useState<any[]>([
-    { id: '1', role: 'assistant', content: "bonjour je suis Zen'ô l'Assistant Virtuel pour l'application EDC Marchés360" }
+    { id: '1', role: 'assistant', content: `${getGreetingByTime()}, je suis Zen'ô l'Assistant Virtuel pour l'application EDC Marchés360` }
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   
@@ -168,6 +169,15 @@ export const FloatingAIWidget: React.FC = () => {
     recognition.start();
   };
 
+  // CORRECTION : Fonction dédiée pour activer/désactiver la voix
+  const handleToggleVoice = () => {
+    setIsVoiceOn(prev => !prev);
+    // Si on désactive la voix, on arrête toute lecture en cours
+    if (isVoiceOn) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
   // --- GESTIONNAIRES CHAT ---
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -188,7 +198,8 @@ export const FloatingAIWidget: React.FC = () => {
   };
 
   const handleClearChat = () => {
-    const resetMsg = "Conversation réinitialisée. En quoi puis-je vous aider ?";
+    // CORRECTION : Message de réinitialisation avec salutation dynamique
+    const resetMsg = `${getGreetingByTime()}, conversation réinitialisée. En quoi puis-je vous aider ?`;
     setMessages([{ id: Date.now().toString(), role: 'assistant', content: resetMsg, timestamp: new Date() }]);
     speak(resetMsg);
   };
@@ -198,6 +209,7 @@ export const FloatingAIWidget: React.FC = () => {
     setIsReportLoading(true);
     setGeneratedReport('');
     
+    // CORRECTION : Filtrage des marchés selon la configuration
     const filteredMarkets = markets.filter(m => {
       const p = projects.find(proj => proj.id === m.projet_id);
       const matchProject = reportConfig.projectId === 'all' || m.projet_id === reportConfig.projectId;
@@ -205,7 +217,37 @@ export const FloatingAIWidget: React.FC = () => {
       return matchProject && matchYear;
     });
 
-    const prompt = `Génère le rapport annuel ou projet selon les filtres.`;
+    // CORRECTION : Vérification si des marchés existent
+    if (filteredMarkets.length === 0) {
+      setGeneratedReport("❌ Aucun marché ne correspond aux critères sélectionnés. Veuillez modifier vos filtres.");
+      setIsReportLoading(false);
+      return;
+    }
+
+    // CORRECTION : Prompt détaillé avec informations sur les filtres
+    const projectName = reportConfig.projectId === 'all' 
+      ? 'TOUS LES PROJETS' 
+      : projects.find(p => p.id === reportConfig.projectId)?.libelle || 'Projet inconnu';
+    
+    const yearText = reportConfig.year === 'all' ? 'TOUTES LES ANNÉES' : `ANNÉE ${reportConfig.year}`;
+    
+    const reportTypeText = reportConfig.type === 'general' 
+      ? 'SYNTHÈSE GÉNÉRALE' 
+      : reportConfig.type === 'execution' 
+      ? 'SUIVI D\'EXÉCUTION' 
+      : 'RAPPORT DES RISQUES';
+
+    const prompt = `
+      Génère un rapport professionnel de type : ${reportTypeText}
+      
+      PÉRIMÈTRE DU RAPPORT :
+      - Projet : ${projectName}
+      - Exercice : ${yearText}
+      - Nombre de marchés à analyser : ${filteredMarkets.length}
+      
+      CONSIGNE : Analyse en détail TOUS les ${filteredMarkets.length} marchés fournis. 
+      Ne te limite pas, produis un rapport complet et exhaustif.
+    `;
     
     try {
       const response = await sendMessageToGemini(prompt, filteredMarkets, projects, 'REPORT');
@@ -309,7 +351,7 @@ export const FloatingAIWidget: React.FC = () => {
                     onSend={handleSendMessage}
                     onClear={handleClearChat}
                     isVoiceOn={isVoiceOn}
-                    toggleVoice={() => setIsVoiceOn(!isVoiceOn)}
+                    toggleVoice={handleToggleVoice}
                     isListening={isListening}
                     toggleListening={toggleListening}
                   />
