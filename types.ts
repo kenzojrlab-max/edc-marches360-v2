@@ -94,6 +94,7 @@ export interface ExecutionData {
   doc_caution_bancaire_id?: string;
   doc_notif_contrat_id?: string;
   doc_notif_os_id?: string;
+  date_notif_os?: string; // AJOUT : Date de l'OS de démarrage
   doc_os_demarrage_id?: string;
   doc_caution_def_id?: string;
   doc_assurance_id?: string;
@@ -101,6 +102,7 @@ export interface ExecutionData {
   doc_contrat_enreg_id?: string;
   doc_rapport_exec_id?: string;
   doc_pv_provisoire_id?: string;
+  date_pv_provisoire?: string; // AJOUT : Date du PV de réception provisoire
   doc_pv_definitif_id?: string;
   date_pv_definitif?: string;
   decomptes: Decompte[];

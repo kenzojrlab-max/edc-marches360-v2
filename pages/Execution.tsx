@@ -198,21 +198,27 @@ export const Execution: React.FC = () => {
                           <h3 className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} border-l-4 border-success pl-3`}>Livraison & Documents Officiels</h3>
                           <div className="grid grid-cols-1 gap-2">
                              {[
-                               { label: 'Notification du contrat', key: 'doc_notif_contrat_id' },
-                               { label: 'OS de Démarrage', key: 'doc_notif_os_id' },
-                               { label: 'Cautionnement Définitif', key: 'doc_caution_def_id' },
-                               { label: 'Contrat enregistré', key: 'doc_contrat_enreg_id' },
-                               { label: 'Police d\'Assurance', key: 'doc_assurance_id' },
-                               { label: 'Rapport d\'exécution', key: 'doc_rapport_exec_id' },
-                               { label: 'PV de réception provisoire', key: 'doc_pv_provisoire_id' },
-                               { label: 'PV de réception définitive', key: 'doc_pv_definitif_id', isDateable: true }
+                               { label: 'Notification du contrat', key: 'doc_notif_contrat_id', isDateable: false },
+                               { label: 'OS de Démarrage', key: 'doc_notif_os_id', isDateable: true, dateKey: 'date_notif_os' },
+                               { label: 'Cautionnement Définitif', key: 'doc_caution_def_id', isDateable: false },
+                               { label: 'Contrat enregistré', key: 'doc_contrat_enreg_id', isDateable: false },
+                               { label: 'Police d\'Assurance', key: 'doc_assurance_id', isDateable: false },
+                               { label: 'Rapport d\'exécution', key: 'doc_rapport_exec_id', isDateable: false },
+                               { label: 'PV de réception provisoire', key: 'doc_pv_provisoire_id', isDateable: true, dateKey: 'date_pv_provisoire' },
+                               { label: 'PV de réception définitive', key: 'doc_pv_definitif_id', isDateable: true, dateKey: 'date_pv_definitif' }
                              ].map((item, idx) => (
-                               <div key={idx} className={`p-4 ${theme.card} border-white/5 flex items-center justify-between hover:bg-white/5 transition-all gap-4`}>
+                               <div key={idx} className={`p-4 ${theme.card} border-white/5 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-all gap-4`}>
                                   <div className="flex-1 min-w-0">
                                     <span className={`text-[11px] font-black ${theme.textMain} uppercase tracking-tight block truncate`}>{item.label}</span>
-                                    {item.isDateable && (
+                                    {/* CORRECTION : Ajout des champs de date pour OS, PV Provisoire et PV Définitif */}
+                                    {item.isDateable && item.dateKey && (
                                       <div className="mt-2 w-full md:w-44">
-                                        <BulleInput type="date" label="" value={selectedMarket.execution.date_pv_definitif || ''} onChange={e => updateExec(selectedMarket.id, {date_pv_definitif: e.target.value})} />
+                                        <BulleInput 
+                                          type="date" 
+                                          label="" 
+                                          value={(selectedMarket.execution as any)[item.dateKey] || ''} 
+                                          onChange={e => updateExec(selectedMarket.id, {[item.dateKey!]: e.target.value})} 
+                                        />
                                       </div>
                                     )}
                                   </div>

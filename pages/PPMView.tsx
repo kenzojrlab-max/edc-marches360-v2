@@ -8,7 +8,7 @@ import {
   Search, ExternalLink, X, FileBox, FileCheck, Activity, Lock, 
   FileText, TrendingUp, AlertTriangle, 
   CheckCircle2, UserCheck, Banknote, Gavel, Ban, 
-  Clock, Receipt, ShieldCheck, Info as InfoIcon, MessageSquare, XCircle
+  Clock, Receipt, ShieldCheck, Info as InfoIcon, MessageSquare, XCircle, Calendar
 } from 'lucide-react';
 import { JALONS_PPM_CONFIG, JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { formatDate, getLateStatus, calculateDaysBetween } from '../utils/date';
@@ -377,14 +377,50 @@ export const PPMView: React.FC = () => {
                                       </div>
                                     );
 
+                                    {/* CORRECTION 2 : Pour saisine_prev, afficher UNIQUEMENT la date, PAS le document */}
+                                    if (key === 'saisine_prev') return (
+                                      <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex flex-col gap-3 hover:bg-white/5 transition-all group`}>
+                                         <div className="flex items-center justify-between">
+                                            <div className="flex flex-col gap-0.5">
+                                               <p className={`text-[10px] font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
+                                               {/* Afficher la date réalisée si elle existe */}
+                                               {date ? (
+                                                 <span className="text-[9px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
+                                                   <Calendar size={12}/> Réalisé le {formatDate(date)}
+                                                 </span>
+                                               ) : (
+                                                 <span className="text-[9px] uppercase tracking-tighter flex items-center gap-1.5 text-slate-500 italic">
+                                                   <Clock size={12}/> En attente
+                                                 </span>
+                                               )}
+                                            </div>
+                                            {/* PAS de FileManager ici - on n'affiche pas le document */}
+                                         </div>
+                                         {comment && (
+                                           <div className="flex items-start gap-2 bg-black/10 p-3 rounded-xl border border-white/5">
+                                              <MessageSquare size={12} className="text-blue-500 mt-0.5 shrink-0" />
+                                              <p className="text-[10px] font-medium text-slate-300 italic">{comment}</p>
+                                           </div>
+                                         )}
+                                      </div>
+                                    );
+
+                                    {/* CORRECTION 1 : Affichage standard avec DATE RÉALISÉE visible */}
                                     return (
                                       <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex flex-col gap-3 hover:bg-white/5 transition-all group`}>
                                          <div className="flex items-center justify-between">
                                             <div className="flex flex-col gap-0.5">
                                                <p className={`text-[10px] font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
-                                               <span className={`text-[9px] uppercase tracking-tighter flex items-center gap-1.5 ${status.color}`}>
-                                                 {status.icon} {status.label}
-                                               </span>
+                                               {/* CORRECTION : Afficher la date réalisée clairement */}
+                                               {date ? (
+                                                 <span className="text-[9px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
+                                                   <Calendar size={12}/> Réalisé le {formatDate(date)}
+                                                 </span>
+                                               ) : (
+                                                 <span className={`text-[9px] uppercase tracking-tighter flex items-center gap-1.5 ${status.color}`}>
+                                                   {status.icon} {status.label}
+                                                 </span>
+                                               )}
                                             </div>
                                             <FileManager existingDocId={docId} onUpload={() => {}} disabled />
                                          </div>
@@ -404,7 +440,7 @@ export const PPMView: React.FC = () => {
                    </div>
                 </div>
 
-                {/* VOLET DROIT - IDENTIQUE AU PRÉCÉDENT, JUSTE COPIER LE CONTENU */}
+                {/* VOLET DROIT - PHASE EXÉCUTION */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
                       <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] text-green-500`}>Phase Exécution (Financier & Contractuel)</h3>
@@ -428,7 +464,7 @@ export const PPMView: React.FC = () => {
                         </div>
                       ) : (
                         <div className="space-y-10 animate-in slide-in-from-right-4 pb-20">
-                           {/* DÉTAILS DU CONTRAT - MÊME CODE QUE PRÉCÉDEMMENT */}
+                           {/* DÉTAILS DU CONTRAT */}
                            <section className={`p-8 ${theme.card} border-white/5 space-y-6 relative`}>
                               <div className="flex items-center gap-3 text-green-500"><FileText size={20}/><h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Synthèse Contractuelle</h4></div>
                               <div className="grid grid-cols-2 gap-8">
@@ -505,26 +541,35 @@ export const PPMView: React.FC = () => {
                              </section>
                            )}
 
-                           {/* DOCS OFFICIELS */}
+                           {/* CORRECTION 3 & 4 : DOCS OFFICIELS AVEC DATES D'EXÉCUTION ET RAPPORT D'EXÉCUTION */}
                            <section className="space-y-4">
                               <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><ShieldCheck size={14}/> Garanties & Documents Officiels</h4>
                               <div className="grid grid-cols-1 gap-2">
                                  {[
-                                   { label: 'Notification du contrat', key: 'doc_notif_contrat_id' },
-                                   { label: 'OS de Démarrage', key: 'doc_notif_os_id' },
-                                   { label: 'Cautionnement Définitif', key: 'doc_caution_def_id' },
-                                   { label: 'Contrat enregistré', key: 'doc_contrat_enreg_id' },
-                                   { label: 'Police d\'Assurance', key: 'doc_assurance_id' },
-                                   { label: 'PV Réception Provisoire', key: 'doc_pv_provisoire_id' },
-                                   { label: 'PV Réception Définitive', key: 'doc_pv_definitif_id' }
+                                   { label: 'Notification du contrat', key: 'doc_notif_contrat_id', dateKey: null },
+                                   { label: 'OS de Démarrage', key: 'doc_notif_os_id', dateKey: 'date_notif_os' },
+                                   { label: 'Cautionnement Définitif', key: 'doc_caution_def_id', dateKey: null },
+                                   { label: 'Contrat enregistré', key: 'doc_contrat_enreg_id', dateKey: null },
+                                   { label: 'Police d\'Assurance', key: 'doc_assurance_id', dateKey: null },
+                                   { label: 'Rapport d\'exécution', key: 'doc_rapport_exec_id', dateKey: null }, // CORRECTION 4 : Ajout du rapport d'exécution
+                                   { label: 'PV Réception Provisoire', key: 'doc_pv_provisoire_id', dateKey: 'date_pv_provisoire' },
+                                   { label: 'PV Réception Définitive', key: 'doc_pv_definitif_id', dateKey: 'date_pv_definitif' }
                                  ].map(doc => {
                                    const docId = (selectedMarket.execution as any)[doc.key];
-                                   const status = getStepStatus(undefined, docId);
+                                   const dateValue = doc.dateKey ? (selectedMarket.execution as any)[doc.dateKey] : null;
+                                   const status = getStepStatus(dateValue, docId);
                                    return (
                                      <div key={doc.key} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
                                         <div className="flex flex-col">
                                            <span className={`text-[10px] font-black ${theme.textMain} opacity-80 uppercase`}>{doc.label}</span>
-                                           <span className={`text-[8px] uppercase tracking-tighter ${status.color}`}>{status.label}</span>
+                                           {/* CORRECTION 3 : Afficher la date si elle existe */}
+                                           {dateValue ? (
+                                             <span className="text-[9px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
+                                               <Calendar size={10}/> {formatDate(dateValue)}
+                                             </span>
+                                           ) : (
+                                             <span className={`text-[8px] uppercase tracking-tighter ${status.color}`}>{status.label}</span>
+                                           )}
                                         </div>
                                         <FileManager existingDocId={docId} onUpload={() => {}} disabled />
                                      </div>
