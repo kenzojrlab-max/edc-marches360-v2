@@ -102,6 +102,20 @@ service cloud.firestore {
       allow create: if isActif();
       allow update, delete: if false;
     }
+
+    // --- AJOUTS POUR CORRIGER VOS ERREURS ---
+
+    // 8. Collection CONFIG (Pour ConfigContext)
+    match /config/{configId} {
+      allow read: if isActif();
+      allow write: if isAdmin();
+    }
+
+    // 9. Collection LIBRARY (Pour LibraryContext)
+    match /library/{libId} {
+      allow read: if isActif();
+      allow write: if isAdmin();
+    }
     
     // Bloquer tout accès aux collections non définies par sécurité
     match /{document=**} {
