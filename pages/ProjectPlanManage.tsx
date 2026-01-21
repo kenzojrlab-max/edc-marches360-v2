@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { 
+import {
   ChevronLeft, Trash2, Plus, PencilLine, Search, Activity, ArrowUpRight,
   Save, X, FileText, CreditCard, FileCheck, Download, Layers, Upload, MousePointer2, MessageSquare
 } from 'lucide-react';
@@ -15,6 +15,79 @@ import { FileManager } from '../components/FileManager';
 import { Marche, StatutGlobal, AOType, MarketType, MarcheDates, SourceFinancement, Projet } from '../types';
 import { FONCTIONS, JALONS_PPM_KEYS, JALONS_LABELS, JALONS_PPM_CONFIG } from '../constants';
 import { formatDate } from '../utils/date';
+import { Table } from 'antd';
+import type { TableColumnsType } from 'antd';
+import { createStyles } from 'antd-style';
+
+// Styles personnalisés pour le tableau Ant Design
+const useTableStyles = createStyles(({ css }) => ({
+  customTable: css`
+    .ant-table {
+      background: transparent !important;
+    }
+    .ant-table-container {
+      .ant-table-body,
+      .ant-table-content {
+        scrollbar-width: thin;
+        scrollbar-color: #3b82f6 #FDFEFE;
+      }
+      .ant-table-body::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .ant-table-body::-webkit-scrollbar-track {
+        background: #FDFEFE;
+      }
+      .ant-table-body::-webkit-scrollbar-thumb {
+        background: #3b82f6;
+        border-radius: 4px;
+      }
+    }
+    .ant-table-thead > tr > th {
+      background: #FDFEFE !important;
+      color: #1a2333 !important;
+      border-bottom: 2px solid #e5e7eb !important;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      padding: 16px 12px !important;
+    }
+    .ant-table-tbody > tr > td {
+      background: #FDFEFE !important;
+      color: #1a2333 !important;
+      border-bottom: 1px solid #e5e7eb !important;
+      padding: 16px 12px !important;
+    }
+    .ant-table-tbody > tr:hover > td {
+      background: #f3f4f6 !important;
+    }
+    /* Cellules fixées à gauche - header */
+    .ant-table-thead .ant-table-cell-fix-left {
+      background: #FDFEFE !important;
+      z-index: 4 !important;
+    }
+    /* Cellules fixées à droite - header */
+    .ant-table-thead .ant-table-cell-fix-right {
+      background: #FDFEFE !important;
+      z-index: 4 !important;
+    }
+    /* Cellules fixées à gauche - body */
+    .ant-table-tbody .ant-table-cell-fix-left {
+      background: #FDFEFE !important;
+      z-index: 2 !important;
+    }
+    /* Cellules fixées à droite - body */
+    .ant-table-tbody .ant-table-cell-fix-right {
+      background: #FDFEFE !important;
+      z-index: 2 !important;
+    }
+    /* Hover sur les cellules fixées */
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-right {
+      background: #f3f4f6 !important;
+    }
+  `,
+}));
 
 export const ProjectPlanManage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -39,10 +112,12 @@ export const ProjectPlanManage: React.FC = () => {
   const project = projects.find(p => p.id === projectId);
   const projectMarkets = markets.filter(m => m.projet_id === projectId);
   
-  const filteredMarkets = projectMarkets.filter(m => 
+  const filteredMarkets = projectMarkets.filter(m =>
     (m.numDossier || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     (m.objet || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const { styles } = useTableStyles();
 
   if (!project) return <div className="p-20 text-center font-black">Projet introuvable</div>;
 
@@ -131,6 +206,85 @@ export const ProjectPlanManage: React.FC = () => {
     }));
   };
 
+  // Configuration des colonnes pour Ant Design Table
+  const tableColumns: TableColumnsType<Marche> = [
+    {
+      title: 'Dossier & Objet',
+      dataIndex: 'numDossier',
+      key: 'dossier',
+      fixed: 'left',
+      width: 350,
+      render: (_, m) => (
+        <div className="flex flex-col">
+          <span className={`text-[10px] font-black ${theme.textAccent} uppercase`}>{m.numDossier}</span>
+          <span className={`text-xs font-bold ${theme.textMain} uppercase leading-tight line-clamp-2`}>{m.objet}</span>
+        </div>
+      ),
+    },
+    {
+      title: 'Budget Estimé',
+      dataIndex: 'montant_prevu',
+      key: 'budget',
+      width: 180,
+      align: 'right',
+      render: (value) => (
+        <span className={`text-sm font-black ${theme.textMain}`}>{(value || 0).toLocaleString()}</span>
+      ),
+    },
+    // Colonnes des jalons (groupées avec Prévue/Réalisée)
+    ...JALONS_PPM_CONFIG.map(jalon => ({
+      title: jalon.label,
+      key: jalon.key,
+      children: [
+        {
+          title: 'Prévue',
+          dataIndex: ['dates_prevues', jalon.key],
+          key: `${jalon.key}_prevue`,
+          width: 100,
+          align: 'center' as const,
+          render: (_: any, m: Marche) => (
+            <span className={`text-[10px] font-black ${theme.textAccent}`}>
+              {formatDate(m.dates_prevues[jalon.key as keyof typeof m.dates_prevues] || null)}
+            </span>
+          ),
+        },
+        {
+          title: 'Réalisée',
+          dataIndex: ['dates_realisees', jalon.key],
+          key: `${jalon.key}_realisee`,
+          width: 100,
+          align: 'center' as const,
+          render: (_: any, m: Marche) => (
+            <span className={`text-[10px] font-black ${theme.textSecondary}`}>
+              {formatDate(m.dates_realisees[jalon.key as keyof typeof m.dates_realisees] || null)}
+            </span>
+          ),
+        },
+      ],
+    })),
+    // Colonne Actions
+    {
+      title: 'Actions',
+      key: 'actions',
+      fixed: 'right',
+      width: 120,
+      align: 'center',
+      render: (_: any, m: Marche) => (
+        <div className="flex items-center justify-center gap-2">
+          <button onClick={() => openModal(m)} className={`p-2.5 ${theme.buttonSecondary} ${theme.buttonShape} transition-all`}>
+            <PencilLine size={16} />
+          </button>
+          <button onClick={() => removeMarket(m.id)} className={`p-2.5 ${theme.buttonDanger} ${theme.buttonShape} transition-all`}>
+            <Trash2 size={16} />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  // Données du tableau avec key pour Ant Design
+  const tableData = filteredMarkets.map(m => ({ ...m, key: m.id }));
+
   return (
     <div className="space-y-10 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-40 relative">
       {/* HEADER */}
@@ -178,61 +332,19 @@ export const ProjectPlanManage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tableau Structurel - SCROLLBAR FIX (overflow-hidden) */}
+      {/* Tableau Structurel */}
       <div className={`${theme.card} flex flex-col relative overflow-hidden`}>
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[3200px]">
-            <thead>
-              <tr className={`${themeType === 'glass' ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                {/* Z-INDEX CORRIGÉS : 50 pour header sticky */}
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} sticky left-0 ${themeType === 'glass' ? 'bg-slate-900' : 'bg-slate-50'} z-[50] w-[350px]`}>Dossier & Objet</th>
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} w-[180px] text-right`}>Budget Estimé</th>
-                {JALONS_PPM_CONFIG.map(jalon => (
-                  <th key={jalon.key} colSpan={2} className={`p-4 border-b border-r border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} text-center`}>{jalon.label}</th>
-                ))}
-                <th rowSpan={2} className={`p-8 border-b border-white/10 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky right-0 ${themeType === 'glass' ? 'bg-slate-900' : 'bg-slate-50'} z-[50]`}>Actions</th>
-              </tr>
-              <tr className={`${themeType === 'glass' ? 'bg-slate-900/80' : 'bg-slate-50/80'}`}>
-                {JALONS_PPM_CONFIG.map(jalon => (
-                  <React.Fragment key={`${jalon.key}-sub`}>
-                    <th className={`p-3 border-b border-r border-white/10 text-[9px] font-black ${theme.textAccent} text-center uppercase`}>Prévue</th>
-                    <th className={`p-3 border-b border-r border-white/10 text-[9px] font-black ${theme.textSecondary} text-center uppercase`}>Réalisée</th>
-                  </React.Fragment>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredMarkets.length > 0 ? filteredMarkets.map((m) => (
-                <tr key={m.id} className="group hover:bg-white/5 transition-all">
-                  {/* Z-INDEX CORRIGÉS : 40 pour body sticky */}
-                  <td className={`p-6 border-r border-white/10 sticky left-0 z-[40] ${themeType === 'glass' ? 'bg-[#1a2333]' : 'bg-white'} transition-colors`}>
-                    <div className="flex flex-col">
-                      <span className={`text-[10px] font-black ${theme.textAccent} uppercase`}>{m.numDossier}</span>
-                      <span className={`text-xs font-bold ${theme.textMain} uppercase leading-tight line-clamp-2`}>{m.objet}</span>
-                    </div>
-                  </td>
-                  <td className={`p-6 border-r border-white/10 text-sm font-black ${theme.textMain} text-right`}>{m.montant_prevu.toLocaleString()}</td>
-                  {JALONS_PPM_CONFIG.map(jalon => (
-                    <React.Fragment key={`${m.id}-${jalon.key}`}>
-                      <td className={`p-3 border-r border-white/10 text-center text-[10px] font-black ${theme.textAccent}`}>
-                        {formatDate(m.dates_prevues[jalon.key as keyof typeof m.dates_prevues] || null)}
-                      </td>
-                      <td className={`p-3 border-r border-white/10 text-center text-[10px] font-black ${theme.textSecondary}`}>
-                        {formatDate(m.dates_realisees[jalon.key as keyof typeof m.dates_realisees] || null)}
-                      </td>
-                    </React.Fragment>
-                  ))}
-                  <td className={`p-6 text-center sticky right-0 z-[40] ${themeType === 'glass' ? 'bg-[#1a2333]' : 'bg-white'}`}>
-                    <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => openModal(m)} className={`p-2.5 ${theme.buttonSecondary} ${theme.buttonShape} transition-all`}><PencilLine size={16} /></button>
-                      <button onClick={() => removeMarket(m.id)} className={`p-2.5 ${theme.buttonDanger} ${theme.buttonShape} transition-all`}><Trash2 size={16} /></button>
-                    </div>
-                  </td>
-                </tr>
-              )) : (<tr><td colSpan={100} className="p-40 text-center text-slate-400 font-black uppercase italic">Aucun marché trouvé</td></tr>)}
-            </tbody>
-          </table>
-        </div>
+        <Table<Marche>
+          className={styles.customTable}
+          columns={tableColumns}
+          dataSource={tableData}
+          scroll={{ x: 'max-content', y: 55 * 10 }}
+          pagination={false}
+          bordered={false}
+          size="middle"
+          rowClassName="hover:bg-white/5 transition-all"
+          locale={{ emptyText: <div className="p-20 text-center text-slate-400 font-black uppercase italic">Aucun marché trouvé</div> }}
+        />
       </div>
 
       {/* MODAL D'ÉDITION */}

@@ -77,7 +77,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Seuls les admins exécutent ce code
     const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
-      const usersData = snapshot.docs.map(doc => doc.data() as User);
+      const usersData = snapshot.docs.map(docSnap => ({
+        ...docSnap.data(),
+        id: docSnap.id // CORRECTION: Inclure l'ID du document Firestore
+      } as User));
       setUsers(usersData);
     });
     return () => unsubscribe();

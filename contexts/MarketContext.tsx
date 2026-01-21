@@ -83,7 +83,10 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     const unsubscribe = onSnapshot(collection(db, "deleted_markets"), (snapshot) => {
-      const deletedData = snapshot.docs.map(doc => doc.data() as Marche);
+      const deletedData = snapshot.docs.map(docSnap => ({
+        ...docSnap.data(),
+        id: docSnap.id // S'assurer que l'ID est bien présent
+      } as Marche));
       setDeletedMarkets(deletedData);
     }, (error) => {
       console.warn("Accès aux marchés supprimés refusé:", error.code);

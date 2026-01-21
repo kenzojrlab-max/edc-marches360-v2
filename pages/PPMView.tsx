@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useMarketLogic } from '../hooks/useMarketLogic'; // IMPORT DU HOOK
-import { 
-  Search, ExternalLink, X, FileBox, FileCheck, Activity, Lock, 
-  FileText, TrendingUp, AlertTriangle, 
-  CheckCircle2, UserCheck, Banknote, Gavel, Ban, 
+import {
+  Search, ExternalLink, X, FileBox, FileCheck, Activity, Lock,
+  FileText, TrendingUp, AlertTriangle,
+  CheckCircle2, UserCheck, Banknote, Gavel, Ban,
   Clock, Receipt, ShieldCheck, Info as InfoIcon, MessageSquare, XCircle, Calendar
 } from 'lucide-react';
 import { JALONS_PPM_CONFIG, JALONS_LABELS, JALONS_GROUPS } from '../constants';
@@ -17,6 +17,92 @@ import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { FileManager } from '../components/FileManager';
 import { Marche, SourceFinancement } from '../types';
 import { storage } from '../utils/storage';
+import { Table } from 'antd';
+import type { TableColumnsType } from 'antd';
+import { createStyles } from 'antd-style';
+
+// Styles personnalisés pour le tableau Ant Design
+const useTableStyles = createStyles(({ css }) => ({
+  customTable: css`
+    .ant-table {
+      background: transparent !important;
+    }
+    .ant-table-container {
+      .ant-table-body,
+      .ant-table-content {
+        scrollbar-width: thin;
+        scrollbar-color: #3b82f6 #FDFEFE;
+      }
+      .ant-table-body::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .ant-table-body::-webkit-scrollbar-track {
+        background: #FDFEFE;
+      }
+      .ant-table-body::-webkit-scrollbar-thumb {
+        background: #3b82f6;
+        border-radius: 4px;
+      }
+    }
+    .ant-table-thead > tr > th {
+      background: #FDFEFE !important;
+      color: #1a2333 !important;
+      border-bottom: 2px solid #e5e7eb !important;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      padding: 16px 12px !important;
+    }
+    .ant-table-tbody > tr > td {
+      background: #FDFEFE !important;
+      color: #1a2333 !important;
+      border-bottom: 1px solid #e5e7eb !important;
+      padding: 16px 12px !important;
+    }
+    .ant-table-tbody > tr:hover > td {
+      background: #f3f4f6 !important;
+    }
+    /* Cellules fixées à gauche - header */
+    .ant-table-thead .ant-table-cell-fix-left {
+      background: #FDFEFE !important;
+      z-index: 4 !important;
+    }
+    /* Cellules fixées à droite - header */
+    .ant-table-thead .ant-table-cell-fix-right {
+      background: #FDFEFE !important;
+      z-index: 4 !important;
+    }
+    /* Cellules fixées à gauche - body */
+    .ant-table-tbody .ant-table-cell-fix-left {
+      background: #FDFEFE !important;
+      z-index: 2 !important;
+    }
+    /* Cellules fixées à droite - body */
+    .ant-table-tbody .ant-table-cell-fix-right {
+      background: #FDFEFE !important;
+      z-index: 2 !important;
+    }
+    /* Hover sur les cellules fixées */
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-right {
+      background: #f3f4f6 !important;
+    }
+    /* Highlight pour les alertes */
+    .ant-table-tbody > tr.highlighted-row > td {
+      background: #fef3c7 !important;
+      animation: pulse-highlight 2s ease-in-out;
+    }
+    .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-left,
+    .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-right {
+      background: #fef3c7 !important;
+    }
+    @keyframes pulse-highlight {
+      0%, 100% { background: #fef3c7; }
+      50% { background: #fde68a; }
+    }
+  `,
+}));
 
 const CircularProgress = ({ percent, color, icon: Icon }: { percent: number, color: string, icon: any }) => {
   const { theme } = useTheme();
@@ -53,8 +139,7 @@ export const PPMView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const topScrollRef = useRef<HTMLDivElement>(null);
-  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const { styles } = useTableStyles();
 
   useEffect(() => {
     const projectFilter = searchParams.get('projectId');
@@ -108,9 +193,6 @@ export const PPMView: React.FC = () => {
     link.click();
   };
 
-  const handleTopScroll = () => { if (topScrollRef.current && tableContainerRef.current) tableContainerRef.current.scrollLeft = topScrollRef.current.scrollLeft; };
-  const handleTableScroll = () => { if (tableContainerRef.current && topScrollRef.current) topScrollRef.current.scrollLeft = tableContainerRef.current.scrollLeft; };
-
   const filteredMarkets = useMemo(() => {
     return markets.filter(m => {
       const parentProject = projects.find(p => p.id === m.projet_id);
@@ -121,13 +203,130 @@ export const PPMView: React.FC = () => {
     });
   }, [markets, projects, selectedProjectId, selectedYear, searchTerm]);
 
-  const getSolidBg = () => {
-    if (themeType === 'glass') return 'bg-[#1a2333]'; 
-    if (themeType === 'cyber') return 'bg-[#050b1a]';
-    if (themeType === 'retro') return 'bg-white';
-    if (themeType === 'clay') return 'bg-[#f0f2f5]';
-    return 'bg-white';
-  };
+  // Configuration des colonnes pour Ant Design Table
+  const tableColumns: TableColumnsType<Marche> = useMemo(() => {
+    // Colonnes de base
+    const baseColumns: TableColumnsType<Marche> = [
+      {
+        title: 'Dossier & Objet',
+        dataIndex: 'numDossier',
+        key: 'dossier',
+        fixed: 'left',
+        width: 420,
+        render: (_, m) => {
+          const isResilie = !!m.execution.is_resilie;
+          const isClosed = !!m.execution.doc_pv_definitif_id;
+          return (
+            <div className="flex flex-col gap-2">
+              <span className={`text-[10px] font-black px-3 py-1 ${theme.buttonShape} w-fit ${m.is_annule ? 'bg-danger text-white' : m.is_infructueux ? 'bg-warning text-black' : 'bg-primary text-white'}`}>{m.numDossier}</span>
+              <span className={`text-xs font-black ${theme.textMain} line-clamp-2 uppercase whitespace-normal leading-snug`}>{m.objet}</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {isResilie && <span className="px-2 py-0.5 bg-red-600 text-white text-[8px] font-black rounded uppercase tracking-tighter shadow-sm animate-pulse">Marché Résilié</span>}
+                {m.is_annule && <span className="px-2 py-0.5 bg-black text-white text-[8px] font-black rounded uppercase tracking-tighter">Dossier Annulé</span>}
+                {m.is_infructueux && <span className="px-2 py-0.5 bg-warning text-black text-[8px] font-black rounded uppercase tracking-tighter">Dossier Infructueux</span>}
+                {isClosed && !isResilie && <span className="px-2 py-0.5 bg-green-600 text-white text-[8px] font-black rounded uppercase tracking-tighter">Marché exécuté & clôturé</span>}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        title: 'Budget Estimé',
+        dataIndex: 'montant_prevu',
+        key: 'budget',
+        width: 180,
+        align: 'right',
+        render: (value) => (
+          <span className={`text-sm font-black ${theme.textMain}`}>
+            {(value || 0).toLocaleString()} <span className="text-[9px] opacity-30">FCFA</span>
+          </span>
+        ),
+      },
+    ];
+
+    // Colonnes des jalons (groupées avec Prévue/Réalisée)
+    const jalonColumns: TableColumnsType<Marche> = JALONS_PPM_CONFIG.map(jalon => ({
+      title: jalon.label,
+      key: jalon.key,
+      children: [
+        {
+          title: 'Prévue',
+          dataIndex: ['dates_prevues', jalon.key],
+          key: `${jalon.key}_prevue`,
+          width: 100,
+          align: 'center' as const,
+          render: (_: any, m: Marche) => {
+            if (!isJalonApplicable(m, jalon.key)) return <span className={`text-[9px] font-black ${theme.textSecondary} opacity-20 italic`}>N/A</span>;
+            const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
+            return <span className={`text-[10px] font-bold ${theme.textSecondary} opacity-60`}>{formatDate(p || null)}</span>;
+          },
+        },
+        {
+          title: 'Réalisée',
+          dataIndex: ['dates_realisees', jalon.key],
+          key: `${jalon.key}_realisee`,
+          width: 100,
+          align: 'center' as const,
+          render: (_: any, m: Marche) => {
+            if (!isJalonApplicable(m, jalon.key)) return null;
+            const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
+            const r = m.dates_realisees[jalon.key as keyof typeof m.dates_realisees];
+            const comment = m.comments?.[jalon.key];
+            const s = getLateStatus(p || null, r || null);
+            return (
+              <div
+                title={comment ? `OBSERVATION : ${comment}` : undefined}
+                className={`text-[10px] font-black ${s === 'late' ? 'text-red-500' : s === 'done' ? 'text-green-500' : theme.textSecondary}`}
+              >
+                <div className="flex items-center justify-center gap-1.5">
+                  {formatDate(r || null)}
+                  {comment && <InfoIcon size={12} className="text-blue-500 cursor-help" />}
+                </div>
+              </div>
+            );
+          },
+        },
+      ],
+    }));
+
+    // Colonnes finales
+    const endColumns: TableColumnsType<Marche> = [
+      {
+        title: 'Synthèse Délais',
+        key: 'synthese',
+        width: 200,
+        render: (_, m) => {
+          const delaiPrevu = (m.dates_prevues.saisine_cipm && m.dates_prevues.signature_marche) ? calculateDaysBetween(m.dates_prevues.saisine_cipm, m.dates_prevues.signature_marche) : null;
+          const delaiRealise = (m.dates_realisees.saisine_cipm && m.dates_realisees.signature_marche) ? calculateDaysBetween(m.dates_realisees.saisine_cipm, m.dates_realisees.signature_marche) : null;
+          return (
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter"><span className={theme.textSecondary}>Prévu :</span><span className={theme.textMain}>{delaiPrevu !== null ? `${delaiPrevu} j` : '-'}</span></div>
+              <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter"><span className={theme.textSecondary}>Réalisé :</span><span className={delaiRealise !== null ? theme.textAccent : theme.textSecondary}>{delaiRealise !== null ? `${delaiRealise} j` : '-'}</span></div>
+            </div>
+          );
+        },
+      },
+      {
+        title: 'Détails',
+        key: 'details',
+        fixed: 'right',
+        width: 100,
+        align: 'center',
+        render: (_, m) => (
+          <button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape}`}>
+            <ExternalLink size={18} />
+          </button>
+        ),
+      },
+    ];
+
+    return [...baseColumns, ...jalonColumns, ...endColumns];
+  }, [theme, isJalonApplicable, setDetailMarketId]);
+
+  // Données du tableau avec key pour Ant Design
+  const tableData = useMemo(() =>
+    filteredMarkets.map(m => ({ ...m, key: m.id })),
+  [filteredMarkets]);
 
   const calculateProgress = (m: Marche) => {
     const allBaseKeys = JALONS_GROUPS.flatMap(g => g.keys);
@@ -194,95 +393,25 @@ export const PPMView: React.FC = () => {
 
       {/* TABLEAU */}
       <div className={`${theme.card} flex flex-col relative overflow-hidden z-10`}>
-        <div ref={topScrollRef} onScroll={handleTopScroll} className="overflow-x-auto overflow-y-hidden custom-scrollbar border-b border-white/5 sticky top-0 z-[70] h-4">
-          <div className="h-[1px] min-w-[3600px]"></div>
-        </div>
-        <div ref={tableContainerRef} onScroll={handleTableScroll} className="overflow-auto custom-scrollbar max-h-[75vh]">
-          <table className="w-full text-left border-collapse min-w-[3600px] table-fixed">
-            <thead>
-              <tr className="z-30">
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} sticky left-0 top-0 ${getSolidBg()} z-[60] w-[420px] align-middle text-center`}>Dossier & Objet</th>
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-[50] w-[180px] align-middle`}>Budget Estimé</th>
-                {JALONS_PPM_CONFIG.map(jalon => (
-                  <th key={jalon.key} colSpan={2} className={`p-6 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center ${getSolidBg()} sticky top-0 z-[50] align-middle`}>{jalon.label}</th>
-                ))}
-                <th rowSpan={2} className={`p-8 border-b border-r border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky top-0 ${getSolidBg()} z-[50] w-[200px] align-middle`}>Synthèse Délais</th>
-                <th rowSpan={2} className={`p-8 border-b border-white/5 text-[10px] font-black uppercase ${theme.textSecondary} text-center sticky right-0 top-0 ${getSolidBg()} z-[60] w-[100px] align-middle`}>Détails</th>
-              </tr>
-              <tr className="z-30">
-                {JALONS_PPM_CONFIG.map(jalon => (
-                  <React.Fragment key={`${jalon.key}-sub`}>
-                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textSecondary} text-center uppercase sticky top-[82px] ${getSolidBg()} z-[50]`}>Prévue</th>
-                    <th className={`p-4 border-b border-r border-white/5 text-[9px] font-black ${theme.textAccent} text-center uppercase sticky top-[82px] ${getSolidBg()} z-[50]`}>Réalisée</th>
-                  </React.Fragment>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredMarkets.length > 0 ? filteredMarkets.map((m) => {
-                const isAborted = m.is_annule || m.is_infructueux;
-                const isHighlighted = scrolledId === m.id;
-                const isClosed = !!m.execution.doc_pv_definitif_id;
-                const isResilie = !!m.execution.is_resilie;
-
-                const delaiPrevu = (m.dates_prevues.saisine_cipm && m.dates_prevues.signature_marche) ? calculateDaysBetween(m.dates_prevues.saisine_cipm, m.dates_prevues.signature_marche) : null;
-                const delaiRealise = (m.dates_realisees.saisine_cipm && m.dates_realisees.signature_marche) ? calculateDaysBetween(m.dates_realisees.saisine_cipm, m.dates_realisees.signature_marche) : null;
-                
-                return (
-                  <tr 
-                    key={m.id} 
-                    id={`market-row-${m.id}`} 
-                    onDoubleClick={() => setDetailMarketId(m.id)} 
-                    className={`group transition-all cursor-pointer hover:bg-white/10 ${isAborted ? 'opacity-80 grayscale-[0.5]' : ''} ${isHighlighted ? 'bg-primary/10 ring-4 ring-primary ring-inset animate-pulse' : ''}`}
-                  >
-                    <td className={`p-8 border-r border-white/5 sticky left-0 z-[40] ${getSolidBg()}`}>
-                      <div className="flex flex-col gap-2">
-                        <span className={`text-[10px] font-black px-3 py-1 ${theme.buttonShape} w-fit ${m.is_annule ? 'bg-danger text-white' : m.is_infructueux ? 'bg-warning text-black' : 'bg-primary text-white'}`}>{m.numDossier}</span>
-                        <span className={`text-xs font-black ${theme.textMain} line-clamp-2 uppercase whitespace-normal leading-snug`}>{m.objet}</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {isResilie && <span className="px-2 py-0.5 bg-red-600 text-white text-[8px] font-black rounded uppercase tracking-tighter shadow-sm animate-pulse">Marché Résilié</span>}
-                          {m.is_annule && <span className="px-2 py-0.5 bg-black text-white text-[8px] font-black rounded uppercase tracking-tighter">Dossier Annulé</span>}
-                          {m.is_infructueux && <span className="px-2 py-0.5 bg-warning text-black text-[8px] font-black rounded uppercase tracking-tighter">Dossier Infructueux</span>}
-                          {isClosed && !isResilie && <span className="px-2 py-0.5 bg-green-600 text-white text-[8px] font-black rounded uppercase tracking-tighter">Marché exécuté & clôturé</span>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className={`p-8 border-r border-white/5 text-sm font-black ${theme.textMain} text-right`}>{(m.montant_prevu || 0).toLocaleString()} <span className="text-[9px] opacity-30">FCFA</span></td>
-                    {JALONS_PPM_CONFIG.map(jalon => {
-                      if (!isJalonApplicable(m, jalon.key)) return <td key={jalon.key} colSpan={2} className={`p-4 border-r border-white/5 text-center text-[9px] font-black ${theme.textSecondary} opacity-20 italic`}>N/A</td>;
-                      
-                      const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
-                      const r = m.dates_realisees[jalon.key as keyof typeof m.dates_realisees];
-                      const comment = m.comments?.[jalon.key];
-                      const s = getLateStatus(p || null, r || null);
-                      return (
-                        <React.Fragment key={`${m.id}-${jalon.key}`}>
-                          <td className={`p-4 border-r border-white/5 text-center text-[10px] font-bold ${theme.textSecondary} opacity-60`}>{formatDate(p || null)}</td>
-                          <td 
-                            title={comment ? `OBSERVATION : ${comment}` : undefined}
-                            className={`p-4 border-r border-white/5 text-center text-[10px] font-black relative ${s === 'late' ? 'text-red-500 bg-red-500/10' : s === 'done' ? 'text-green-500 bg-green-500/10' : theme.textSecondary}`}
-                          >
-                            <div className="flex items-center justify-center gap-1.5">
-                               {formatDate(r || null)}
-                               {comment && <InfoIcon size={12} className="text-blue-500 cursor-help" />}
-                            </div>
-                          </td>
-                        </React.Fragment>
-                      );
-                    })}
-                    <td className="p-8 border-r border-white/5">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter"><span className={theme.textSecondary}>Prévu :</span><span className={theme.textMain}>{delaiPrevu !== null ? `${delaiPrevu} j` : '-'}</span></div>
-                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter"><span className={theme.textSecondary}>Réalisé :</span><span className={delaiRealise !== null ? theme.textAccent : theme.textSecondary}>{delaiRealise !== null ? `${delaiRealise} j` : '-'}</span></div>
-                      </div>
-                    </td>
-                    <td className={`p-6 text-center sticky right-0 z-[40] ${getSolidBg()} w-[100px]`}><button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape}`}><ExternalLink size={18} /></button></td>
-                  </tr>
-                );
-              }) : (<tr><td colSpan={100} className="p-40 text-center font-black uppercase text-slate-400">Aucun marché trouvé</td></tr>)}
-            </tbody>
-          </table>
-        </div>
+        <Table<Marche>
+          className={styles.customTable}
+          columns={tableColumns}
+          dataSource={tableData}
+          scroll={{ x: 'max-content', y: 55 * 10 }}
+          pagination={false}
+          bordered={false}
+          size="middle"
+          rowClassName={(record) => {
+            const isAborted = record.is_annule || record.is_infructueux;
+            const isHighlighted = scrolledId === record.id;
+            return `cursor-pointer transition-all ${isAborted ? 'opacity-80' : ''} ${isHighlighted ? 'highlighted-row' : ''}`;
+          }}
+          onRow={(record) => ({
+            id: `market-row-${record.id}`,
+            onDoubleClick: () => setDetailMarketId(record.id),
+          })}
+          locale={{ emptyText: <div className="p-20 text-center font-black uppercase text-slate-400">Aucun marché trouvé</div> }}
+        />
       </div>
 
       {/* MODAL DE DÉTAILS */}
