@@ -139,8 +139,8 @@ export const Layout: React.FC = () => {
               <img src="/logo.png" alt="Logo EDC" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="text-lg font-bold leading-none text-white">EDC</h1>
-              <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">Marchés 360</p>
+              <h1 className="text-lg font-bold leading-none text-white" style={{ fontFamily: "'Poppins', sans-serif" }}>EDC</h1>
+              <p className="text-xs text-slate-400 font-semibold tracking-widest uppercase" style={{ fontFamily: "'DM Sans', sans-serif" }}>Marchés 360</p>
             </div>
           </div>
           <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-white">
@@ -160,7 +160,7 @@ export const Layout: React.FC = () => {
               }
             >
               <item.icon size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
-              <span className="font-medium text-xs">{item.label}</span>
+              <span className="font-semibold text-sm" style={{ fontFamily: "'DM Sans', sans-serif" }}>{item.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -171,7 +171,7 @@ export const Layout: React.FC = () => {
             className={`w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10 ${theme.buttonShape} transition-all duration-200`}
           >
             <LogOut size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
-            <span className="font-medium text-sm">Déconnexion</span>
+            <span className="font-semibold text-sm" style={{ fontFamily: "'DM Sans', sans-serif" }}>Déconnexion</span>
           </button>
         </div>
       </aside>
@@ -189,10 +189,10 @@ export const Layout: React.FC = () => {
               <Menu size={24} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
             </button>
             <div className="flex flex-col justify-center">
-              <h2 className={`${theme.textMain} text-lg md:text-xl font-bold truncate uppercase tracking-tight leading-none`}>
+              <h2 className={`${theme.textMain} text-lg md:text-xl font-bold truncate uppercase tracking-tight leading-none`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                 Bonjour, {user?.name?.split(' ')[0]}
               </h2>
-              <p className={`${theme.textSecondary} text-[10px] font-bold uppercase tracking-widest mt-0.5 animate-in fade-in`}>
+              <p className={`${theme.textSecondary} text-xs font-bold uppercase tracking-widest mt-0.5 animate-in fade-in`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
                 {user?.fonction || ''}
               </p>
             </div>
@@ -278,8 +278,8 @@ export const Layout: React.FC = () => {
               onClick={() => navigate('/profile')} 
             >
               <div className="text-right hidden sm:block">
-                <p className={`${theme.textMain} text-sm font-bold`}>{user?.name?.split(' ')[0]}</p>
-                <p className={`${theme.textSecondary} text-[10px] uppercase font-bold tracking-tight`}>{user?.role?.replace('_', ' ')}</p>
+                <p className={`${theme.textMain} text-sm font-bold`} style={{ fontFamily: "'Poppins', sans-serif" }}>{user?.name?.split(' ')[0]}</p>
+                <p className={`${theme.textSecondary} text-xs uppercase font-bold tracking-tight`} style={{ fontFamily: "'DM Sans', sans-serif" }}>{user?.role?.replace('_', ' ')}</p>
               </div>
               <div className={`w-10 h-10 ${theme.buttonShape} overflow-hidden border-2 border-white/10 shadow-lg`}>
                 <img 

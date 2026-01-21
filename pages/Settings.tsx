@@ -135,7 +135,7 @@ export const Settings: React.FC = () => {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
         <div>
-          <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Paramètres Système</h1>
+          <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`} style={{ fontFamily: "'Poppins', sans-serif" }}>Paramètres Système</h1>
           <p className={`${theme.textSecondary} font-medium text-sm`}>Administration des accès et structure du registre.</p>
         </div>
         
@@ -159,11 +159,11 @@ export const Settings: React.FC = () => {
                 <table className="w-full text-left border-collapse min-w-[1000px]">
                   <thead>
                     <tr className={`${tableHeaderBg} border-b ${borderColor}`}>
-                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest`}>Employé</th>
-                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest`}>Service</th>
-                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest`}>Inscription</th>
-                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest`}>Rôle</th>
-                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest text-right`}>Actions</th>
+                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Employé</th>
+                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Service</th>
+                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Inscription</th>
+                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Rôle</th>
+                      <th className={`p-8 text-[10px] font-black uppercase ${theme.textSecondary} tracking-widest text-right`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${divideColor}`}>
@@ -209,7 +209,7 @@ export const Settings: React.FC = () => {
                 <section key={section.id} className={`${theme.card} p-10 flex flex-col h-full`}>
                   <div className="flex items-center gap-3 mb-8">
                     <div className={theme.textAccent}>{section.icon}</div>
-                    <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme.textMain}`}>{section.title}</h3>
+                    <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme.textMain}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>{section.title}</h3>
                   </div>
                   <div className="flex-1 space-y-2 mb-8 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                     {section.items.map((item: string) => (
@@ -298,7 +298,7 @@ export const Settings: React.FC = () => {
         {activeTab === 'maintenance' && (
           <div className="px-2 animate-in fade-in duration-200">
              <div className={`${theme.card} p-12 border-red-500/10`}>
-                <div className="flex items-center gap-4 mb-8 text-red-500"><AlertTriangle size={32} /><div><h3 className="text-xl font-black uppercase tracking-tight">Zone de Maintenance</h3><p className={`text-xs font-bold ${theme.textSecondary}`}>Actions destructives irréversibles.</p></div></div>
+                <div className="flex items-center gap-4 mb-8 text-red-500"><AlertTriangle size={32} /><div><h3 className="text-xl font-black uppercase tracking-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>Zone de Maintenance</h3><p className={`text-xs font-bold ${theme.textSecondary}`}>Actions destructives irréversibles.</p></div></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className={`p-8 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-black/5 border-white/5'} rounded-[2rem] border flex flex-col items-start gap-4`}>
                       <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-slate-300"><Database size={24}/></div>

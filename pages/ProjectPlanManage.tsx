@@ -24,6 +24,7 @@ const useTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table {
       background: transparent !important;
+      font-family: 'DM Sans', sans-serif !important;
     }
     .ant-table-container {
       .ant-table-body,
@@ -47,15 +48,18 @@ const useTableStyles = createStyles(({ css }) => ({
       background: #FDFEFE !important;
       color: #1a2333 !important;
       border-bottom: 2px solid #e5e7eb !important;
-      font-size: 10px;
-      font-weight: 900;
+      font-family: 'Poppins', sans-serif !important;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      padding: 16px 12px !important;
+      letter-spacing: 0.5px;
+      padding: 14px 12px !important;
     }
     .ant-table-tbody > tr > td {
       background: #FDFEFE !important;
       color: #1a2333 !important;
       border-bottom: 1px solid #e5e7eb !important;
+      font-family: 'DM Sans', sans-serif !important;
       padding: 16px 12px !important;
     }
     .ant-table-tbody > tr:hover > td {

@@ -28,14 +28,16 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
         className={`
-          relative w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col 
+          relative w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col
           ${theme.card} shadow-2xl animate-in zoom-in-95 duration-200
           ${themeType === 'glass' ? 'border border-white/20' : ''}
+          font-sans
         `}
+        style={{ fontFamily: "'DM Sans', sans-serif" }}
       >
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex items-center justify-between shrink-0">
-          <h2 className={`${theme.textMain} text-xl font-bold uppercase tracking-tight`}>{title}</h2>
+          <h2 className={`${theme.textMain} text-xl font-bold uppercase tracking-tight font-display`} style={{ fontFamily: "'Poppins', sans-serif" }}>{title}</h2>
           <button 
             onClick={onClose}
             className={`p-2 hover:bg-white/10 ${theme.buttonShape} transition-colors ${theme.textSecondary} hover:text-white`}

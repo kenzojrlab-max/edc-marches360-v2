@@ -137,7 +137,7 @@ export const Login: React.FC = () => {
         {/* --- INSCRIPTION --- */}
         <div className={`form-container sign-up-container ${isSignUpActive ? 'mobile-active' : ''}`}>
           <form onSubmit={handleRegister} className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4" autoComplete="off">
-            <h1 className={`text-xl font-black ${theme.textMain} tracking-tight uppercase`}>Créer un compte</h1>
+            <h1 className={`text-xl font-black ${theme.textMain} tracking-tight uppercase`} style={{ fontFamily: "'Poppins', sans-serif" }}>Créer un compte</h1>
             
             <button type="button" onClick={handleGoogleLogin} className={`flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-full shadow-sm hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-wide`}>
                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-4 h-4" />
@@ -162,7 +162,7 @@ export const Login: React.FC = () => {
         {/* --- CONNEXION --- */}
         <div className={`form-container sign-in-container ${!isSignUpActive ? 'mobile-active' : ''}`}>
           <form onSubmit={handleLogin} className="h-full flex flex-col items-center justify-center p-6 text-center space-y-6" autoComplete="off">
-            <h1 className={`text-xl font-black ${theme.textMain} tracking-tight uppercase hidden md:block`}>Connexion</h1>
+            <h1 className={`text-xl font-black ${theme.textMain} tracking-tight uppercase hidden md:block`} style={{ fontFamily: "'Poppins', sans-serif" }}>Connexion</h1>
             
             <button type="button" onClick={handleGoogleLogin} className={`flex items-center gap-2 px-6 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-full shadow-sm hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-wide group`}>
                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-4 h-4" />
@@ -203,7 +203,7 @@ export const Login: React.FC = () => {
               <div className={`mb-4 w-14 h-14 bg-white/10 ${theme.buttonShape} flex items-center justify-center backdrop-blur-md shadow-2xl border border-white/10`}>
                  <LogIn size={24} className="text-white" />
               </div>
-              <h1 className="text-xl font-black text-white mb-2 tracking-tight uppercase">Déjà inscrit ?</h1>
+              <h1 className="text-xl font-black text-white mb-2 tracking-tight uppercase" style={{ fontFamily: "'Poppins', sans-serif" }}>Déjà inscrit ?</h1>
               <p className="text-[10px] font-medium text-slate-100 mb-6 max-w-[200px] leading-relaxed opacity-90">
                 Connectez-vous pour continuer votre suivi sur EDC Marchés360.
               </p>
@@ -212,7 +212,7 @@ export const Login: React.FC = () => {
               </button>
             </div>
             <div className="overlay-panel overlay-right">
-              <h1 className="text-xl font-black text-white mb-2 tracking-tight uppercase">Nouveau ?</h1>
+              <h1 className="text-xl font-black text-white mb-2 tracking-tight uppercase" style={{ fontFamily: "'Poppins', sans-serif" }}>Nouveau ?</h1>
               <p className="text-xs font-medium text-slate-100 mb-6 max-w-[240px] leading-relaxed opacity-90">
                 Créez votre profil pour accéder à la plateforme de suivi et d'archivage des marchés.
               </p>

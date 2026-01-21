@@ -26,6 +26,7 @@ const useTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table {
       background: transparent !important;
+      font-family: 'DM Sans', sans-serif !important;
     }
     .ant-table-container {
       .ant-table-body,
@@ -49,15 +50,18 @@ const useTableStyles = createStyles(({ css }) => ({
       background: #FDFEFE !important;
       color: #1a2333 !important;
       border-bottom: 2px solid #e5e7eb !important;
-      font-size: 10px;
-      font-weight: 900;
+      font-family: 'Poppins', sans-serif !important;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      padding: 16px 12px !important;
+      letter-spacing: 0.5px;
+      padding: 14px 12px !important;
     }
     .ant-table-tbody > tr > td {
       background: #FDFEFE !important;
       color: #1a2333 !important;
       border-bottom: 1px solid #e5e7eb !important;
+      font-family: 'DM Sans', sans-serif !important;
       padding: 16px 12px !important;
     }
     .ant-table-tbody > tr:hover > td {
@@ -345,7 +349,13 @@ export const PPMView: React.FC = () => {
         return true;
     });
 
-    const completedCount = relevantKeys.filter(k => !!m.dates_realisees[k as keyof typeof m.dates_realisees] || !!m.docs?.[k]).length;
+    const completedCount = relevantKeys.filter(k => {
+      // Cas spéciaux : titulaire et montant_ttc_reel sont stockés directement dans Marche, pas dans dates_realisees
+      if (k === 'titulaire') return !!m.titulaire;
+      if (k === 'montant_ttc_reel') return !!m.montant_ttc_reel;
+      // Cas standard : vérifier dates_realisees OU docs
+      return !!m.dates_realisees[k as keyof typeof m.dates_realisees] || !!m.docs?.[k];
+    }).length;
     const passPercent = relevantKeys.length > 0 ? (completedCount / relevantKeys.length) * 100 : 0;
     
     const exec = m.execution;
@@ -367,7 +377,7 @@ export const PPMView: React.FC = () => {
       {/* HEADER & FILTRES */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 px-2 relative z-20">
         <div className="border-l-4 border-primary pl-4">
-          <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Suivi PPM</h1>
+          <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`} style={{ fontFamily: "'Poppins', sans-serif" }}>Suivi PPM</h1>
           <p className={`${theme.textSecondary} font-medium text-sm italic`}>Registre complet consolidé par exercice.</p>
         </div>
         <div className={`${theme.card} p-3 flex flex-col md:flex-row items-center gap-3 w-full md:w-auto relative z-40`}>
@@ -432,7 +442,7 @@ export const PPMView: React.FC = () => {
               <div className="flex-1 flex divide-x divide-white/5 overflow-hidden">
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
-                      <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme.textAccent}`}>Phase Passation détaillée</h3>
+                      <h3 className={`text-sm font-black uppercase tracking-[0.15em] ${theme.textAccent}`}>Phase Passation détaillée</h3>
                       <span className={`px-3 py-1 ${theme.card} text-[9px] font-black uppercase`}>{selectedMarket.source_financement}</span>
                    </div>
                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12">
@@ -469,7 +479,7 @@ export const PPMView: React.FC = () => {
 
                          {JALONS_GROUPS.filter(g => isPhaseAccessible(selectedMarket, g.id)).map((group) => (
                            <div key={group.id} className="space-y-4">
-                              <h4 className={`text-[9px] font-black uppercase tracking-widest ${theme.textSecondary} px-4 py-1 rounded-full w-fit bg-black/5`}>{group.label}</h4>
+                              <h4 className={`text-xs font-black uppercase tracking-widest ${theme.textSecondary} px-4 py-1.5 rounded-full w-fit bg-black/5`}>{group.label}</h4>
                               <div className="grid grid-cols-1 gap-2">
                                  {group.keys.filter(key => {
                                     // Utilisation du Hook pour le filtrage
@@ -493,7 +503,7 @@ export const PPMView: React.FC = () => {
                                       <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex items-center justify-between bg-primary/5 hover:bg-primary/10 transition-all`}>
                                          <div className="flex items-center gap-4">
                                             <UserCheck className="text-primary" size={18} />
-                                            <div><p className="text-[10px] font-black text-slate-400 uppercase leading-none">Titulaire</p><p className={`text-xs font-black ${theme.textMain} uppercase mt-1`}>{selectedMarket.titulaire || "Non attribué"}</p></div>
+                                            <div><p className="text-xs font-black text-slate-400 uppercase leading-none">Titulaire</p><p className={`text-sm font-black ${theme.textMain} uppercase mt-1`}>{selectedMarket.titulaire || "Non attribué"}</p></div>
                                          </div>
                                       </div>
                                     );
@@ -501,7 +511,7 @@ export const PPMView: React.FC = () => {
                                       <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex items-center justify-between bg-success/5 hover:bg-success/10 transition-all`}>
                                          <div className="flex items-center gap-4">
                                             <Banknote className="text-success" size={18} />
-                                            <div><p className="text-[10px] font-black text-slate-400 uppercase leading-none">Montant TTC</p><p className={`text-xs font-black ${theme.textMain} mt-1`}>{selectedMarket.montant_ttc_reel?.toLocaleString() || "-"} FCFA</p></div>
+                                            <div><p className="text-xs font-black text-slate-400 uppercase leading-none">Montant TTC</p><p className={`text-sm font-black ${theme.textMain} mt-1`}>{selectedMarket.montant_ttc_reel?.toLocaleString() || "-"} FCFA</p></div>
                                          </div>
                                       </div>
                                     );
@@ -511,14 +521,14 @@ export const PPMView: React.FC = () => {
                                       <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex flex-col gap-3 hover:bg-white/5 transition-all group`}>
                                          <div className="flex items-center justify-between">
                                             <div className="flex flex-col gap-0.5">
-                                               <p className={`text-[10px] font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
+                                               <p className={`text-xs font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
                                                {/* Afficher la date réalisée si elle existe */}
                                                {date ? (
-                                                 <span className="text-[9px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
+                                                 <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
                                                    <Calendar size={12}/> Réalisé le {formatDate(date)}
                                                  </span>
                                                ) : (
-                                                 <span className="text-[9px] uppercase tracking-tighter flex items-center gap-1.5 text-slate-500 italic">
+                                                 <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-slate-500 italic">
                                                    <Clock size={12}/> En attente
                                                  </span>
                                                )}
@@ -539,14 +549,14 @@ export const PPMView: React.FC = () => {
                                       <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex flex-col gap-3 hover:bg-white/5 transition-all group`}>
                                          <div className="flex items-center justify-between">
                                             <div className="flex flex-col gap-0.5">
-                                               <p className={`text-[10px] font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
+                                               <p className={`text-xs font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
                                                {/* CORRECTION : Afficher la date réalisée clairement */}
                                                {date ? (
-                                                 <span className="text-[9px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
+                                                 <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
                                                    <Calendar size={12}/> Réalisé le {formatDate(date)}
                                                  </span>
                                                ) : (
-                                                 <span className={`text-[9px] uppercase tracking-tighter flex items-center gap-1.5 ${status.color}`}>
+                                                 <span className={`text-[10px] uppercase tracking-tighter flex items-center gap-1.5 ${status.color}`}>
                                                    {status.icon} {status.label}
                                                  </span>
                                                )}
@@ -572,7 +582,7 @@ export const PPMView: React.FC = () => {
                 {/* VOLET DROIT - PHASE EXÉCUTION */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
-                      <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] text-green-500`}>Phase Exécution (Financier & Contractuel)</h3>
+                      <h3 className={`text-sm font-black uppercase tracking-[0.15em] text-green-500`}>Phase Exécution (Financier & Contractuel)</h3>
                       {selectedMarket.execution.is_resilie && <span className="px-3 py-1 bg-red-600 text-white text-[9px] font-black uppercase rounded shadow-lg animate-pulse">Résiliation Active</span>}
                    </div>
                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12">
@@ -595,26 +605,26 @@ export const PPMView: React.FC = () => {
                         <div className="space-y-10 animate-in slide-in-from-right-4 pb-20">
                            {/* DÉTAILS DU CONTRAT */}
                            <section className={`p-8 ${theme.card} border-white/5 space-y-6 relative`}>
-                              <div className="flex items-center gap-3 text-green-500"><FileText size={20}/><h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Synthèse Contractuelle</h4></div>
+                              <div className="flex items-center gap-3 text-green-500"><FileText size={20}/><h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Synthèse Contractuelle</h4></div>
                               <div className="grid grid-cols-2 gap-8">
-                                 <div><p className="text-[9px] font-black text-slate-500 uppercase mb-1">Réf. Contrat</p><p className={`text-sm font-black ${theme.textMain}`}>{selectedMarket.execution.ref_contrat || 'Non renseignée'}</p></div>
-                                 <div><p className="text-[9px] font-black text-slate-500 uppercase mb-1">Délai Global</p><p className={`text-sm font-black ${theme.textMain}`}>{selectedMarket.execution.delai_mois ? `${selectedMarket.execution.delai_mois} Mois` : 'Non défini'}</p></div>
+                                 <div><p className="text-xs font-black text-slate-500 uppercase mb-1">Réf. Contrat</p><p className={`text-sm font-black ${theme.textMain}`}>{selectedMarket.execution.ref_contrat || 'Non renseignée'}</p></div>
+                                 <div><p className="text-xs font-black text-slate-500 uppercase mb-1">Délai Global</p><p className={`text-sm font-black ${theme.textMain}`}>{selectedMarket.execution.delai_mois ? `${selectedMarket.execution.delai_mois} Mois` : 'Non défini'}</p></div>
                               </div>
                               <div className="pt-6 border-t border-white/5 flex items-center justify-between">
-                                 <div><p className="text-[9px] font-black text-slate-500 uppercase">Garantie</p><p className={`text-[11px] font-bold ${theme.textMain} opacity-60 uppercase`}>{selectedMarket.execution.type_retenue_garantie || "Non définie"}</p></div>
+                                 <div><p className="text-xs font-black text-slate-500 uppercase">Garantie</p><p className={`text-xs font-bold ${theme.textMain} opacity-60 uppercase`}>{selectedMarket.execution.type_retenue_garantie || "Non définie"}</p></div>
                                  <FileManager existingDocId={selectedMarket.execution.doc_caution_bancaire_id} onUpload={() => {}} disabled />
                               </div>
                            </section>
                            
                            {/* DÉCOMPTES */}
                            <section className="space-y-4">
-                              <div className="flex items-center justify-between px-4"><h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Receipt size={14}/> Décomptes ({selectedMarket.execution.decomptes.length})</h4><span className="text-xs font-black text-green-500">{selectedMarket.execution.decomptes.reduce((acc, d) => acc + d.montant, 0).toLocaleString()} FCFA</span></div>
+                              <div className="flex items-center justify-between px-4"><h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Receipt size={14}/> Décomptes ({selectedMarket.execution.decomptes.length})</h4><span className="text-xs font-black text-green-500">{selectedMarket.execution.decomptes.reduce((acc, d) => acc + d.montant, 0).toLocaleString()} FCFA</span></div>
                               <div className="space-y-2">
                                  {selectedMarket.execution.decomptes.map(d => (
                                    <div key={d.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
                                       <div className="flex-1">
                                          <p className={`text-xs font-black ${theme.textMain} uppercase`}>{d.objet || `Décompte N°${d.numero}`}</p>
-                                         <p className="text-[9px] font-bold text-slate-500 uppercase">{d.date_validation ? `Validé le ${formatDate(d.date_validation)}` : "En attente de paiement"}</p>
+                                         <p className="text-[10px] font-bold text-slate-500 uppercase">{d.date_validation ? `Validé le ${formatDate(d.date_validation)}` : "En attente de paiement"}</p>
                                       </div>
                                       <div className="flex items-center gap-4">
                                          <p className="text-xs font-black text-green-500">{d.montant.toLocaleString()} FCFA</p>
@@ -627,7 +637,7 @@ export const PPMView: React.FC = () => {
 
                            {/* AVENANTS */}
                            <section className="space-y-4">
-                              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><TrendingUp size={14}/> Historique des Avenants</h4>
+                              <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><TrendingUp size={14}/> Historique des Avenants</h4>
                               <div className="space-y-3">
                                  {selectedMarket.execution.avenants.map((a, i) => (
                                    <div key={a.id} className="p-6 bg-white/5 rounded-[2rem] border border-warning/10 space-y-4 group">
@@ -640,7 +650,7 @@ export const PPMView: React.FC = () => {
                                            {label: 'Enreg.', key: 'doc_enreg_id'}
                                          ].map(doc => (
                                            <div key={doc.key} className="flex flex-col items-center p-2 bg-black/20 rounded-xl border border-white/5 gap-1">
-                                              <span className="text-[8px] font-black text-slate-500 uppercase">{doc.label}</span>
+                                              <span className="text-[10px] font-black text-slate-500 uppercase">{doc.label}</span>
                                               <FileManager existingDocId={(a as any)[doc.key]} onUpload={() => {}} disabled />
                                            </div>
                                          ))}
@@ -661,8 +671,8 @@ export const PPMView: React.FC = () => {
                                       {step: 3, label: 'Décision Finale', key: 'doc_decision_resiliation_id'}
                                    ].map(s => (
                                       <div key={s.step} className="p-4 bg-white/5 rounded-2xl border border-red-500/10 text-center space-y-3 flex flex-col items-center">
-                                         <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Étape {s.step}</p>
-                                         <p className={`text-[10px] font-black ${theme.textMain} uppercase leading-none truncate w-full`}>{s.label}</p>
+                                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Étape {s.step}</p>
+                                         <p className={`text-xs font-black ${theme.textMain} uppercase leading-none truncate w-full`}>{s.label}</p>
                                          <FileManager existingDocId={(selectedMarket.execution as any)[s.key]} onUpload={() => {}} disabled />
                                       </div>
                                    ))}
@@ -672,7 +682,7 @@ export const PPMView: React.FC = () => {
 
                            {/* CORRECTION 3 & 4 : DOCS OFFICIELS AVEC DATES D'EXÉCUTION ET RAPPORT D'EXÉCUTION */}
                            <section className="space-y-4">
-                              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><ShieldCheck size={14}/> Garanties & Documents Officiels</h4>
+                              <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><ShieldCheck size={14}/> Garanties & Documents Officiels</h4>
                               <div className="grid grid-cols-1 gap-2">
                                  {[
                                    { label: 'Notification du contrat', key: 'doc_notif_contrat_id', dateKey: null },
@@ -690,14 +700,14 @@ export const PPMView: React.FC = () => {
                                    return (
                                      <div key={doc.key} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
                                         <div className="flex flex-col">
-                                           <span className={`text-[10px] font-black ${theme.textMain} opacity-80 uppercase`}>{doc.label}</span>
+                                           <span className={`text-xs font-black ${theme.textMain} opacity-80 uppercase`}>{doc.label}</span>
                                            {/* CORRECTION 3 : Afficher la date si elle existe */}
                                            {dateValue ? (
-                                             <span className="text-[9px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
+                                             <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
                                                <Calendar size={10}/> {formatDate(dateValue)}
                                              </span>
                                            ) : (
-                                             <span className={`text-[8px] uppercase tracking-tighter ${status.color}`}>{status.label}</span>
+                                             <span className={`text-[10px] uppercase tracking-tighter ${status.color}`}>{status.label}</span>
                                            )}
                                         </div>
                                         <FileManager existingDocId={docId} onUpload={() => {}} disabled />
