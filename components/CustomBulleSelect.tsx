@@ -42,11 +42,11 @@ export const CustomBulleSelect: React.FC<Props> = ({
   }, []);
 
   const getMenuBg = () => {
-    if (themeType === 'glass') return 'bg-[#1a2333] border border-white/30 shadow-[0_20px_50px_rgba(0,0,0,0.9)]'; 
+    if (themeType === 'glass') return 'bg-[#1a2333] border border-white/30 shadow-[0_20px_50px_rgba(0,0,0,0.9)]';
     if (themeType === 'cyber') return 'bg-[#0a1120] border border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.4)]';
     if (themeType === 'minimal') return 'bg-white border-2 border-black shadow-none';
-    if (themeType === 'clay') return 'bg-[#f0f2f5] shadow-[10px_10px_30px_#ccd0d4]';
     if (themeType === 'retro') return 'bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]';
+    if (themeType === 'metal') return 'bg-gradient-to-b from-[#636e72] to-[#2d3436] border border-slate-600 shadow-[5px_5px_15px_rgba(0,0,0,0.8)]';
     return 'bg-white border border-slate-200 shadow-2xl';
   };
 
@@ -56,7 +56,7 @@ export const CustomBulleSelect: React.FC<Props> = ({
       ref={containerRef}
     >
       {label && (
-        <label className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} ml-1`}>
+        <label className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} ml-1`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
           {label}
         </label>
       )}
@@ -69,10 +69,10 @@ export const CustomBulleSelect: React.FC<Props> = ({
           ${theme.input} flex items-center justify-between w-full text-sm font-black transition-all
           ${isOpen ? `ring-4 ring-offset-0 ring-white/10` : ''}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-          ${(themeType === 'glass' || themeType === 'cyber') ? 'text-white border-white/20' : ''}
+          ${(themeType === 'glass' || themeType === 'cyber' || themeType === 'metal') ? 'text-white border-white/20' : ''}
         `}
       >
-        <span className={`truncate text-left flex-1 ${selectedOption ? (themeType === 'glass' ? 'text-white' : theme.textMain) : (themeType === 'glass' ? 'text-white/40' : theme.textSecondary)}`}>
+        <span className={`truncate text-left flex-1 ${selectedOption ? ((themeType === 'glass' || themeType === 'metal') ? 'text-white' : theme.textMain) : ((themeType === 'glass' || themeType === 'metal') ? 'text-white/40' : theme.textSecondary)}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown size={18} strokeWidth={theme.iconStroke} className={`${theme.iconStyle} ${theme.textSecondary} shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -95,9 +95,9 @@ export const CustomBulleSelect: React.FC<Props> = ({
                   }}
                   className={`
                     w-full flex items-center justify-between px-4 py-3 ${theme.buttonShape} text-xs font-black transition-all mb-1 text-left
-                    ${value === option.value 
-                      ? (themeType === 'glass' ? 'bg-white/20 text-white' : theme.buttonPrimary) 
-                      : `hover:bg-white/10 ${themeType === 'glass' ? 'text-white' : theme.textMain}`}
+                    ${value === option.value
+                      ? ((themeType === 'glass' || themeType === 'metal') ? 'bg-white/20 text-white' : theme.buttonPrimary)
+                      : `hover:bg-white/10 ${(themeType === 'glass' || themeType === 'metal') ? 'text-white' : theme.textMain}`}
                   `}
                 >
                   <span className="truncate pr-4">{option.label}</span>

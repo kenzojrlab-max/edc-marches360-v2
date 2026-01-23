@@ -300,7 +300,7 @@ export const FloatingAIWidget: React.FC = () => {
                 <Bot size={18} />
               </div>
               <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">Zen'ô AI</h3>
+                <h3 className="text-xs font-black text-white uppercase tracking-wider" style={{ fontFamily: "'Poppins', sans-serif" }}>Zen'ô AI</h3>
                 <p className="text-[8px] text-blue-200 font-medium flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"/> Connecté
                 </p>

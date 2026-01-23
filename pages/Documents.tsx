@@ -57,7 +57,7 @@ export const Documents: React.FC = () => {
     <div className="space-y-10 animate-in fade-in duration-500 max-w-7xl mx-auto pb-40">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
         <div>
-          <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Documentation</h1>
+          <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`} style={{ fontFamily: "'Poppins', sans-serif" }}>Documentation</h1>
           <p className={`${theme.textSecondary} font-medium text-sm italic`}>Consultez et téléchargez les ressources officielles d'EDC S.A.</p>
         </div>
         

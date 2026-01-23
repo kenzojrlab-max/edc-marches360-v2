@@ -3,7 +3,7 @@ import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { useMarketLogic } from '../hooks/useMarketLogic'; // IMPORT DU HOOK
+import { useMarketLogic } from '../hooks/useMarketLogic';
 import {
   Search, ExternalLink, X, FileBox, FileCheck, Activity, Lock,
   FileText, TrendingUp, AlertTriangle,
@@ -15,98 +15,57 @@ import { formatDate, getLateStatus, calculateDaysBetween } from '../utils/date';
 import { useSearchParams } from 'react-router-dom';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { FileManager } from '../components/FileManager';
-import { Marche, SourceFinancement } from '../types';
+import { Marche } from '../types';
 import { storage } from '../utils/storage';
 import { Table } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { createStyles } from 'antd-style';
 
-// Styles personnalisés pour le tableau Ant Design
-const useTableStyles = createStyles(({ css }) => ({
+// --- STYLES DÉFINIS COMME HOOKS (SANS PARENTHÈSES À LA FIN) ---
+
+const useLightTableStyles = createStyles(({ css }) => ({
   customTable: css`
-    .ant-table {
-      background: transparent !important;
-      font-family: 'DM Sans', sans-serif !important;
-    }
-    .ant-table-container {
-      .ant-table-body,
-      .ant-table-content {
-        scrollbar-width: thin;
-        scrollbar-color: #3b82f6 #FDFEFE;
-      }
-      .ant-table-body::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      .ant-table-body::-webkit-scrollbar-track {
-        background: #FDFEFE;
-      }
-      .ant-table-body::-webkit-scrollbar-thumb {
-        background: #3b82f6;
-        border-radius: 4px;
-      }
-    }
-    .ant-table-thead > tr > th {
-      background: #FDFEFE !important;
-      color: #1a2333 !important;
-      border-bottom: 2px solid #e5e7eb !important;
-      font-family: 'Poppins', sans-serif !important;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      padding: 14px 12px !important;
-    }
-    .ant-table-tbody > tr > td {
-      background: #FDFEFE !important;
-      color: #1a2333 !important;
-      border-bottom: 1px solid #e5e7eb !important;
-      font-family: 'DM Sans', sans-serif !important;
-      padding: 16px 12px !important;
-    }
-    .ant-table-tbody > tr:hover > td {
-      background: #f3f4f6 !important;
-    }
-    /* Cellules fixées à gauche - header */
-    .ant-table-thead .ant-table-cell-fix-left {
-      background: #FDFEFE !important;
-      z-index: 4 !important;
-    }
-    /* Cellules fixées à droite - header */
-    .ant-table-thead .ant-table-cell-fix-right {
-      background: #FDFEFE !important;
-      z-index: 4 !important;
-    }
-    /* Cellules fixées à gauche - body */
-    .ant-table-tbody .ant-table-cell-fix-left {
-      background: #FDFEFE !important;
-      z-index: 2 !important;
-    }
-    /* Cellules fixées à droite - body */
-    .ant-table-tbody .ant-table-cell-fix-right {
-      background: #FDFEFE !important;
-      z-index: 2 !important;
-    }
-    /* Hover sur les cellules fixées */
-    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
-    .ant-table-tbody > tr:hover > .ant-table-cell-fix-right {
-      background: #f3f4f6 !important;
-    }
-    /* Highlight pour les alertes */
-    .ant-table-tbody > tr.highlighted-row > td {
-      background: #fef3c7 !important;
-      animation: pulse-highlight 2s ease-in-out;
-    }
-    .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-left,
-    .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-right {
-      background: #fef3c7 !important;
-    }
-    @keyframes pulse-highlight {
-      0%, 100% { background: #fef3c7; }
-      50% { background: #fde68a; }
-    }
+    .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
+    .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #FDFEFE; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #FDFEFE; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
+    .ant-table-thead > tr > th { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 2px solid #e5e7eb !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #1a2333 !important; }
+    .ant-table-tbody > tr > td { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 1px solid #e5e7eb !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
+    .ant-table-tbody > tr:hover > td { background: #f3f4f6 !important; }
+    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 4 !important; }
+    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 2 !important; }
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #f3f4f6 !important; }
+    .ant-table-tbody > tr.highlighted-row > td, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-left, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-right { background: #fef3c7 !important; }
+    .date-cell { font-size: 12px !important; font-weight: 700 !important; }
+    .date-prevue, .date-realisee-pending { color: #64748b !important; }
+    .date-realisee-done { color: #22c55e !important; }
+    .date-realisee-late { color: #ef4444 !important; }
+    .ant-table-tbody > tr > td .text-white { color: #ffffff !important; }
+    .ant-table-tbody > tr > td .bg-warning .text-black, .ant-table-tbody > tr > td .bg-warning.text-black { color: #000000 !important; }
   `,
 }));
+
+const useDarkTableStyles = createStyles(({ css }) => ({
+  customTable: css`
+    .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
+    .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #1a2333; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #1a2333; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
+    .ant-table-thead > tr > th { background: #0f172a !important; color: #ffffff !important; border-bottom: 2px solid rgba(255,255,255,0.1) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #ffffff !important; }
+    .ant-table-tbody > tr > td { background: #1e293b !important; color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
+    .ant-table-tbody > tr:hover > td { background: #334155 !important; }
+    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #0f172a !important; z-index: 4 !important; }
+    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #1e293b !important; z-index: 2 !important; }
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #334155 !important; }
+    .ant-table-tbody > tr.highlighted-row > td, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-left, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-right { background: #422006 !important; }
+    .date-cell { font-size: 12px !important; font-weight: 700 !important; }
+    .date-prevue, .date-realisee-pending { color: #94a3b8 !important; }
+    .date-realisee-done { color: #22c55e !important; }
+    .date-realisee-late { color: #ef4444 !important; }
+    .ant-table-tbody > tr > td .text-white { color: #ffffff !important; }
+    .ant-table-tbody > tr > td .bg-warning .text-black, .ant-table-tbody > tr > td .bg-warning.text-black { color: #000000 !important; }
+  `,
+}));
+
+// --------------------------------------------------------------------------------
 
 const CircularProgress = ({ percent, color, icon: Icon }: { percent: number, color: string, icon: any }) => {
   const { theme } = useTheme();
@@ -131,8 +90,19 @@ export const PPMView: React.FC = () => {
   const { markets } = useMarkets();
   const { projects } = useProjects();
   const { can } = useAuth();
-  const { theme, themeType } = useTheme();
+  const { theme } = useTheme();
+
+  // Détection du mode sombre pour les styles du tableau
+  const isDarkTheme = theme.mode === 'dark';
+
+  // --- APPEL CORRECT DES HOOKS DE STYLE ---
+  const { styles: lightStyles } = useLightTableStyles();
+  const { styles: darkStyles } = useDarkTableStyles();
   
+  // Sélection du bon style selon le thème
+  const styles = isDarkTheme ? darkStyles : lightStyles;
+  // ----------------------------------------
+
   // Utilisation du Hook de logique
   const { isJalonApplicable, isJalonActive, isPhaseAccessible } = useMarketLogic();
 
@@ -142,8 +112,6 @@ export const PPMView: React.FC = () => {
   const [scrolledId, setScrolledId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const { styles } = useTableStyles();
 
   useEffect(() => {
     const projectFilter = searchParams.get('projectId');
@@ -242,7 +210,7 @@ export const PPMView: React.FC = () => {
         align: 'right',
         render: (value) => (
           <span className={`text-sm font-black ${theme.textMain}`}>
-            {(value || 0).toLocaleString()} <span className="text-[9px] opacity-30">FCFA</span>
+            {(value || 0).toLocaleString()} <span className={`text-[9px] ${theme.textSecondary}`}>FCFA</span>
           </span>
         ),
       },
@@ -257,19 +225,19 @@ export const PPMView: React.FC = () => {
           title: 'Prévue',
           dataIndex: ['dates_prevues', jalon.key],
           key: `${jalon.key}_prevue`,
-          width: 100,
+          width: 110,
           align: 'center' as const,
           render: (_: any, m: Marche) => {
-            if (!isJalonApplicable(m, jalon.key)) return <span className={`text-[9px] font-black ${theme.textSecondary} opacity-20 italic`}>N/A</span>;
+            if (!isJalonApplicable(m, jalon.key)) return <span className="date-cell text-[10px] opacity-30 italic">N/A</span>;
             const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
-            return <span className={`text-[10px] font-bold ${theme.textSecondary} opacity-60`}>{formatDate(p || null)}</span>;
+            return <span className="date-cell date-prevue">{formatDate(p || null)}</span>;
           },
         },
         {
           title: 'Réalisée',
           dataIndex: ['dates_realisees', jalon.key],
           key: `${jalon.key}_realisee`,
-          width: 100,
+          width: 110,
           align: 'center' as const,
           render: (_: any, m: Marche) => {
             if (!isJalonApplicable(m, jalon.key)) return null;
@@ -277,14 +245,15 @@ export const PPMView: React.FC = () => {
             const r = m.dates_realisees[jalon.key as keyof typeof m.dates_realisees];
             const comment = m.comments?.[jalon.key];
             const s = getLateStatus(p || null, r || null);
+            const statusClass = s === 'late' ? 'date-realisee-late' : s === 'done' ? 'date-realisee-done' : 'date-realisee-pending';
             return (
               <div
                 title={comment ? `OBSERVATION : ${comment}` : undefined}
-                className={`text-[10px] font-black ${s === 'late' ? 'text-red-500' : s === 'done' ? 'text-green-500' : theme.textSecondary}`}
+                className={`date-cell ${statusClass}`}
               >
                 <div className="flex items-center justify-center gap-1.5">
                   {formatDate(r || null)}
-                  {comment && <InfoIcon size={12} className="text-blue-500 cursor-help" />}
+                  {comment && <InfoIcon size={14} className="text-blue-500 cursor-help" />}
                 </div>
               </div>
             );
@@ -317,7 +286,7 @@ export const PPMView: React.FC = () => {
         width: 100,
         align: 'center',
         render: (_, m) => (
-          <button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape}`}>
+          <button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape} transition-colors`}>
             <ExternalLink size={18} />
           </button>
         ),
@@ -325,7 +294,7 @@ export const PPMView: React.FC = () => {
     ];
 
     return [...baseColumns, ...jalonColumns, ...endColumns];
-  }, [theme, isJalonApplicable, setDetailMarketId]);
+  }, [theme, isJalonApplicable, setDetailMarketId, isDarkTheme]);
 
   // Données du tableau avec key pour Ant Design
   const tableData = useMemo(() =>
@@ -395,8 +364,8 @@ export const PPMView: React.FC = () => {
           )}
 
           <div className="relative w-full md:w-64">
-            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${themeType === 'glass' ? 'text-white' : theme.textSecondary}`} size={16} strokeWidth={theme.iconStroke} />
-            <input type="text" placeholder="Rechercher..." className={`${theme.input} pl-10 pr-4 py-2.5 w-full font-black ${themeType === 'glass' ? 'text-white' : ''}`} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${theme.mode === 'dark' ? 'text-white' : theme.textSecondary}`} size={16} strokeWidth={theme.iconStroke} />
+            <input type="text" placeholder="Rechercher..." className={`${theme.input} pl-10 pr-4 py-2.5 w-full font-black ${theme.mode === 'dark' ? 'text-white' : ''}`} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
         </div>
       </div>
@@ -516,7 +485,6 @@ export const PPMView: React.FC = () => {
                                       </div>
                                     );
 
-                                    {/* CORRECTION 2 : Pour saisine_prev, afficher UNIQUEMENT la date, PAS le document */}
                                     if (key === 'saisine_prev') return (
                                       <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex flex-col gap-3 hover:bg-white/5 transition-all group`}>
                                          <div className="flex items-center justify-between">
@@ -533,7 +501,6 @@ export const PPMView: React.FC = () => {
                                                  </span>
                                                )}
                                             </div>
-                                            {/* PAS de FileManager ici - on n'affiche pas le document */}
                                          </div>
                                          {comment && (
                                            <div className="flex items-start gap-2 bg-black/10 p-3 rounded-xl border border-white/5">
@@ -544,13 +511,12 @@ export const PPMView: React.FC = () => {
                                       </div>
                                     );
 
-                                    {/* CORRECTION 1 : Affichage standard avec DATE RÉALISÉE visible */}
                                     return (
                                       <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex flex-col gap-3 hover:bg-white/5 transition-all group`}>
                                          <div className="flex items-center justify-between">
                                             <div className="flex flex-col gap-0.5">
                                                <p className={`text-xs font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
-                                               {/* CORRECTION : Afficher la date réalisée clairement */}
+                                               {/* Afficher la date réalisée clairement */}
                                                {date ? (
                                                  <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
                                                    <Calendar size={12}/> Réalisé le {formatDate(date)}
@@ -645,14 +611,14 @@ export const PPMView: React.FC = () => {
                                       <p className={`text-xs font-bold ${theme.textMain} uppercase leading-tight`}>{a.objet}</p>
                                       <div className="grid grid-cols-3 gap-2 pt-2">
                                          {[
-                                           {label: 'Notif.', key: 'doc_notification_id'},
-                                           {label: 'OS', key: 'doc_os_id'},
-                                           {label: 'Enreg.', key: 'doc_enreg_id'}
+                                            {label: 'Notif.', key: 'doc_notification_id'},
+                                            {label: 'OS', key: 'doc_os_id'},
+                                            {label: 'Enreg.', key: 'doc_enreg_id'}
                                          ].map(doc => (
-                                           <div key={doc.key} className="flex flex-col items-center p-2 bg-black/20 rounded-xl border border-white/5 gap-1">
-                                              <span className="text-[10px] font-black text-slate-500 uppercase">{doc.label}</span>
-                                              <FileManager existingDocId={(a as any)[doc.key]} onUpload={() => {}} disabled />
-                                           </div>
+                                            <div key={doc.key} className="flex flex-col items-center p-2 bg-black/20 rounded-xl border border-white/5 gap-1">
+                                               <span className="text-[10px] font-black text-slate-500 uppercase">{doc.label}</span>
+                                               <FileManager existingDocId={(a as any)[doc.key]} onUpload={() => {}} disabled />
+                                            </div>
                                          ))}
                                       </div>
                                    </div>
@@ -680,7 +646,7 @@ export const PPMView: React.FC = () => {
                              </section>
                            )}
 
-                           {/* CORRECTION 3 & 4 : DOCS OFFICIELS AVEC DATES D'EXÉCUTION ET RAPPORT D'EXÉCUTION */}
+                           {/* DOCS OFFICIELS */}
                            <section className="space-y-4">
                               <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><ShieldCheck size={14}/> Garanties & Documents Officiels</h4>
                               <div className="grid grid-cols-1 gap-2">
@@ -690,7 +656,7 @@ export const PPMView: React.FC = () => {
                                    { label: 'Cautionnement Définitif', key: 'doc_caution_def_id', dateKey: null },
                                    { label: 'Contrat enregistré', key: 'doc_contrat_enreg_id', dateKey: null },
                                    { label: 'Police d\'Assurance', key: 'doc_assurance_id', dateKey: null },
-                                   { label: 'Rapport d\'exécution', key: 'doc_rapport_exec_id', dateKey: null }, // CORRECTION 4 : Ajout du rapport d'exécution
+                                   { label: 'Rapport d\'exécution', key: 'doc_rapport_exec_id', dateKey: null }, 
                                    { label: 'PV Réception Provisoire', key: 'doc_pv_provisoire_id', dateKey: 'date_pv_provisoire' },
                                    { label: 'PV Réception Définitive', key: 'doc_pv_definitif_id', dateKey: 'date_pv_definitif' }
                                  ].map(doc => {
@@ -701,7 +667,6 @@ export const PPMView: React.FC = () => {
                                      <div key={doc.key} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
                                         <div className="flex flex-col">
                                            <span className={`text-xs font-black ${theme.textMain} opacity-80 uppercase`}>{doc.label}</span>
-                                           {/* CORRECTION 3 : Afficher la date si elle existe */}
                                            {dateValue ? (
                                              <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
                                                <Calendar size={10}/> {formatDate(dateValue)}

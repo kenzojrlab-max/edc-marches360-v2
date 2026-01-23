@@ -21,7 +21,7 @@ export const BulleInput: React.FC<Props> = ({
   return (
     <div className="flex flex-col gap-1.5 w-full group">
       <div className="flex items-center gap-2 ml-1">
-        <label className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary}`}>
+        <label className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
           {label}
         </label>
         {props.required && <span className="text-red-500 text-xs">*</span>}

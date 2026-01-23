@@ -31,10 +31,10 @@ export const Loader: React.FC = () => {
       </div>
 
       {/* Texte EDC Marchés 360 en bleu clair */}
-      <h1 className="text-xl font-black uppercase tracking-[0.2em] text-blue-400 animate-pulse">
+      <h1 className="text-xl font-black uppercase tracking-[0.2em] text-blue-400 animate-pulse" style={{ fontFamily: "'Poppins', sans-serif" }}>
         EDC Marchés 360
       </h1>
-      <p className="text-[10px] text-slate-500 font-bold mt-2 uppercase tracking-widest">
+      <p className="text-[10px] text-slate-500 font-bold mt-2 uppercase tracking-widest" style={{ fontFamily: "'DM Sans', sans-serif" }}>
         Initialisation du système...
       </p>
     </div>

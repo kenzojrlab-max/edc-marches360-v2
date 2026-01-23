@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // 1. DÉFINITIONS LOCALES (Pour corriger l'erreur d'import)
-export type ThemeType = 'minimal' | 'cyber' | 'clay' | 'retro' | 'glass';
+export type ThemeType = 'minimal' | 'cyber' | 'retro' | 'glass' | 'metal';
 
 export interface ThemeStyles {
   name: string;
@@ -53,23 +53,21 @@ const themes: Record<ThemeType, ThemeStyles> = {
     iconStyle: 'drop-shadow-[0_0_3px_rgba(6,182,212,0.5)]',
     bgPage: 'bg-[#020617]'
   },
-  clay: {
-    name: 'Soft Clay',
-    mode: 'light',
-    // CORRECTION VISUELLE : Ajout de 'border border-slate-200' pour bien voir les cartes
-    card: 'bg-white border border-slate-200 shadow-[10px_10px_20px_#e2e8f0,-10px_-10px_20px_#ffffff] rounded-[2rem]',
-    buttonShape: 'rounded-[1.5rem]',
-    buttonPrimary: 'bg-[#1e3a8a] text-white shadow-lg shadow-blue-900/20 hover:scale-105 hover:shadow-blue-900/40 transition-all',
-    buttonSecondary: 'bg-white text-slate-600 border border-slate-200 shadow-sm hover:bg-slate-50',
-    buttonDanger: 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100',
-    // CORRECTION VISUELLE : Ajout de bordures aux inputs
-    input: 'bg-slate-50 border border-slate-200 shadow-inner rounded-2xl px-5 py-3 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400',
-    textMain: 'text-slate-700',
+  metal: {
+    name: 'Metal',
+    mode: 'dark',
+    card: 'bg-gradient-to-br from-[#636e72] to-[#2d3436] border-t border-l border-slate-500 border-b border-r border-black shadow-[5px_5px_15px_rgba(0,0,0,0.8)] rounded-md',
+    buttonShape: 'rounded-sm',
+    buttonPrimary: 'bg-gradient-to-b from-slate-400 to-slate-600 text-black font-black uppercase tracking-wider border-t border-white/50 border-b border-black shadow-[0_4px_6px_rgba(0,0,0,0.8)] hover:from-slate-300 hover:to-slate-500 active:shadow-inner transition-all',
+    buttonSecondary: 'bg-gradient-to-b from-slate-600 to-slate-800 text-slate-200 border border-slate-500 shadow-[0_2px_4px_rgba(0,0,0,0.6)]',
+    buttonDanger: 'bg-gradient-to-b from-red-700 to-red-900 text-white border border-red-500 shadow-[0_2px_4px_rgba(0,0,0,0.6)]',
+    input: 'bg-[#2d3436] border border-slate-600 text-slate-200 rounded-sm px-4 py-2 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] focus:border-slate-400',
+    textMain: 'text-slate-200',
     textSecondary: 'text-slate-400',
-    textAccent: 'text-[#1e3a8a]',
+    textAccent: 'text-[#fab1a0]',
     iconStroke: 2,
-    iconStyle: 'opacity-80',
-    bgPage: 'bg-[#f8fafc]'
+    iconStyle: 'text-slate-200 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]',
+    bgPage: 'bg-[#2d3436]'
   },
   retro: {
     name: 'Retro Pop',
@@ -113,9 +111,19 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Liste des thèmes valides pour validation
+const validThemes: ThemeType[] = ['minimal', 'cyber', 'retro', 'glass', 'metal'];
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeType, setThemeType] = useState<ThemeType>(() => {
-    return (localStorage.getItem('edc_theme') as ThemeType) || 'minimal';
+    const savedTheme = localStorage.getItem('edc_theme') as ThemeType;
+    // Vérifier si le thème sauvegardé est valide, sinon utiliser 'minimal'
+    if (savedTheme && validThemes.includes(savedTheme)) {
+      return savedTheme;
+    }
+    // Nettoyer le localStorage si le thème n'est pas valide
+    localStorage.removeItem('edc_theme');
+    return 'minimal';
   });
 
   useEffect(() => {

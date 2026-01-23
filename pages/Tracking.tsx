@@ -21,7 +21,7 @@ export const Tracking: React.FC = () => {
   const { markets, updateMarket, updateMarketDoc, updateJalon } = useMarkets();
   const { projects } = useProjects();
   const { can } = useAuth();
-  const { theme, themeType } = useTheme();
+  const { theme } = useTheme();
   
   const { isJalonApplicable, isJalonActive, isPhaseAccessible } = useMarketLogic();
   
@@ -85,11 +85,11 @@ export const Tracking: React.FC = () => {
           <div className="w-full md:w-40"><CustomBulleSelect label="" value={selectedYear} options={yearOptions} onChange={setSelectedYear} /></div>
           <div className="w-full md:w-64"><CustomBulleSelect label="" value={selectedProjectId} options={projectOptions} onChange={setSelectedProjectId} /></div>
           <div className="relative w-full md:w-64">
-            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${themeType === 'glass' ? 'text-white' : theme.textSecondary}`} size={16} strokeWidth={theme.iconStroke} />
-            <input 
-              type="text" 
-              placeholder="N° ou objet..." 
-              className={`${theme.input} pl-12 pr-6 py-2.5 w-full font-black ${themeType === 'glass' ? 'text-white placeholder:text-white/40' : ''}`} 
+            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${theme.mode === 'dark' ? 'text-white' : theme.textSecondary}`} size={16} strokeWidth={theme.iconStroke} />
+            <input
+              type="text"
+              placeholder="N° ou objet..."
+              className={`${theme.input} pl-12 pr-6 py-2.5 w-full font-black ${theme.mode === 'dark' ? 'text-white placeholder:text-white/40' : ''}`} 
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)} 
             />
@@ -118,8 +118,8 @@ export const Tracking: React.FC = () => {
           );
         }) : (
           <div className={`col-span-full py-24 text-center ${theme.card} border-dashed`}>
-            <Search size={40} className="mx-auto text-slate-200 mb-4" />
-            <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Aucun marché trouvé</p>
+            <Search size={40} className={`mx-auto ${theme.textSecondary} opacity-40 mb-4`} />
+            <p className={`${theme.textSecondary} font-black uppercase tracking-widest text-xs`}>Aucun marché trouvé</p>
           </div>
         )}
       </div>
@@ -181,9 +181,9 @@ export const Tracking: React.FC = () => {
                   }
 
                   if (key === 'infructueux') return (
-                    <div key={key} className={`p-8 rounded-3xl ${themeType === 'glass' ? 'bg-white/5 border-white/10' : 'bg-warning/5 border-warning/10'} border space-y-4`}>
+                    <div key={key} className={`p-8 rounded-3xl ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-warning/5 border-warning/10'} border space-y-4`}>
                        <div className="flex items-center justify-between">
-                          <div className={`flex items-center gap-3 ${themeType === 'glass' ? 'text-white' : 'text-warning'} font-black uppercase text-xs`}><AlertTriangle size={18}/> Dossier Infructueux ?</div>
+                          <div className={`flex items-center gap-3 ${theme.mode === 'dark' ? 'text-white' : 'text-warning'} font-black uppercase text-xs`}><AlertTriangle size={18}/> Dossier Infructueux ?</div>
                           <CustomBulleSelect label="" value={selectedMarket.is_infructueux ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {is_infructueux: v==='OUI', statut_global: v==='OUI' ? StatutGlobal.INFRUCTUEUX : StatutGlobal.EN_COURS})} />
                        </div>
                        {selectedMarket.is_infructueux && <div className="flex justify-end pt-2"><FileManager existingDocId={selectedMarket.docs?.['infructueux_doc']} onUpload={(id) => updateMarketDoc(selectedMarket.id, 'infructueux_doc', id)} /></div>}
@@ -191,9 +191,9 @@ export const Tracking: React.FC = () => {
                   );
 
                   if (key === 'annule') return (
-                    <div key={key} className={`p-8 rounded-3xl ${themeType === 'glass' ? 'bg-white/5 border-white/10' : 'bg-danger/5 border-danger/10'} border space-y-4`}>
+                    <div key={key} className={`p-8 rounded-3xl ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-danger/5 border-danger/10'} border space-y-4`}>
                        <div className="flex items-center justify-between">
-                          <div className={`flex items-center gap-3 ${themeType === 'glass' ? 'text-white' : 'text-danger'} font-black uppercase text-xs`}><Ban size={18}/> Annuler le Dossier ?</div>
+                          <div className={`flex items-center gap-3 ${theme.mode === 'dark' ? 'text-white' : 'text-danger'} font-black uppercase text-xs`}><Ban size={18}/> Annuler le Dossier ?</div>
                           <CustomBulleSelect label="" value={selectedMarket.is_annule ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {is_annule: v==='OUI', statut_global: v==='OUI' ? StatutGlobal.ANNULE : StatutGlobal.EN_COURS})} />
                        </div>
                        {selectedMarket.is_annule && (
@@ -206,7 +206,7 @@ export const Tracking: React.FC = () => {
                   );
 
                   if (key === 'additif') return (
-                    <div key={key} className={`p-6 ${themeType === 'glass' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'} rounded-3xl border space-y-4`}>
+                    <div key={key} className={`p-6 ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'} rounded-3xl border space-y-4`}>
                        <div className="flex items-center justify-between">
                           <div className={`flex items-center gap-3 ${theme.textSecondary} font-black uppercase text-xs`}>A-t-il eu un Additif ?</div>
                           <CustomBulleSelect label="" value={selectedMarket.has_additif ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {has_additif: v==='OUI'})} />
@@ -221,9 +221,9 @@ export const Tracking: React.FC = () => {
                   );
                   
                   if (key === 'recours') return (
-                    <div key={key} className={`p-8 rounded-3xl ${themeType === 'glass' ? 'bg-white/5 border-white/10' : 'bg-blue-50/50 border-blue-100'} border space-y-4`}>
+                    <div key={key} className={`p-8 rounded-3xl ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-blue-50/50 border-blue-100'} border space-y-4`}>
                        <div className="flex items-center justify-between">
-                          <div className={`flex items-center gap-3 ${themeType === 'glass' ? 'text-white' : 'text-blue-600'} font-black uppercase text-xs`}><Gavel size={18}/> A-t-il eu un Recours ?</div>
+                          <div className={`flex items-center gap-3 ${theme.mode === 'dark' ? 'text-white' : 'text-blue-600'} font-black uppercase text-xs`}><Gavel size={18}/> A-t-il eu un Recours ?</div>
                           <CustomBulleSelect label="" value={selectedMarket.has_recours ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {has_recours: v==='OUI'})} />
                        </div>
                        {selectedMarket.has_recours && (

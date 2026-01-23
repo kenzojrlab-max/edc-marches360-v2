@@ -106,6 +106,15 @@ export const Login: React.FC = () => {
         </div>
       )}
 
+      {/* Effet d'arrière-plan pour le thème Metal */}
+      {themeType === 'metal' && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-800/50 via-slate-700/30 to-slate-900/50"></div>
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-600/20 via-transparent to-transparent"></div>
+          <div className="absolute bottom-0 right-0 w-full h-1/2 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-slate-500/10 via-transparent to-transparent"></div>
+        </div>
+      )}
+
       <style>{`
         .container-glass { position: relative; overflow: hidden; width: 720px; max-width: 100%; min-height: 520px; }
         .form-container { position: absolute; top: 0; height: 100%; transition: all 0.6s ease-in-out; }

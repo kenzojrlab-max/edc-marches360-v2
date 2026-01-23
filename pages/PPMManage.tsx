@@ -213,7 +213,7 @@ export const PPMManage: React.FC = () => {
         <div className="flex items-center gap-5">
           <button onClick={() => navigate(-1)} className={`p-4 ${theme.card} ${theme.buttonShape} hover:scale-105 transition-all text-slate-400`}><ChevronLeft size={20} /></button>
           <div>
-            <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Gestion des Plans</h1>
+            <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`} style={{ fontFamily: "'Poppins', sans-serif" }}>Gestion des Plans</h1>
             <p className={`${theme.textSecondary} font-medium text-sm italic`}>Administration des projets et importation PPM.</p>
           </div>
         </div>
@@ -226,7 +226,7 @@ export const PPMManage: React.FC = () => {
       <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 relative z-[10]`}>
         <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden lg:flex`}>
           <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
-          <span className="text-[10px] font-black uppercase tracking-widest">Filtres</span>
+          <span className="text-[10px] font-black uppercase tracking-widest" style={{ fontFamily: "'DM Sans', sans-serif" }}>Filtres</span>
         </div>
         <div className="w-full md:w-48">
           <CustomBulleSelect label="" value={selectedYear} options={yearOptions} onChange={setSelectedYear} placeholder="Exercice" />

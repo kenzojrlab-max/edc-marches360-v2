@@ -54,7 +54,7 @@ export const MarketDetails: React.FC = () => {
               <span className="px-3 py-1 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest">{market.numDossier}</span>
               <span className="px-3 py-1 bg-accent/10 text-accent rounded-xl text-[10px] font-black uppercase tracking-widest">{market.statut_global}</span>
             </div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight mt-1 uppercase leading-tight">{market.objet}</h1>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight mt-1 uppercase leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>{market.objet}</h1>
           </div>
         </div>
 
@@ -72,7 +72,7 @@ export const MarketDetails: React.FC = () => {
         <div className="lg:col-span-3 space-y-10">
           <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
              <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Registre Officiel de Suivi</h3>
+                <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>Registre Officiel de Suivi</h3>
                 <span className="text-[10px] font-black text-slate-400 bg-white px-4 py-1.5 rounded-full border border-slate-200 uppercase tracking-widest">Points de Contrôle</span>
              </div>
 

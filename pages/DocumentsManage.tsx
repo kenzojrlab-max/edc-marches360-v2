@@ -91,7 +91,7 @@ export const DocumentsManage: React.FC = () => {
         <div className="flex items-center gap-5">
           <button onClick={() => navigate('/documents')} className={`p-4 ${theme.card} ${theme.buttonShape} hover:scale-105 transition-all text-slate-400`}><ChevronLeft size={20} /></button>
           <div>
-            <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Gestion documentaire</h1>
+            <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`} style={{ fontFamily: "'Poppins', sans-serif" }}>Gestion documentaire</h1>
             <p className={`${theme.textSecondary} font-medium`}>Administration des ressources partagées.</p>
           </div>
         </div>

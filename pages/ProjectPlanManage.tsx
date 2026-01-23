@@ -19,77 +19,33 @@ import { Table } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { createStyles } from 'antd-style';
 
-// Styles personnalisés pour le tableau Ant Design
-const useTableStyles = createStyles(({ css }) => ({
+// --- STYLES DÉFINIS COMME HOOKS (SANS PARENTHÈSES À LA FIN) ---
+
+const useLightTableStyles = createStyles(({ css }) => ({
   customTable: css`
-    .ant-table {
-      background: transparent !important;
-      font-family: 'DM Sans', sans-serif !important;
-    }
-    .ant-table-container {
-      .ant-table-body,
-      .ant-table-content {
-        scrollbar-width: thin;
-        scrollbar-color: #3b82f6 #FDFEFE;
-      }
-      .ant-table-body::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      .ant-table-body::-webkit-scrollbar-track {
-        background: #FDFEFE;
-      }
-      .ant-table-body::-webkit-scrollbar-thumb {
-        background: #3b82f6;
-        border-radius: 4px;
-      }
-    }
-    .ant-table-thead > tr > th {
-      background: #FDFEFE !important;
-      color: #1a2333 !important;
-      border-bottom: 2px solid #e5e7eb !important;
-      font-family: 'Poppins', sans-serif !important;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      padding: 14px 12px !important;
-    }
-    .ant-table-tbody > tr > td {
-      background: #FDFEFE !important;
-      color: #1a2333 !important;
-      border-bottom: 1px solid #e5e7eb !important;
-      font-family: 'DM Sans', sans-serif !important;
-      padding: 16px 12px !important;
-    }
-    .ant-table-tbody > tr:hover > td {
-      background: #f3f4f6 !important;
-    }
-    /* Cellules fixées à gauche - header */
-    .ant-table-thead .ant-table-cell-fix-left {
-      background: #FDFEFE !important;
-      z-index: 4 !important;
-    }
-    /* Cellules fixées à droite - header */
-    .ant-table-thead .ant-table-cell-fix-right {
-      background: #FDFEFE !important;
-      z-index: 4 !important;
-    }
-    /* Cellules fixées à gauche - body */
-    .ant-table-tbody .ant-table-cell-fix-left {
-      background: #FDFEFE !important;
-      z-index: 2 !important;
-    }
-    /* Cellules fixées à droite - body */
-    .ant-table-tbody .ant-table-cell-fix-right {
-      background: #FDFEFE !important;
-      z-index: 2 !important;
-    }
-    /* Hover sur les cellules fixées */
-    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
-    .ant-table-tbody > tr:hover > .ant-table-cell-fix-right {
-      background: #f3f4f6 !important;
-    }
+    .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
+    .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #FDFEFE; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #FDFEFE; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
+    .ant-table-thead > tr > th { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 2px solid #e5e7eb !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #1a2333 !important; }
+    .ant-table-tbody > tr > td { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 1px solid #e5e7eb !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
+    .ant-table-tbody > tr:hover > td { background: #f3f4f6 !important; }
+    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 4 !important; }
+    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 2 !important; }
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #f3f4f6 !important; }
+  `,
+}));
+
+const useDarkTableStyles = createStyles(({ css }) => ({
+  customTable: css`
+    .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
+    .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #1a2333; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #1a2333; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
+    .ant-table-thead > tr > th { background: #0f172a !important; color: #ffffff !important; border-bottom: 2px solid rgba(255,255,255,0.1) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #ffffff !important; }
+    .ant-table-tbody > tr > td { background: #1e293b !important; color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
+    .ant-table-tbody > tr:hover > td { background: #334155 !important; }
+    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #0f172a !important; z-index: 4 !important; }
+    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #1e293b !important; z-index: 2 !important; }
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #334155 !important; }
   `,
 }));
 
@@ -115,13 +71,21 @@ export const ProjectPlanManage: React.FC = () => {
 
   const project = projects.find(p => p.id === projectId);
   const projectMarkets = markets.filter(m => m.projet_id === projectId);
-  
+
   const filteredMarkets = projectMarkets.filter(m =>
     (m.numDossier || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     (m.objet || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const { styles } = useTableStyles();
+  // Détection du mode sombre pour les styles du tableau
+  const isDarkTheme = theme.mode === 'dark';
+
+  // --- APPEL CORRECT DES HOOKS DE STYLE ---
+  const { styles: lightStyles } = useLightTableStyles();
+  const { styles: darkStyles } = useDarkTableStyles();
+
+  // Sélection du bon style selon le thème
+  const styles = isDarkTheme ? darkStyles : lightStyles;
 
   if (!project) return <div className="p-20 text-center font-black">Projet introuvable</div>;
 
@@ -319,7 +283,7 @@ export const ProjectPlanManage: React.FC = () => {
       </div>
 
       {/* Barre de Recherche */}
-      <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 relative z-[100]`}>
+      <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 relative`}>
         <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden lg:flex`}>
           <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
           <span className="text-[10px] font-black uppercase tracking-widest">Recherche</span>

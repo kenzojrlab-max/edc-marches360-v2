@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { 
+import {
   LayoutDashboard, FileText, Activity, PlayCircle, Settings, LogOut,
   Menu, Bell, Clock, CheckCircle, ChevronRight, Settings2, Library,
   Files, AlertTriangle, X, Palette, Zap, Monitor, Layers, GlassWater,
-  User as UserIcon
+  User as UserIcon, Hammer
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMarkets } from '../contexts/MarketContext';
@@ -102,14 +102,15 @@ export const Layout: React.FC = () => {
   const themeOptions: { type: ThemeType; icon: any; label: string }[] = [
     { type: 'minimal', icon: Monitor, label: 'Minimal' },
     { type: 'cyber', icon: Zap, label: 'Cyber' },
-    { type: 'clay', icon: Palette, label: 'Clay' },
     { type: 'retro', icon: Layers, label: 'Retro' },
-    { type: 'glass', icon: GlassWater, label: 'Glass' }
+    { type: 'glass', icon: GlassWater, label: 'Glass' },
+    { type: 'metal', icon: Hammer, label: 'Metal' }
   ];
 
   const getMenuBg = () => {
     if (themeType === 'glass') return 'bg-[#1a2333] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.6)]';
     if (themeType === 'cyber') return 'bg-[#0a1120] border border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]';
+    if (themeType === 'metal') return 'bg-gradient-to-b from-[#636e72] to-[#2d3436] border border-slate-600 shadow-[5px_5px_15px_rgba(0,0,0,0.8)]';
     return theme.card + ' shadow-2xl';
   };
 
@@ -127,6 +128,15 @@ export const Layout: React.FC = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden relative`}>
+      {/* Effet d'arrière-plan pour le thème Metal */}
+      {themeType === 'metal' && (
+        <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-800/50 via-slate-700/30 to-slate-900/50"></div>
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-600/20 via-transparent to-transparent"></div>
+          <div className="absolute bottom-0 right-0 w-full h-1/2 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-slate-500/10 via-transparent to-transparent"></div>
+        </div>
+      )}
+
       {/* Sidebar - Z-Index 50 pour être au-dessus du Header (40) mais sous la Modale (60+) */}
       <aside className={`
         fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 transform
@@ -209,7 +219,7 @@ export const Layout: React.FC = () => {
                 <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Thème</span>
               </button>
               {showThemePicker && (
-                <div className={`absolute top-full right-0 mt-2 w-52 ${getMenuBg()} z-50 p-2 animate-zoom-in rounded-2xl`}>
+                <div className={`absolute top-full right-0 mt-2 w-52 ${getMenuBg()} z-[200] p-2 animate-zoom-in rounded-2xl`}>
                    {themeOptions.map((opt) => (
                     <button
                       key={opt.type}
@@ -240,7 +250,7 @@ export const Layout: React.FC = () => {
               </button>
 
               {showNotifications && (
-                <div className={`absolute top-full right-0 mt-2 w-80 md:w-96 ${getMenuBg()} z-50 shadow-2xl animate-zoom-in p-2 rounded-2xl`}>
+                <div className={`absolute top-full right-0 mt-2 w-80 md:w-96 ${getMenuBg()} z-[200] shadow-2xl animate-zoom-in p-2 rounded-2xl`}>
                   <div className="p-4 border-b border-white/10 flex items-center justify-between">
                     <h3 className={`${theme.textMain} font-black text-[10px] uppercase tracking-widest`}>Alertes PPM ({alerts.length})</h3>
                     <AlertTriangle size={14} className="text-red-500" />

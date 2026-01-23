@@ -59,7 +59,7 @@ export const Profile: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-500 pb-40">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
         <div>
-          <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`}>Mon Profil</h1>
+          <h1 className={`text-3xl font-black ${theme.textMain} tracking-tight uppercase`} style={{ fontFamily: "'Poppins', sans-serif" }}>Mon Profil</h1>
           <p className={`${theme.textSecondary} font-medium text-sm italic`}>Gérez vos informations personnelles et préférences.</p>
         </div>
         
