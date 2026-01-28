@@ -29,9 +29,9 @@ export const Tracking: React.FC = () => {
   const {
     searchTerm, setSearchTerm,
     selectedYear, setSelectedYear,
-    selectedProjectId, setSelectedProjectId,
+    selectedFinancement, setSelectedFinancement,
     yearOptions,
-    projectOptions,
+    financementOptions,
     filteredMarkets
   } = useMarketFilter(markets, projects);
   
@@ -83,7 +83,7 @@ export const Tracking: React.FC = () => {
             <span className="text-[10px] font-black uppercase tracking-widest" style={{ fontFamily: "'DM Sans', sans-serif" }}>Pilotage</span>
           </div>
           <div className="w-full md:w-40"><CustomBulleSelect label="" value={selectedYear} options={yearOptions} onChange={setSelectedYear} /></div>
-          <div className="w-full md:w-64"><CustomBulleSelect label="" value={selectedProjectId} options={projectOptions} onChange={setSelectedProjectId} /></div>
+          <div className="w-full md:w-64"><CustomBulleSelect label="" value={selectedFinancement} options={financementOptions} onChange={setSelectedFinancement} /></div>
           <div className="relative w-full md:w-64">
             <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${theme.mode === 'dark' ? 'text-white' : theme.textSecondary}`} size={16} strokeWidth={theme.iconStroke} />
             <input

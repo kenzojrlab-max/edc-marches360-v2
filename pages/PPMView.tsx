@@ -4,11 +4,11 @@ import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useMarketLogic } from '../hooks/useMarketLogic';
+import { useMarketLifecycle } from '../hooks/useMarketLifecycle';
 import {
-  Search, ExternalLink, X, FileBox, FileCheck, Activity, Lock,
-  FileText, TrendingUp, AlertTriangle,
+  Search, ExternalLink, X, FileBox, FileCheck, AlertTriangle,
   CheckCircle2, UserCheck, Banknote, Gavel, Ban,
-  Clock, Receipt, ShieldCheck, Info as InfoIcon, MessageSquare, XCircle, Calendar
+  Clock, Info as InfoIcon, MessageSquare, Calendar
 } from 'lucide-react';
 import { JALONS_PPM_CONFIG, JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { formatDate, getLateStatus, calculateDaysBetween } from '../utils/date';
@@ -16,7 +16,6 @@ import { useSearchParams } from 'react-router-dom';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { FileManager } from '../components/FileManager';
 import { Marche } from '../types';
-import { storage } from '../utils/storage';
 import { Table } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { createStyles } from 'antd-style';
@@ -89,7 +88,7 @@ const CircularProgress = ({ percent, color, icon: Icon }: { percent: number, col
 export const PPMView: React.FC = () => {
   const { markets } = useMarkets();
   const { projects } = useProjects();
-  const { can } = useAuth();
+  useAuth();
   const { theme } = useTheme();
 
   // Détection du mode sombre pour les styles du tableau
@@ -106,26 +105,33 @@ export const PPMView: React.FC = () => {
   // Utilisation du Hook de logique
   const { isJalonApplicable, isJalonActive, isPhaseAccessible } = useMarketLogic();
 
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>('');
+  // Hook pour le cycle de vie des marchés (filtrage passation vs exécution)
+  const { isInPassation } = useMarketLifecycle(markets, projects);
+
+  // Année en cours par défaut
+  const currentYear = new Date().getFullYear().toString();
+
+  const [selectedFinancement, setSelectedFinancement] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>(currentYear);
   const [detailMarketId, setDetailMarketId] = useState<string | null>(null);
   const [scrolledId, setScrolledId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    const projectFilter = searchParams.get('projectId');
     const highlightedId = searchParams.get('id');
-    
-    if (projectFilter) setSelectedProjectId(projectFilter);
-    
+
     if (highlightedId) {
       const targetMarket = markets.find(m => m.id === highlightedId);
       if (targetMarket) {
         const parentProject = projects.find(p => p.id === targetMarket.projet_id);
         if (parentProject) {
           setSelectedYear(parentProject.exercice.toString());
-          setSelectedProjectId(parentProject.id);
+          // Définir le financement en fonction du projet parent
+          const financement = parentProject.sourceFinancement === 'BUDGET_EDC'
+            ? 'Budget EDC'
+            : parentProject.nomBailleur || '';
+          setSelectedFinancement(financement);
         }
       }
       setScrolledId(highlightedId);
@@ -142,38 +148,122 @@ export const PPMView: React.FC = () => {
     }
   }, [searchParams, markets, projects]);
 
+  // Réinitialiser le financement si celui sélectionné n'est plus disponible pour l'année choisie
+  useEffect(() => {
+    if (selectedFinancement) {
+      const availableFinancements = new Set<string>();
+
+      const filteredProjects = selectedYear
+        ? projects.filter(p => p.exercice.toString() === selectedYear)
+        : projects;
+
+      const filteredMarketsForCheck = selectedYear
+        ? markets.filter(m => {
+            const parentProject = projects.find(p => p.id === m.projet_id);
+            return parentProject?.exercice.toString() === selectedYear;
+          })
+        : markets;
+
+      filteredProjects.forEach(p => {
+        if (p.sourceFinancement === 'BUDGET_EDC') {
+          availableFinancements.add('Budget EDC');
+        } else if (p.nomBailleur) {
+          availableFinancements.add(p.nomBailleur);
+        }
+      });
+
+      filteredMarketsForCheck.forEach(m => {
+        if (m.source_financement === 'BUDGET_EDC') {
+          availableFinancements.add('Budget EDC');
+        } else if (m.nom_bailleur) {
+          availableFinancements.add(m.nom_bailleur);
+        }
+      });
+
+      if (!availableFinancements.has(selectedFinancement)) {
+        setSelectedFinancement('');
+      }
+    }
+  }, [selectedYear, projects, markets]);
+
   const availableYears = useMemo(() => {
     const years = Array.from(new Set(projects.map(p => p.exercice.toString()))) as string[];
     return years.sort((a, b) => b.localeCompare(a));
   }, [projects]);
 
   const yearOptions = [{ value: '', label: 'Tous les exercices' }, ...availableYears.map(y => ({ value: y, label: y }))];
-  const projectOptions = useMemo(() => [{ value: '', label: 'Tous les projets' }, ...projects.map(p => ({ value: p.id, label: p.libelle }))], [projects]);
 
-  const selectedProjectObj = useMemo(() => 
-    projects.find(p => p.id === selectedProjectId),
-    [projects, selectedProjectId]
-  );
+  // Options de financement dynamiques selon l'année sélectionnée
+  const financementOptions = useMemo(() => {
+    const financements = new Set<string>();
 
-  const handleDownloadSignedPPM = async () => {
-    if (!selectedProjectObj?.ppm_doc_id || !can('DOWNLOAD')) return;
-    const doc = await storage.getDocById(selectedProjectObj.ppm_doc_id);
-    if (!doc) return;
-    const link = document.createElement('a');
-    link.href = doc.url || (doc as any).data;
-    link.download = doc.nom || `PPM_Signe_${selectedProjectObj.libelle}.pdf`;
-    link.click();
-  };
+    // Filtrer les projets par année sélectionnée
+    const filteredProjects = selectedYear
+      ? projects.filter(p => p.exercice.toString() === selectedYear)
+      : projects;
+
+    // Filtrer les marchés par année (via leur projet parent)
+    const filteredMarketsForFinancement = selectedYear
+      ? markets.filter(m => {
+          const parentProject = projects.find(p => p.id === m.projet_id);
+          return parentProject?.exercice.toString() === selectedYear;
+        })
+      : markets;
+
+    // Depuis les projets filtrés
+    filteredProjects.forEach(p => {
+      if (p.sourceFinancement === 'BUDGET_EDC') {
+        financements.add('Budget EDC');
+      } else if (p.nomBailleur) {
+        financements.add(p.nomBailleur);
+      }
+    });
+
+    // Depuis les marchés filtrés (pour les bailleurs définis directement au niveau du marché)
+    filteredMarketsForFinancement.forEach(m => {
+      if (m.source_financement === 'BUDGET_EDC') {
+        financements.add('Budget EDC');
+      } else if (m.nom_bailleur) {
+        financements.add(m.nom_bailleur);
+      }
+    });
+
+    return [
+      { value: '', label: 'Tous les financements' },
+      ...Array.from(financements).sort().map(f => ({ value: f, label: f }))
+    ];
+  }, [projects, markets, selectedYear]);
 
   const filteredMarkets = useMemo(() => {
     return markets.filter(m => {
+      // NOUVEAU : Exclure les marchés signés (ils sont dans "Suivi Exécution Marchés")
+      // On garde : non signés, non annulés, non infructueux
+      if (!isInPassation(m)) return false;
+
       const parentProject = projects.find(p => p.id === m.projet_id);
-      const matchProject = !selectedProjectId || m.projet_id === selectedProjectId;
+
+      // Filtre par Année
       const matchYear = !selectedYear || parentProject?.exercice.toString() === selectedYear;
+
+      // Filtre par Financement (Budget EDC ou nom du bailleur - niveau marché ou projet)
+      let matchFinancement = true;
+      if (selectedFinancement) {
+        if (selectedFinancement === 'Budget EDC') {
+          matchFinancement = m.source_financement === 'BUDGET_EDC';
+        } else {
+          // Vérifier d'abord le nom du bailleur du marché, sinon celui du projet
+          const bailleurMarche = m.nom_bailleur;
+          const bailleurProjet = parentProject?.nomBailleur;
+          matchFinancement = bailleurMarche === selectedFinancement || bailleurProjet === selectedFinancement;
+        }
+      }
+
+      // Filtre par recherche texte
       const matchSearch = (m.numDossier || "").toLowerCase().includes(searchTerm.toLowerCase()) || (m.objet || "").toLowerCase().includes(searchTerm.toLowerCase());
-      return matchProject && matchSearch && matchYear;
+
+      return matchFinancement && matchSearch && matchYear;
     });
-  }, [markets, projects, selectedProjectId, selectedYear, searchTerm]);
+  }, [markets, projects, selectedFinancement, selectedYear, searchTerm, isInPassation]);
 
   // Configuration des colonnes pour Ant Design Table
   const tableColumns: TableColumnsType<Marche> = useMemo(() => {
@@ -213,6 +303,44 @@ export const PPMView: React.FC = () => {
             {(value || 0).toLocaleString()} <span className={`text-[9px] ${theme.textSecondary}`}>FCFA</span>
           </span>
         ),
+      },
+      {
+        title: 'Fonction Analytique',
+        dataIndex: 'fonction',
+        key: 'fonction',
+        width: 150,
+        render: (value) => (
+          <span className={`text-[10px] font-black ${theme.textMain} uppercase`}>
+            {value || '-'}
+          </span>
+        ),
+      },
+      {
+        title: 'Activité',
+        dataIndex: 'activite',
+        key: 'activite',
+        width: 150,
+        render: (value) => (
+          <span className={`text-[10px] font-bold ${theme.textSecondary} uppercase line-clamp-2`}>
+            {value || '-'}
+          </span>
+        ),
+      },
+      {
+        title: 'Financement',
+        dataIndex: 'source_financement',
+        key: 'financement',
+        width: 150,
+        render: (_, m) => {
+          const label = m.source_financement === 'BUDGET_EDC'
+            ? 'Budget EDC'
+            : m.nom_bailleur || 'Bailleur';
+          return (
+            <span className={`text-[9px] font-black px-2 py-1 rounded ${m.source_financement === 'BUDGET_EDC' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'}`}>
+              {label}
+            </span>
+          );
+        },
       },
     ];
 
@@ -351,17 +479,7 @@ export const PPMView: React.FC = () => {
         </div>
         <div className={`${theme.card} p-3 flex flex-col md:flex-row items-center gap-3 w-full md:w-auto relative z-40`}>
           <div className="w-full md:w-40"><CustomBulleSelect label="" value={selectedYear} options={yearOptions} onChange={setSelectedYear} /></div>
-          <div className="w-full md:w-64"><CustomBulleSelect label="" value={selectedProjectId} options={projectOptions} onChange={setSelectedProjectId} /></div>
-          
-          {selectedProjectObj?.ppm_doc_id && (
-            <button 
-              onClick={handleDownloadSignedPPM}
-              className={`flex items-center gap-2 px-4 py-2.5 bg-success/10 text-success hover:bg-success hover:text-white ${theme.buttonShape} text-[10px] font-black uppercase transition-all shadow-sm border border-success/20 shrink-0`}
-              title="Télécharger le PPM Signé"
-            >
-              <FileCheck size={16} /> <span className="hidden xl:inline">PPM Signé</span>
-            </button>
-          )}
+          <div className="w-full md:w-64"><CustomBulleSelect label="" value={selectedFinancement} options={financementOptions} onChange={setSelectedFinancement} /></div>
 
           <div className="relative w-full md:w-64">
             <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${theme.mode === 'dark' ? 'text-white' : theme.textSecondary}`} size={16} strokeWidth={theme.iconStroke} />
@@ -396,7 +514,7 @@ export const PPMView: React.FC = () => {
       {/* MODAL DE DÉTAILS */}
       {selectedMarket && (
         <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-2 md:p-4">
-           <div className={`relative w-full max-w-[1400px] h-[95vh] ${theme.card} shadow-2xl overflow-hidden flex flex-col animate-zoom-in border border-white/10`}>
+           <div className={`relative w-full max-w-[900px] h-[95vh] ${theme.card} shadow-2xl overflow-hidden flex flex-col animate-zoom-in border border-white/10`}>
               <div className="p-8 border-b border-white/5 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-6">
                   <div className={`w-16 h-16 ${theme.card} flex items-center justify-center font-black text-xl ${theme.textAccent}`}>{selectedMarket.numDossier.charAt(0)}</div>
@@ -408,7 +526,7 @@ export const PPMView: React.FC = () => {
                 <button onClick={() => setDetailMarketId(null)} className={`${theme.buttonSecondary} ${theme.buttonShape} px-6 py-4 flex items-center gap-3 font-black text-xs uppercase transition-all`}>Fermer <X size={18}/></button>
               </div>
 
-              <div className="flex-1 flex divide-x divide-white/5 overflow-hidden">
+              <div className="flex-1 flex overflow-hidden">
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
                       <h3 className={`text-sm font-black uppercase tracking-[0.15em] ${theme.textAccent}`}>Phase Passation détaillée</h3>
@@ -542,147 +660,6 @@ export const PPMView: React.FC = () => {
                            </div>
                          ))}
                       </div>
-                   </div>
-                </div>
-
-                {/* VOLET DROIT - PHASE EXÉCUTION */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                   <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
-                      <h3 className={`text-sm font-black uppercase tracking-[0.15em] text-green-500`}>Phase Exécution (Financier & Contractuel)</h3>
-                      {selectedMarket.execution.is_resilie && <span className="px-3 py-1 bg-red-600 text-white text-[9px] font-black uppercase rounded shadow-lg animate-pulse">Résiliation Active</span>}
-                   </div>
-                   <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12">
-                      <div className="mb-12 flex justify-center"><CircularProgress percent={calculateProgress(selectedMarket).execution} color="text-green-500" icon={Activity} /></div>
-                      
-                      {(selectedMarket.is_annule || selectedMarket.is_infructueux) ? (
-                         <div className="p-12 text-center flex flex-col items-center gap-8 bg-slate-950/50 rounded-[3rem] border border-white/5">
-                            <div className={`w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 shadow-2xl`}><XCircle size={48} /></div>
-                            <div className="space-y-3">
-                               <h4 className="text-lg font-black text-white uppercase tracking-tight">Phase Verrouillée Définitivement</h4>
-                               <p className={`text-xs font-bold ${theme.textSecondary} uppercase italic leading-relaxed`}>Le dossier a été clôturé avant signature <br/> (Annulation ou Infructuosité)</p>
-                            </div>
-                         </div>
-                      ) : !selectedMarket.dates_realisees.signature_marche ? (
-                        <div className="p-12 text-center flex flex-col items-center gap-8">
-                           <div className={`w-24 h-24 bg-white/5 rounded-full flex items-center justify-center text-slate-500 shadow-sm`}><Lock size={48} /></div>
-                           <p className={`text-xs font-black ${theme.textSecondary} uppercase italic leading-relaxed`}>Phase Verrouillée <br/> Signature du marché requise pour ouvrir l'exécution</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-10 animate-in slide-in-from-right-4 pb-20">
-                           {/* DÉTAILS DU CONTRAT */}
-                           <section className={`p-8 ${theme.card} border-white/5 space-y-6 relative`}>
-                              <div className="flex items-center gap-3 text-green-500"><FileText size={20}/><h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Synthèse Contractuelle</h4></div>
-                              <div className="grid grid-cols-2 gap-8">
-                                 <div><p className="text-xs font-black text-slate-500 uppercase mb-1">Réf. Contrat</p><p className={`text-sm font-black ${theme.textMain}`}>{selectedMarket.execution.ref_contrat || 'Non renseignée'}</p></div>
-                                 <div><p className="text-xs font-black text-slate-500 uppercase mb-1">Délai Global</p><p className={`text-sm font-black ${theme.textMain}`}>{selectedMarket.execution.delai_mois ? `${selectedMarket.execution.delai_mois} Mois` : 'Non défini'}</p></div>
-                              </div>
-                              <div className="pt-6 border-t border-white/5 flex items-center justify-between">
-                                 <div><p className="text-xs font-black text-slate-500 uppercase">Garantie</p><p className={`text-xs font-bold ${theme.textMain} opacity-60 uppercase`}>{selectedMarket.execution.type_retenue_garantie || "Non définie"}</p></div>
-                                 <FileManager existingDocId={selectedMarket.execution.doc_caution_bancaire_id} onUpload={() => {}} disabled />
-                              </div>
-                           </section>
-                           
-                           {/* DÉCOMPTES */}
-                           <section className="space-y-4">
-                              <div className="flex items-center justify-between px-4"><h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Receipt size={14}/> Décomptes ({selectedMarket.execution.decomptes.length})</h4><span className="text-xs font-black text-green-500">{selectedMarket.execution.decomptes.reduce((acc, d) => acc + d.montant, 0).toLocaleString()} FCFA</span></div>
-                              <div className="space-y-2">
-                                 {selectedMarket.execution.decomptes.map(d => (
-                                   <div key={d.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
-                                      <div className="flex-1">
-                                         <p className={`text-xs font-black ${theme.textMain} uppercase`}>{d.objet || `Décompte N°${d.numero}`}</p>
-                                         <p className="text-[10px] font-bold text-slate-500 uppercase">{d.date_validation ? `Validé le ${formatDate(d.date_validation)}` : "En attente de paiement"}</p>
-                                      </div>
-                                      <div className="flex items-center gap-4">
-                                         <p className="text-xs font-black text-green-500">{d.montant.toLocaleString()} FCFA</p>
-                                         <FileManager existingDocId={d.doc_id} onUpload={() => {}} disabled />
-                                      </div>
-                                   </div>
-                                 ))}
-                              </div>
-                           </section>
-
-                           {/* AVENANTS */}
-                           <section className="space-y-4">
-                              <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><TrendingUp size={14}/> Historique des Avenants</h4>
-                              <div className="space-y-3">
-                                 {selectedMarket.execution.avenants.map((a, i) => (
-                                   <div key={a.id} className="p-6 bg-white/5 rounded-[2rem] border border-warning/10 space-y-4 group">
-                                      <div className="flex justify-between items-center"><span className="px-3 py-1 bg-warning/10 text-warning text-[10px] font-black rounded-lg uppercase">Avenant N°{i+1}</span><span className={`text-[10px] font-black ${theme.textMain}`}>{a.montant_incidence.toLocaleString()} FCFA</span></div>
-                                      <p className={`text-xs font-bold ${theme.textMain} uppercase leading-tight`}>{a.objet}</p>
-                                      <div className="grid grid-cols-3 gap-2 pt-2">
-                                         {[
-                                            {label: 'Notif.', key: 'doc_notification_id'},
-                                            {label: 'OS', key: 'doc_os_id'},
-                                            {label: 'Enreg.', key: 'doc_enreg_id'}
-                                         ].map(doc => (
-                                            <div key={doc.key} className="flex flex-col items-center p-2 bg-black/20 rounded-xl border border-white/5 gap-1">
-                                               <span className="text-[10px] font-black text-slate-500 uppercase">{doc.label}</span>
-                                               <FileManager existingDocId={(a as any)[doc.key]} onUpload={() => {}} disabled />
-                                            </div>
-                                         ))}
-                                      </div>
-                                   </div>
-                                 ))}
-                              </div>
-                           </section>
-
-                           {/* RÉSILIATION */}
-                           {selectedMarket.execution.is_resilie && (
-                             <section className="p-8 bg-red-500/5 rounded-[2.5rem] border border-red-500/20 space-y-6 animate-in zoom-in-95">
-                                <div className="flex items-center gap-3 text-red-500 font-black uppercase text-[11px] tracking-widest"><AlertTriangle size={20}/> Procédure de Résiliation</div>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                   {[
-                                      {step: 1, label: 'Mise en Demeure', key: 'doc_mise_en_demeure_id'},
-                                      {step: 2, label: 'Constat de Carence', key: 'doc_constat_carence_id'},
-                                      {step: 3, label: 'Décision Finale', key: 'doc_decision_resiliation_id'}
-                                   ].map(s => (
-                                      <div key={s.step} className="p-4 bg-white/5 rounded-2xl border border-red-500/10 text-center space-y-3 flex flex-col items-center">
-                                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Étape {s.step}</p>
-                                         <p className={`text-xs font-black ${theme.textMain} uppercase leading-none truncate w-full`}>{s.label}</p>
-                                         <FileManager existingDocId={(selectedMarket.execution as any)[s.key]} onUpload={() => {}} disabled />
-                                      </div>
-                                   ))}
-                                </div>
-                             </section>
-                           )}
-
-                           {/* DOCS OFFICIELS */}
-                           <section className="space-y-4">
-                              <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 px-4 flex items-center gap-2"><ShieldCheck size={14}/> Garanties & Documents Officiels</h4>
-                              <div className="grid grid-cols-1 gap-2">
-                                 {[
-                                   { label: 'Notification du contrat', key: 'doc_notif_contrat_id', dateKey: null },
-                                   { label: 'OS de Démarrage', key: 'doc_notif_os_id', dateKey: 'date_notif_os' },
-                                   { label: 'Cautionnement Définitif', key: 'doc_caution_def_id', dateKey: null },
-                                   { label: 'Contrat enregistré', key: 'doc_contrat_enreg_id', dateKey: null },
-                                   { label: 'Police d\'Assurance', key: 'doc_assurance_id', dateKey: null },
-                                   { label: 'Rapport d\'exécution', key: 'doc_rapport_exec_id', dateKey: null }, 
-                                   { label: 'PV Réception Provisoire', key: 'doc_pv_provisoire_id', dateKey: 'date_pv_provisoire' },
-                                   { label: 'PV Réception Définitive', key: 'doc_pv_definitif_id', dateKey: 'date_pv_definitif' }
-                                 ].map(doc => {
-                                   const docId = (selectedMarket.execution as any)[doc.key];
-                                   const dateValue = doc.dateKey ? (selectedMarket.execution as any)[doc.dateKey] : null;
-                                   const status = getStepStatus(dateValue, docId);
-                                   return (
-                                     <div key={doc.key} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
-                                        <div className="flex flex-col">
-                                           <span className={`text-xs font-black ${theme.textMain} opacity-80 uppercase`}>{doc.label}</span>
-                                           {dateValue ? (
-                                             <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
-                                               <Calendar size={10}/> {formatDate(dateValue)}
-                                             </span>
-                                           ) : (
-                                             <span className={`text-[10px] uppercase tracking-tighter ${status.color}`}>{status.label}</span>
-                                           )}
-                                        </div>
-                                        <FileManager existingDocId={docId} onUpload={() => {}} disabled />
-                                     </div>
-                                   );
-                                 })}
-                              </div>
-                           </section>
-                        </div>
-                      )}
                    </div>
                 </div>
               </div>

@@ -66,7 +66,8 @@ export const ProjectPlanManage: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Marche>>({
     numDossier: '', objet: '', activite: '', fonction: FONCTIONS[0],
     typeAO: AOType.AON, typePrestation: MarketType.TRAVAUX, montant_prevu: 0,
-    imputation_budgetaire: '', dates_prevues: {} as MarcheDates, comments: {}, docs: {}, has_additif: false
+    imputation_budgetaire: '', source_financement: SourceFinancement.BUDGET_EDC, nom_bailleur: '',
+    dates_prevues: {} as MarcheDates, comments: {}, docs: {}, has_additif: false
   });
 
   const project = projects.find(p => p.id === projectId);
@@ -95,19 +96,21 @@ export const ProjectPlanManage: React.FC = () => {
       setFormData({ ...market });
     } else {
       setEditingMarket(null);
-      setFormData({ 
-        numDossier: '', 
-        objet: '', 
-        activite: '', 
-        fonction: FONCTIONS[0], 
-        typeAO: AOType.AON, 
-        typePrestation: MarketType.TRAVAUX, 
-        montant_prevu: 0, 
-        imputation_budgetaire: '', 
-        dates_prevues: {} as MarcheDates, 
+      setFormData({
+        numDossier: '',
+        objet: '',
+        activite: '',
+        fonction: FONCTIONS[0],
+        typeAO: AOType.AON,
+        typePrestation: MarketType.TRAVAUX,
+        montant_prevu: 0,
+        imputation_budgetaire: '',
+        source_financement: SourceFinancement.BUDGET_EDC,
+        nom_bailleur: '',
+        dates_prevues: {} as MarcheDates,
         comments: {},
-        docs: {}, 
-        has_additif: false 
+        docs: {},
+        has_additif: false
       });
     }
     setIsModalOpen(true);
@@ -124,26 +127,27 @@ export const ProjectPlanManage: React.FC = () => {
       if (editingMarket) {
         await updateMarket(editingMarket.id, formData); // Ajout de await par sécurité (même si le contexte gère)
       } else {
-        await addMarket({ 
-          ...(formData as Marche), 
-          id: crypto.randomUUID(), 
-          projet_id: projectId!, 
-          source_financement: project.sourceFinancement, 
-          dates_realisees: {}, 
+        await addMarket({
+          ...(formData as Marche),
+          id: crypto.randomUUID(),
+          projet_id: projectId!,
+          source_financement: formData.source_financement || SourceFinancement.BUDGET_EDC,
+          nom_bailleur: formData.source_financement === SourceFinancement.BAILLEUR ? formData.nom_bailleur : undefined,
+          dates_realisees: {},
           comments: formData.comments || {},
-          docs: formData.docs || {}, 
-          statut_global: StatutGlobal.PLANIFIE, 
-          is_infructueux: false, 
-          is_annule: false, 
-          execution: { 
-            decomptes: [], 
-            avenants: [], 
-            has_avenant: false, 
-            is_resilie: false, 
-            resiliation_step: 0 
-          }, 
-          created_by: user?.id || 'system', 
-          date_creation: new Date().toISOString() 
+          docs: formData.docs || {},
+          statut_global: StatutGlobal.PLANIFIE,
+          is_infructueux: false,
+          is_annule: false,
+          execution: {
+            decomptes: [],
+            avenants: [],
+            has_avenant: false,
+            is_resilie: false,
+            resiliation_step: 0
+          },
+          created_by: user?.id || 'system',
+          date_creation: new Date().toISOString()
         });
       }
       setIsModalOpen(false);
@@ -198,6 +202,44 @@ export const ProjectPlanManage: React.FC = () => {
       render: (value) => (
         <span className={`text-sm font-black ${theme.textMain}`}>{(value || 0).toLocaleString()}</span>
       ),
+    },
+    {
+      title: 'Fonction Analytique',
+      dataIndex: 'fonction',
+      key: 'fonction',
+      width: 150,
+      render: (value) => (
+        <span className={`text-[10px] font-black ${theme.textMain} uppercase`}>
+          {value || '-'}
+        </span>
+      ),
+    },
+    {
+      title: 'Activité',
+      dataIndex: 'activite',
+      key: 'activite',
+      width: 150,
+      render: (value) => (
+        <span className={`text-[10px] font-bold ${theme.textSecondary} uppercase line-clamp-2`}>
+          {value || '-'}
+        </span>
+      ),
+    },
+    {
+      title: 'Financement',
+      dataIndex: 'source_financement',
+      key: 'financement',
+      width: 150,
+      render: (_: any, m: Marche) => {
+        const label = m.source_financement === 'BUDGET_EDC'
+          ? 'Budget EDC'
+          : m.nom_bailleur || 'Bailleur';
+        return (
+          <span className={`text-[9px] font-black px-2 py-1 rounded ${m.source_financement === 'BUDGET_EDC' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'}`}>
+            {label}
+          </span>
+        );
+      },
     },
     // Colonnes des jalons (groupées avec Prévue/Réalisée)
     ...JALONS_PPM_CONFIG.map(jalon => ({
@@ -332,6 +374,24 @@ export const ProjectPlanManage: React.FC = () => {
               <CustomBulleSelect label="Prestation" value={formData.typePrestation || ''} options={Object.values(MarketType).map(v => ({value: v, label: v}))} onChange={v => setFormData({...formData, typePrestation: v})} />
               <BulleInput label="Budget Estimé (FCFA)" type="number" value={formData.montant_prevu} onChange={e => setFormData({...formData, montant_prevu: Number(e.target.value)})} />
               <BulleInput label="Imputation Budgétaire" value={formData.imputation_budgetaire} onChange={e => setFormData({...formData, imputation_budgetaire: e.target.value})} />
+              <CustomBulleSelect
+                label="Source de Financement"
+                value={formData.source_financement || ''}
+                options={[
+                  { value: SourceFinancement.BUDGET_EDC, label: 'Budget EDC' },
+                  { value: SourceFinancement.BAILLEUR, label: 'Financement Extérieur (Bailleur)' }
+                ]}
+                onChange={v => setFormData({...formData, source_financement: v as SourceFinancement, nom_bailleur: v === SourceFinancement.BUDGET_EDC ? '' : formData.nom_bailleur})}
+              />
+              {formData.source_financement === SourceFinancement.BAILLEUR && (
+                <BulleInput
+                  label="Nom du Bailleur"
+                  value={formData.nom_bailleur || ''}
+                  onChange={e => setFormData({...formData, nom_bailleur: e.target.value})}
+                  placeholder="Ex: Banque Mondiale, BAD, IDA..."
+                  required
+                />
+              )}
            </div>
 
            <div className="pt-8 border-t border-white/10">

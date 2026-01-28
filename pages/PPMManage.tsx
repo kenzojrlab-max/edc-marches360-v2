@@ -37,7 +37,9 @@ export const PPMManage: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedYear, setSelectedYear] = useState<string>('');
+  // Année en cours par défaut
+  const currentYear = new Date().getFullYear().toString();
+  const [selectedYear, setSelectedYear] = useState<string>(currentYear);
 
   const availableYears = useMemo(() => {
     const years = Array.from(new Set(projects.map(p => p.exercice.toString())));
@@ -126,20 +128,24 @@ export const PPMManage: React.FC = () => {
 
           // --- LOGIQUE MISE À JOUR POUR LA SOURCE DE FINANCEMENT ---
           // On lit la colonne 7 (Source de financement) de l'Excel
-          const rawSource = sanitizeInput(row[7]); 
+          const rawSource = sanitizeInput(row[7]);
           // Par défaut, on prend celle du projet
           let finalSource = project?.sourceFinancement || SourceFinancement.BUDGET_EDC;
-          
+          let nomBailleur: string | undefined = undefined;
+
           if (rawSource && rawSource.trim().length > 0) {
             // On nettoie la chaine (majuscules, espaces)
             const normalizedSource = rawSource.toUpperCase().replace(/\s+/g, ' ').trim();
-            
+
             // SI la cellule contient "BUDGET EDC" => C'est Budget EDC
             if (normalizedSource.includes('BUDGET EDC')) {
-               finalSource = SourceFinancement.BUDGET_EDC;
+              finalSource = SourceFinancement.BUDGET_EDC;
+              nomBailleur = undefined;
             } else {
-               // SINON (tout ce qui est différent, ex: BAD, BM, C2D...) => C'est BAILLEUR
-               finalSource = SourceFinancement.BAILLEUR;
+              // SINON (tout ce qui est différent, ex: BAD, BM, C2D...) => C'est BAILLEUR
+              finalSource = SourceFinancement.BAILLEUR;
+              // On stocke le nom du bailleur tel qu'il est saisi dans le fichier
+              nomBailleur = rawSource.trim();
             }
           }
           // -----------------------------------------------------
@@ -156,7 +162,8 @@ export const PPMManage: React.FC = () => {
             typePrestation: (sanitizeInput(row[5]) as MarketType) || MarketType.TRAVAUX,
             montant_prevu: parseFloat(String(row[6] || "0").replace(/\s/g, '').replace(',', '.')) || 0,
             imputation_budgetaire: sanitizeInput(row[8] || ""),
-            source_financement: finalSource, // Utilisation de la source calculée
+            source_financement: finalSource,
+            nom_bailleur: nomBailleur,
             dates_prevues: dates_prevues,
             dates_realisees: {},
             comments: {},

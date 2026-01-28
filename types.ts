@@ -155,6 +155,7 @@ export interface Marche {
   montant_ttc_reel?: number;
   imputation_budgetaire: string;
   source_financement: SourceFinancement;
+  nom_bailleur?: string;
   dates_prevues: MarcheDates;
   dates_realisees: MarcheDates;
   comments: Record<string, string>;

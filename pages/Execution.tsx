@@ -28,9 +28,9 @@ export const Execution: React.FC = () => {
   const {
     searchTerm, setSearchTerm,
     selectedYear, setSelectedYear,
-    selectedProjectId, setSelectedProjectId,
+    selectedFinancement, setSelectedFinancement,
     yearOptions,
-    projectOptions,
+    financementOptions,
     filteredMarkets: baseFilteredMarkets // On renomme pour appliquer le filtre supplémentaire
   } = useMarketFilter(markets, projects);
 
@@ -91,7 +91,7 @@ export const Execution: React.FC = () => {
             <CustomBulleSelect label="" value={selectedYear} options={yearOptions} onChange={setSelectedYear} placeholder="Exercice" />
           </div>
           <div className="w-full md:w-56">
-            <CustomBulleSelect label="" value={selectedProjectId} options={projectOptions} onChange={setSelectedProjectId} placeholder="Tous les projets" />
+            <CustomBulleSelect label="" value={selectedFinancement} options={financementOptions} onChange={setSelectedFinancement} placeholder="Tous les financements" />
           </div>
           <div className="relative w-full md:w-64">
             <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${themeType === 'glass' ? 'text-white' : theme.textSecondary}`} size={16} strokeWidth={theme.iconStroke} />

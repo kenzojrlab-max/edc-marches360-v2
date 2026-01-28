@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, Activity, PlayCircle, Settings, LogOut,
   Menu, Bell, Clock, CheckCircle, ChevronRight, Settings2, Library,
   Files, AlertTriangle, X, Palette, Zap, Monitor, Layers, GlassWater,
-  User as UserIcon, Hammer
+  User as UserIcon, Hammer, ClipboardCheck
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMarkets } from '../contexts/MarketContext';
@@ -117,6 +117,7 @@ export const Layout: React.FC = () => {
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard', visible: true },
     { to: '/ppm-view', icon: FileText, label: 'Suivi Plan de Passation', visible: true },
+    { to: '/execution-tracking', icon: ClipboardCheck, label: 'Suivi Exécution Marchés', visible: true },
     { to: '/documents', icon: Library, label: 'Documentation', visible: true },
     { to: '/ppm-manage', icon: Settings2, label: 'Gestion Plan de Passation', visible: isAdmin },
     { to: '/tracking', icon: Activity, label: 'Suivi des Marchés', visible: isAdmin },

@@ -20,6 +20,7 @@ import { PPMManage } from './pages/PPMManage';
 import { ProjectPlanManage } from './pages/ProjectPlanManage';
 import { Settings } from './pages/Settings';
 import { Execution } from './pages/Execution';
+import { ExecutionTracking } from './pages/ExecutionTracking';
 import { Documents } from './pages/Documents';
 import { DocumentsManage } from './pages/DocumentsManage';
 import { Profile } from './pages/Profile';
@@ -63,6 +64,7 @@ const AppContent: React.FC = () => {
             <Route path="ppm-manage/:projectId" element={<ProjectPlanManage />} />
             <Route path="tracking" element={<Tracking />} />
             <Route path="execution" element={<Execution />} />
+            <Route path="execution-tracking" element={<ExecutionTracking />} />
             <Route path="documents" element={<Documents />} />
             <Route path="documents-manage" element={<DocumentsManage />} />
             <Route path="settings" element={<Settings />} />

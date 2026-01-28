@@ -38,10 +38,11 @@ export const Dashboard: React.FC = () => {
   // --- Filtres (via Hook) ---
   const {
     selectedYear, setSelectedYear,
-    selectedProjectId, setSelectedProjectId,
+    selectedFinancement, setSelectedFinancement,
     selectedFonction, setSelectedFonction,
     yearOptions,
-    projectOptions,
+    financementOptions,
+    fonctionOptions,
     filteredMarkets
   } = useMarketFilter(markets, projects);
 
@@ -68,8 +69,8 @@ export const Dashboard: React.FC = () => {
           <span className="text-xs font-black uppercase tracking-widest" style={{ fontFamily: "'DM Sans', sans-serif" }}>Pilotage</span>
         </div>
         <div className="w-full md:w-40"><CustomBulleSelect label="Exercice" value={selectedYear} options={yearOptions} onChange={setSelectedYear} /></div>
-        <div className="w-full md:w-64"><CustomBulleSelect label="Projet" value={selectedProjectId} options={projectOptions} onChange={setSelectedProjectId} /></div>
-        <div className="w-full md:w-64"><CustomBulleSelect label="Fonction" value={selectedFonction} options={fonctions.map(f=>({value:f, label:f}))} onChange={setSelectedFonction} placeholder="Toutes fonctions" /></div>
+        <div className="w-full md:w-64"><CustomBulleSelect label="Financement" value={selectedFinancement} options={financementOptions} onChange={setSelectedFinancement} /></div>
+        <div className="w-full md:w-64"><CustomBulleSelect label="Fonction" value={selectedFonction} options={fonctionOptions} onChange={setSelectedFonction} /></div>
       </div>
 
       {/* 2. KPIs OPÉRATIONNELS */}
@@ -88,7 +89,6 @@ export const Dashboard: React.FC = () => {
               <AlertTriangle size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
               <p className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Qualité Études</p>
            </div>
-           {/* CORRECTION : Affichage direct de la valeur calculée par le hook */}
            <h3 className={`text-3xl font-black ${theme.textMain}`}>
               {totalAvenants}
               <span className={`text-sm font-bold ${theme.textSecondary} ml-2`}>Avenants</span>
@@ -100,7 +100,6 @@ export const Dashboard: React.FC = () => {
               <Activity size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
               <p className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Exécution PPM</p>
            </div>
-           {/* CORRECTION : Affichage direct du pourcentage calculé par le hook */}
            <h3 className={`text-3xl font-black ${theme.textMain}`}>{ppmExecutionRate}%</h3>
         </div>
 
@@ -114,7 +113,36 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. ANALYSE OPÉRATIONNELLE */}
+      {/* 3. ALERTES CRITIQUES (déplacé ici après les KPIs) */}
+      <div className={`${theme.card} p-10 relative z-10`}>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3 text-danger">
+             <AlertTriangle size={24} />
+             <h3 className={`text-lg font-black uppercase tracking-widest ${theme.textMain}`} style={{ fontFamily: "'Poppins', sans-serif" }}>Alertes Critiques</h3>
+          </div>
+          <p className={`text-xs font-bold ${theme.textSecondary}`}>Dossiers en retard sur le planning prévisionnel</p>
+        </div>
+        <div className="space-y-4 max-h-80 overflow-y-auto custom-scrollbar">
+          {alertsList.map((m, i) => (
+            <div key={i} onClick={() => navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`)} className={`flex items-center justify-between p-6 ${theme.buttonShape} bg-black/5 border border-white/5 hover:border-danger/30 transition-all cursor-pointer group`}>
+              <div className="flex items-center gap-5">
+                <div className={`w-12 h-12 ${theme.card} flex items-center justify-center text-danger shadow-sm group-hover:scale-110 transition-transform`}><Clock size={20} /></div>
+                <div>
+                  <h4 className={`font-black ${theme.textMain} text-xs tracking-tight uppercase mb-1`}>{m.numDossier}</h4>
+                  <p className={`text-[10px] font-bold ${theme.textSecondary} line-clamp-1`}>{m.objet}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="px-4 py-1.5 bg-danger/10 text-danger rounded-full text-[9px] font-black uppercase tracking-widest">Retard</span>
+                <ChevronRight size={18} className={theme.textSecondary} />
+              </div>
+            </div>
+          ))}
+          {alertsList.length === 0 && <div className="p-10 text-center text-slate-400 font-black uppercase italic text-xs">Aucune alerte en cours</div>}
+        </div>
+      </div>
+
+      {/* 4. ANALYSE OPÉRATIONNELLE */}
       <h2 className={`${theme.textMain} text-xl font-black uppercase tracking-tight pl-4 border-l-4 border-primary relative z-10`} style={{ fontFamily: "'Poppins', sans-serif" }}>
         Analyse Opérationnelle
       </h2>
@@ -227,36 +255,6 @@ export const Dashboard: React.FC = () => {
                </ResponsiveContainer>
             </div>
          </div>
-      </div>
-
-      {/* 6. ALERTES CRITIQUES */}
-      <div className={`${theme.card} p-10 relative z-10`}>
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3 text-danger">
-             <AlertTriangle size={24} />
-             <h3 className={`text-lg font-black uppercase tracking-widest ${theme.textMain}`} style={{ fontFamily: "'Poppins', sans-serif" }}>Alertes Critiques</h3>
-          </div>
-          <p className={`text-xs font-bold ${theme.textSecondary}`}>Dossiers en retard sur le planning prévisionnel</p>
-        </div>
-        <div className="space-y-4">
-          {/* CORRECTION : Utilisation de la liste pré-filtrée par le hook */}
-          {alertsList.map((m, i) => (
-            <div key={i} onClick={() => navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`)} className={`flex items-center justify-between p-6 ${theme.buttonShape} bg-black/5 border border-white/5 hover:border-danger/30 transition-all cursor-pointer group`}>
-              <div className="flex items-center gap-5">
-                <div className={`w-12 h-12 ${theme.card} flex items-center justify-center text-danger shadow-sm group-hover:scale-110 transition-transform`}><Clock size={20} /></div>
-                <div>
-                  <h4 className={`font-black ${theme.textMain} text-xs tracking-tight uppercase mb-1`}>{m.numDossier}</h4>
-                  <p className={`text-[10px] font-bold ${theme.textSecondary} line-clamp-1`}>{m.objet}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="px-4 py-1.5 bg-danger/10 text-danger rounded-full text-[9px] font-black uppercase tracking-widest">Retard</span>
-                <ChevronRight size={18} className={theme.textSecondary} />
-              </div>
-            </div>
-          ))}
-          {alertsList.length === 0 && <div className="p-10 text-center text-slate-400 font-black uppercase italic text-xs">Aucune alerte en cours</div>}
-        </div>
       </div>
     </div>
   );
