@@ -18,6 +18,7 @@ import { formatDate } from '../utils/date';
 import { Table } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { createStyles } from 'antd-style';
+import { TruncatedText } from '../components/TruncatedText';
 
 // --- STYLES DÉFINIS COMME HOOKS (SANS PARENTHÈSES À LA FIN) ---
 
@@ -189,7 +190,7 @@ export const ProjectPlanManage: React.FC = () => {
       render: (_, m) => (
         <div className="flex flex-col">
           <span className={`text-[10px] font-black ${theme.textAccent} uppercase`}>{m.numDossier}</span>
-          <span className={`text-xs font-bold ${theme.textMain} uppercase leading-tight line-clamp-2`}>{m.objet}</span>
+          <TruncatedText text={m.objet} className={`text-xs font-bold ${theme.textMain} uppercase leading-tight line-clamp-2`} />
         </div>
       ),
     },
@@ -220,9 +221,7 @@ export const ProjectPlanManage: React.FC = () => {
       key: 'activite',
       width: 150,
       render: (value) => (
-        <span className={`text-[10px] font-bold ${theme.textSecondary} uppercase line-clamp-2`}>
-          {value || '-'}
-        </span>
+        <TruncatedText text={value || '-'} className={`text-[10px] font-bold ${theme.textSecondary} uppercase line-clamp-2`} />
       ),
     },
     {
@@ -292,8 +291,15 @@ export const ProjectPlanManage: React.FC = () => {
     },
   ];
 
-  // Données du tableau avec key pour Ant Design
-  const tableData = filteredMarkets.map(m => ({ ...m, key: m.id }));
+  // Données du tableau avec key pour Ant Design - TRI PAR NUMÉRO DE DOSSIER CROISSANT
+  const tableData = [...filteredMarkets]
+    .sort((a, b) => {
+      // Extraire les parties numériques du numDossier pour un tri naturel
+      const numA = parseInt(a.numDossier?.replace(/\D/g, '') || '0', 10);
+      const numB = parseInt(b.numDossier?.replace(/\D/g, '') || '0', 10);
+      return numA - numB;
+    })
+    .map(m => ({ ...m, key: m.id }));
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-40 relative">

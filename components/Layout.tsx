@@ -13,6 +13,7 @@ import { JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { calculateDaysBetween } from '../utils/date';
 import { Marche } from '../types';
 import { FloatingAIWidget } from './FloatingAIWidget';
+import { TruncatedText } from './TruncatedText';
 
 export const Layout: React.FC = () => {
   const { user, logout, isAdmin, isSuperAdmin } = useAuth();
@@ -200,7 +201,7 @@ export const Layout: React.FC = () => {
               <Menu size={24} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
             </button>
             <div className="flex flex-col justify-center">
-              <h2 className={`${theme.textMain} text-lg md:text-xl font-bold truncate uppercase tracking-tight leading-none`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <h2 className={`${theme.textMain} text-lg md:text-xl font-bold uppercase tracking-tight leading-none`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                 Bonjour, {user?.name?.split(' ')[0]}
               </h2>
               <p className={`${theme.textSecondary} text-xs font-bold uppercase tracking-widest mt-0.5 animate-in fade-in`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -270,7 +271,7 @@ export const Layout: React.FC = () => {
                           <span className="text-[9px] font-black text-red-500 uppercase">{alert.market.numDossier}</span>
                           <span className="text-[8px] font-bold text-slate-500 uppercase">{alert.delay}j retard</span>
                         </div>
-                        <p className={`${theme.textMain} text-[10px] font-bold line-clamp-1`}>{alert.market.objet}</p>
+                        <TruncatedText text={alert.market.objet} as="p" className={`${theme.textMain} text-[10px] font-bold line-clamp-1`} />
                         <p className={`${theme.textSecondary} text-[9px] mt-1`}>Jalon : {alert.jalonLabel}</p>
                       </div>
                     )) : (

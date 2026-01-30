@@ -127,6 +127,7 @@ export interface MarcheDates {
   validation_eval?: string;
   ano_bailleur_eval?: string;
   ouverture_financiere?: string;
+  infructueux?: string;
   prop_attribution?: string;
   avis_conforme_ca?: string;
   ano_bailleur_attrib?: string;

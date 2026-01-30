@@ -17,6 +17,7 @@ import { Marche } from '../types';
 import { Table } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { createStyles } from 'antd-style';
+import { TruncatedText } from '../components/TruncatedText';
 
 // --- STYLES POUR LE TABLEAU ---
 const useLightTableStyles = createStyles(({ css }) => ({
@@ -138,7 +139,7 @@ export const ExecutionTracking: React.FC = () => {
           return (
             <div className="flex flex-col gap-2">
               <span className={`text-[10px] font-black px-3 py-1 ${theme.buttonShape} w-fit ${isResilie ? 'bg-danger text-white' : isClotured ? 'bg-success text-white' : 'bg-primary text-white'}`}>{m.numDossier}</span>
-              <span className={`text-xs font-black ${theme.textMain} line-clamp-2 uppercase whitespace-normal leading-snug`}>{m.objet}</span>
+              <TruncatedText text={m.objet} className={`text-xs font-black ${theme.textMain} line-clamp-2 uppercase whitespace-normal leading-snug`} />
               <div className="flex flex-wrap gap-1 mt-1">
                 {isResilie && <span className="px-2 py-0.5 bg-red-600 text-white text-[8px] font-black rounded uppercase tracking-tighter shadow-sm animate-pulse">Marché Résilié</span>}
                 {isClotured && !isResilie && <span className="px-2 py-0.5 bg-green-600 text-white text-[8px] font-black rounded uppercase tracking-tighter">Marché Clôturé</span>}
@@ -169,9 +170,7 @@ export const ExecutionTracking: React.FC = () => {
         key: 'titulaire',
         width: 200,
         render: (value) => (
-          <span className={`text-[11px] font-bold ${theme.textMain} uppercase line-clamp-2`}>
-            {value || '-'}
-          </span>
+          <TruncatedText text={value || '-'} className={`text-[11px] font-bold ${theme.textMain} uppercase line-clamp-2`} />
         ),
       },
       {
@@ -368,7 +367,7 @@ export const ExecutionTracking: React.FC = () => {
                 <div className={`w-16 h-16 ${theme.card} flex items-center justify-center font-black text-xl text-green-500`}>{selectedMarket.numDossier.charAt(0)}</div>
                 <div className="max-w-xl">
                   <h2 className={`text-xl font-black ${theme.textMain} uppercase leading-none`}>{selectedMarket.numDossier}</h2>
-                  <p className={`text-sm font-bold ${theme.textSecondary} mt-1 line-clamp-1 uppercase`}>{selectedMarket.objet}</p>
+                  <TruncatedText text={selectedMarket.objet} as="p" className={`text-sm font-bold ${theme.textSecondary} mt-1 line-clamp-1 uppercase`} />
                   {selectedMarket.titulaire && <p className="text-xs font-bold text-primary mt-2 uppercase">Titulaire : {selectedMarket.titulaire}</p>}
                 </div>
               </div>
@@ -459,7 +458,7 @@ export const ExecutionTracking: React.FC = () => {
                         ].map(s => (
                           <div key={s.step} className="p-4 bg-white/5 rounded-2xl border border-red-500/10 text-center space-y-3 flex flex-col items-center">
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Étape {s.step}</p>
-                            <p className={`text-xs font-black ${theme.textMain} uppercase leading-none truncate w-full`}>{s.label}</p>
+                            <p className={`text-xs font-black ${theme.textMain} uppercase leading-none`}>{s.label}</p>
                             <FileManager existingDocId={(selectedMarket.execution as any)[s.key]} onUpload={() => {}} disabled />
                           </div>
                         ))}

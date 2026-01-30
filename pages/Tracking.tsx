@@ -16,6 +16,7 @@ import { FileManager } from '../components/FileManager';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { SourceFinancement, StatutGlobal } from '../types';
 import Footer from '../components/Footer';
+import { TruncatedText } from '../components/TruncatedText';
 
 export const Tracking: React.FC = () => {
   const { markets, updateMarket, updateMarketDoc, updateJalon } = useMarkets();
@@ -109,7 +110,7 @@ export const Tracking: React.FC = () => {
                   {status.label}
                 </div>
               </div>
-              <h3 className={`text-md md:text-lg font-black ${theme.textMain} uppercase leading-snug group-hover:text-primary transition-colors mb-4 line-clamp-2`}>{m.objet}</h3>
+              <TruncatedText text={m.objet} as="h3" className={`text-md md:text-lg font-black ${theme.textMain} uppercase leading-snug group-hover:text-primary transition-colors mb-4 line-clamp-2`} />
               <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
                 <div className={`flex items-center gap-2 text-[10px] font-black ${theme.textSecondary} uppercase tracking-widest`}><Activity size={14} className={theme.textAccent} /><span>Pilotage actif</span></div>
                 <ChevronRight size={16} strokeWidth={theme.iconStroke} className={`${theme.iconStyle} ${theme.textSecondary} group-hover:text-primary transition-all`} />
@@ -125,7 +126,7 @@ export const Tracking: React.FC = () => {
       </div>
 
       {selectedMarket && (
-        <Modal isOpen={!!selectedMarketId} onClose={() => setSelectedMarketId(null)} title={`Édition : ${selectedMarket.numDossier}`} size="xl" footer={
+        <Modal isOpen={!!selectedMarketId} onClose={() => setSelectedMarketId(null)} title={`Édition : ${selectedMarket.numDossier}`} subtitle={selectedMarket.objet} size="xl" footer={
           <div className="flex items-center justify-between w-full">
             <div className="hidden md:block">
               {showSuccess && (
@@ -271,11 +272,11 @@ export const Tracking: React.FC = () => {
                       `}
                     >
                        <div className="flex flex-col">
-                         <p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none truncate pr-2`}>
-                           {JALONS_LABELS[key] || key} 
+                         <p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none pr-2`}>
+                           {JALONS_LABELS[key] || key}
                            {isRestricted && <span className="text-[8px] italic opacity-60 ml-2">(N/A)</span>}
                          </p>
-                         {isHistorical && (
+                         {isHistorical && currentVal && (
                            <span className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase mt-1">
                              <History size={10} /> Historique ({new Date(currentVal).getFullYear()})
                            </span>
@@ -283,18 +284,18 @@ export const Tracking: React.FC = () => {
                        </div>
                        <div className="flex items-center gap-3 shrink-0">
                           <div className="w-36">
-                            <BulleInput 
-                              label="" 
-                              type="date" 
-                              value={currentVal || ''} 
-                              onChange={e => updateJalon(selectedMarket.id, 'realisees', key, e.target.value)} 
-                              disabled={!can('WRITE') || isRestricted || isHistorical} 
+                            <BulleInput
+                              label=""
+                              type="date"
+                              value={currentVal || ''}
+                              onChange={e => updateJalon(selectedMarket.id, 'realisees', key, e.target.value)}
+                              disabled={!can('WRITE') || isRestricted}
                             />
                           </div>
-                          <FileManager 
-                            existingDocId={selectedMarket.docs?.[key]} 
-                            onUpload={(id) => updateMarketDoc(selectedMarket.id, key, id)} 
-                            disabled={!can('WRITE') || isRestricted || isHistorical} 
+                          <FileManager
+                            existingDocId={selectedMarket.docs?.[key]}
+                            onUpload={(id) => updateMarketDoc(selectedMarket.id, key, id)}
+                            disabled={!can('WRITE') || isRestricted}
                           />
                        </div>
                     </div>

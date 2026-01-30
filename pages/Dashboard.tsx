@@ -21,6 +21,7 @@ import { useDashboardStats } from '../hooks/useDashboardStats';
 import { useMarketFilter } from '../hooks/useMarketFilter'; 
 
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
+import { TruncatedText } from '../components/TruncatedText';
 
 const formatCurrency = (val: number) => {
   if (val >= 1000000000) return (val / 1000000000).toFixed(1) + ' Mrd FCFA';
@@ -129,7 +130,7 @@ export const Dashboard: React.FC = () => {
                 <div className={`w-12 h-12 ${theme.card} flex items-center justify-center text-danger shadow-sm group-hover:scale-110 transition-transform`}><Clock size={20} /></div>
                 <div>
                   <h4 className={`font-black ${theme.textMain} text-xs tracking-tight uppercase mb-1`}>{m.numDossier}</h4>
-                  <p className={`text-[10px] font-bold ${theme.textSecondary} line-clamp-1`}>{m.objet}</p>
+                  <TruncatedText text={m.objet} as="p" className={`text-[10px] font-bold ${theme.textSecondary} line-clamp-1`} />
                 </div>
               </div>
               <div className="flex items-center gap-4">

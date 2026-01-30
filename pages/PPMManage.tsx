@@ -21,12 +21,72 @@ const sanitizeInput = (str: any): string => {
   return str.replace(/<[^>]*>?/gm, '').trim().substring(0, 500);
 };
 
+// Fonction utilitaire pour normaliser les chaînes de caractères
+const normalizeForComparison = (str: string): string => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+// Fonction pour générer une clé d'identification unique pour un marché
+// NOTE : Le numDossier est exclu car il change d'une année à l'autre pour le même marché
+// L'identification se fait sur : objet, budget, fonction et activité
+const generateMarketKey = (m: { objet: string; montant_prevu: number; fonction: string; activite: string }): string => {
+  return [
+    normalizeForComparison(m.objet),
+    Math.round(m.montant_prevu || 0).toString(),
+    normalizeForComparison(m.fonction),
+    normalizeForComparison(m.activite)
+  ].join('|');
+};
+
+// Fonction pour faire correspondre une valeur de fonction importée aux constantes FONCTIONS
+const matchToFonctionConstant = (inputFonction: string): string => {
+  if (!inputFonction) return FONCTIONS[0];
+
+  const normalizedInput = normalizeForComparison(inputFonction);
+
+  // Vérifier chaque constante FONCTIONS pour trouver une correspondance
+  for (const fonctionConst of FONCTIONS) {
+    const normalizedConst = normalizeForComparison(fonctionConst);
+
+    // Correspondance exacte après normalisation
+    if (normalizedInput === normalizedConst) {
+      return fonctionConst;
+    }
+  }
+
+  // Correspondance par mots-clés pour gérer les variantes orthographiques
+  // "Exploitation et maintenance..."
+  if (normalizedInput.includes('exploitation') && normalizedInput.includes('maintenance')) {
+    return FONCTIONS.find(f => normalizeForComparison(f).includes('exploitation') && normalizeForComparison(f).includes('maintenance')) || FONCTIONS[0];
+  }
+
+  // "Développement des projets"
+  if (normalizedInput.includes('developpement') && normalizedInput.includes('projet')) {
+    return FONCTIONS.find(f => normalizeForComparison(f).includes('developpement') && normalizeForComparison(f).includes('projet')) || FONCTIONS[0];
+  }
+
+  // "EDC support"
+  if (normalizedInput.includes('edc') && normalizedInput.includes('support')) {
+    return FONCTIONS.find(f => normalizeForComparison(f).includes('edc') && normalizeForComparison(f).includes('support')) || FONCTIONS[0];
+  }
+
+  // Si aucune correspondance, retourner la valeur originale (pour éviter de perdre des données)
+  // mais idéalement l'utilisateur devrait corriger son fichier Excel
+  return inputFonction;
+};
+
 export const PPMManage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isSuperAdmin } = useAuth();
   const { theme, themeType } = useTheme();
   
-  const { addMarkets, removeMarketsByProjectId } = useMarkets();
+  const { markets, addMarkets, removeMarketsByProjectId } = useMarkets();
   
   const { projects, addProject, removeProject } = useProjects();
   const { addLog } = useLogs();
@@ -37,9 +97,8 @@ export const PPMManage: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
-  // Année en cours par défaut
-  const currentYear = new Date().getFullYear().toString();
-  const [selectedYear, setSelectedYear] = useState<string>(currentYear);
+  // Tous les exercices par défaut (pas de filtre)
+  const [selectedYear, setSelectedYear] = useState<string>('');
 
   const availableYears = useMemo(() => {
     const years = Array.from(new Set(projects.map(p => p.exercice.toString())));
@@ -119,11 +178,22 @@ export const PPMManage: React.FC = () => {
         const project = projects.find(p => p.id === importProjectId);
         const baseTime = new Date().getTime(); // Temps de base pour l'ordre
 
+        // Créer un index des marchés existants pour l'agrégation
+        const existingMarketsIndex = new Map<string, Marche>();
+        markets.forEach(m => {
+          const key = generateMarketKey(m);
+          existingMarketsIndex.set(key, m);
+        });
+
+        let aggregatedCount = 0;
+
         // CORRECTION ICI : Utilisation de sanitizeInput pour nettoyer les données
         const newMarkets: Marche[] = dataRows.map((row, i) => {
-          const dates_prevues: any = {};
+          // On va construire dates_prevues et comments_from_excel plus tard
+          // après avoir vérifié les dates_realisees existantes
+          const rawExcelDates: Record<string, any> = {};
           JALONS_PPM_KEYS.forEach((key, k) => {
-            dates_prevues[key] = excelDateToISO(row[9 + k]);
+            rawExcelDates[key] = row[9 + k]; // Garder la valeur brute pour analyse
           });
 
           // --- LOGIQUE MISE À JOUR POUR LA SOURCE DE FINANCEMENT ---
@@ -150,33 +220,119 @@ export const PPMManage: React.FC = () => {
           }
           // -----------------------------------------------------
 
-          return {
-            id: generateUUID(),
-            projet_id: importProjectId,
-            // Application de la sécurisation sur les champs texte
+          // Données du nouveau marché
+          const newMarketData = {
             numDossier: sanitizeInput(row[0] || "N/A"),
             objet: sanitizeInput(row[1] || "Sans Objet"),
-            fonction: sanitizeInput(row[2] || FONCTIONS[0]),
+            fonction: matchToFonctionConstant(sanitizeInput(row[2] || "")),
             activite: sanitizeInput(row[3] || ""),
+            montant_prevu: parseFloat(String(row[6] || "0").replace(/\s/g, '').replace(',', '.')) || 0
+          };
+
+          // Recherche d'un marché existant avec les mêmes identifiants
+          const marketKey = generateMarketKey(newMarketData);
+          const existingMarket = existingMarketsIndex.get(marketKey);
+
+          // Agrégation : récupérer les dates_realisees, docs et autres données de l'existant
+          let aggregatedDatesRealisees: Record<string, string | undefined> = {};
+          let aggregatedDocs: Record<string, string | undefined> = {};
+          let aggregatedComments: Record<string, string | undefined> = {};
+          let aggregatedStatut = StatutGlobal.PLANIFIE;
+          let aggregatedTitulaire: string | undefined = undefined;
+          let aggregatedMontantTTC: number | undefined = undefined;
+
+          if (existingMarket) {
+            aggregatedCount++;
+
+            // AGRÉGATION DES DATES RÉALISÉES
+            // Copier TOUTES les dates_realisees de l'ancien marché vers le nouveau
+            // Chaque jalon qui a une date réalisée en 2022 conserve cette date en 2023
+            // Les dates_prevues de l'ancien marché ne sont PAS transférées
+            Object.entries(existingMarket.dates_realisees || {}).forEach(([key, value]) => {
+              if (value) {
+                aggregatedDatesRealisees[key] = value;
+              }
+            });
+
+            // Fusionner les documents
+            aggregatedDocs = { ...existingMarket.docs };
+            // Fusionner les commentaires
+            aggregatedComments = { ...existingMarket.comments };
+            // Garder le statut s'il est plus avancé
+            if (existingMarket.statut_global === StatutGlobal.SIGNE || existingMarket.statut_global === StatutGlobal.EN_COURS) {
+              aggregatedStatut = existingMarket.statut_global;
+            }
+            // Garder le titulaire et montant TTC réel
+            aggregatedTitulaire = existingMarket.titulaire;
+            aggregatedMontantTTC = existingMarket.montant_ttc_reel;
+          }
+
+          // NOUVELLE LOGIQUE : Construire dates_prevues en excluant les jalons déjà réalisés
+          // Si un jalon a déjà une date réalisée, on ne met PAS de date prévue
+          // Si le fichier Excel contient du texte au lieu d'une date, on le stocke comme commentaire
+          const dates_prevues: Record<string, string> = {};
+
+          JALONS_PPM_KEYS.forEach((key) => {
+            const rawValue = rawExcelDates[key];
+            const hasRealisee = !!aggregatedDatesRealisees[key];
+
+            // Si ce jalon est déjà réalisé, on n'ajoute PAS de date prévue
+            if (hasRealisee) {
+              // Si le fichier Excel contient du texte (pas une date), on le stocke comme commentaire
+              if (rawValue && typeof rawValue === 'string' && isNaN(Date.parse(rawValue))) {
+                const sanitizedText = sanitizeInput(rawValue);
+                if (sanitizedText && sanitizedText.length > 0) {
+                  aggregatedComments[key] = sanitizedText;
+                }
+              }
+              return; // Ne pas ajouter de date_prevue pour ce jalon
+            }
+
+            // Si pas encore réalisé, on traite la valeur Excel
+            if (rawValue) {
+              const dateStr = excelDateToISO(rawValue);
+              if (dateStr && dateStr.length > 0) {
+                // C'est une date valide
+                dates_prevues[key] = dateStr;
+              } else if (typeof rawValue === 'string' && rawValue.trim().length > 0) {
+                // C'est du texte, on le stocke comme commentaire
+                const sanitizedText = sanitizeInput(rawValue);
+                if (sanitizedText && sanitizedText.length > 0) {
+                  aggregatedComments[key] = sanitizedText;
+                }
+              }
+            }
+          });
+
+          return {
+            // CORRECTION : Toujours créer un nouvel ID pour le nouveau projet
+            // L'ancien marché reste dans son projet d'origine, on crée une copie avec les données agrégées
+            id: generateUUID(),
+            projet_id: importProjectId,
+            numDossier: newMarketData.numDossier,
+            objet: newMarketData.objet,
+            fonction: newMarketData.fonction,
+            activite: newMarketData.activite,
             typeAO: (sanitizeInput(row[4]) as AOType) || AOType.AON,
             typePrestation: (sanitizeInput(row[5]) as MarketType) || MarketType.TRAVAUX,
-            montant_prevu: parseFloat(String(row[6] || "0").replace(/\s/g, '').replace(',', '.')) || 0,
+            montant_prevu: newMarketData.montant_prevu,
             imputation_budgetaire: sanitizeInput(row[8] || ""),
             source_financement: finalSource,
             nom_bailleur: nomBailleur,
             dates_prevues: dates_prevues,
-            dates_realisees: {},
-            comments: {},
-            docs: {},
-            statut_global: StatutGlobal.PLANIFIE,
-            is_infructueux: false,
-            is_annule: false,
-            has_additif: false,
-            has_recours: false,
-            execution: { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 },
-            created_by: user?.id || 'system',
-            // DATE CRÉATION INCRÉMENTALE : Garantit que row 1 est plus vieux que row 2
-            date_creation: new Date(baseTime + (i * 10)).toISOString() 
+            dates_realisees: Object.fromEntries(Object.entries(aggregatedDatesRealisees).filter(([_, v]) => v !== undefined)) as Record<string, string>,
+            comments: Object.fromEntries(Object.entries(aggregatedComments).filter(([_, v]) => v !== undefined)) as Record<string, string>,
+            docs: Object.fromEntries(Object.entries(aggregatedDocs).filter(([_, v]) => v !== undefined)) as Record<string, string>,
+            statut_global: aggregatedStatut,
+            is_infructueux: existingMarket?.is_infructueux || false,
+            is_annule: existingMarket?.is_annule || false,
+            has_additif: existingMarket?.has_additif || false,
+            has_recours: existingMarket?.has_recours || false,
+            titulaire: aggregatedTitulaire,
+            montant_ttc_reel: aggregatedMontantTTC,
+            execution: existingMarket?.execution || { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 },
+            created_by: existingMarket?.created_by || user?.id || 'system',
+            date_creation: existingMarket?.date_creation || new Date(baseTime + (i * 10)).toISOString()
           };
         });
 
@@ -184,7 +340,11 @@ export const PPMManage: React.FC = () => {
            await addMarkets(newMarkets);
            setIsImporting(false);
            setShowImportModal(false);
-           alert(`${newMarkets.length} marchés importés avec succès.`);
+           const newCount = newMarkets.length - aggregatedCount;
+           const message = aggregatedCount > 0
+             ? `${newMarkets.length} marchés traités : ${newCount} nouveaux, ${aggregatedCount} mis à jour (dates réalisées conservées).`
+             : `${newMarkets.length} marchés importés avec succès.`;
+           alert(message);
         } else {
            alert("Aucune donnée valide trouvée dans le fichier.");
            setIsImporting(false);
@@ -199,9 +359,9 @@ export const PPMManage: React.FC = () => {
     reader.readAsBinaryString(file);
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     if (!newProject.libelle) return;
-    addProject({
+    await addProject({
       id: generateUUID(),
       libelle: newProject.libelle!,
       sourceFinancement: newProject.sourceFinancement!,

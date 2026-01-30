@@ -16,6 +16,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { TruncatedText } from '../components/TruncatedText';
 
 const CATEGORIES = ["Tous les documents", "Rapports d'Audits", "Gestion & Performance", "Réglementation & Manuels", "Modèles & Lettres Types"];
 
@@ -110,10 +111,8 @@ export const Documents: React.FC = () => {
                </div>
                
                <div className="flex-1 space-y-3">
-                  <h3 className={`text-lg font-black ${theme.textMain} uppercase leading-tight line-clamp-2`}>{doc.titre}</h3>
-                  <p className={`text-xs font-medium ${theme.textSecondary} line-clamp-3 leading-relaxed`}>
-                    {doc.description || "Aucune description fournie pour ce document."}
-                  </p>
+                  <TruncatedText text={doc.titre} as="h3" className={`text-lg font-black ${theme.textMain} uppercase leading-tight line-clamp-2`} />
+                  <TruncatedText text={doc.description || "Aucune description fournie pour ce document."} as="p" className={`text-xs font-medium ${theme.textSecondary} line-clamp-3 leading-relaxed`} />
                </div>
 
                <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">

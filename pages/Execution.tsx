@@ -10,10 +10,11 @@ import { BulleInput } from '../components/BulleInput';
 import { FileManager } from '../components/FileManager';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { Modal } from '../components/Modal';
-import { 
-  Lock, Search, TrendingUp, AlertTriangle, Plus, Trash2, 
+import {
+  Lock, Search, TrendingUp, AlertTriangle, Plus, Trash2,
   ArrowRight, ShieldCheck, FileText, CreditCard, Save, CheckCircle2, Layers
 } from 'lucide-react';
+import { TruncatedText } from '../components/TruncatedText';
 
 export const Execution: React.FC = () => {
   const navigate = useNavigate();
@@ -116,7 +117,7 @@ export const Execution: React.FC = () => {
                 <span className={`px-2 py-0.5 ${theme.buttonShape} text-[9px] font-black uppercase tracking-widest bg-primary/10 text-primary`}>{m.numDossier}</span>
                 {isLocked ? <Lock size={16} className={theme.textSecondary} /> : <div className="w-3 h-3 bg-success rounded-full animate-pulse shadow-sm"></div>}
               </div>
-              <h3 className={`text-md md:text-lg font-black ${theme.textMain} uppercase leading-snug group-hover:text-primary transition-colors mb-4 line-clamp-2`}>{m.objet}</h3>
+              <TruncatedText text={m.objet} as="h3" className={`text-md md:text-lg font-black ${theme.textMain} uppercase leading-snug group-hover:text-primary transition-colors mb-4 line-clamp-2`} />
               <div className="mt-auto p-4 bg-black/5 rounded-2xl border border-white/5">
                 {isLocked ? (
                   <p className={`text-[9px] font-bold ${theme.textSecondary} uppercase italic flex items-center gap-2 leading-none`}><Lock size={12}/> Signature requise</p>
@@ -139,10 +140,11 @@ export const Execution: React.FC = () => {
 
       {/* MODAL D'ÉDITION D'EXÉCUTION */}
       {selectedMarket && (
-        <Modal 
-          isOpen={!!selectedMarketId} 
-          onClose={() => setSelectedMarketId(null)} 
-          title={`${selectedMarket.numDossier}`} 
+        <Modal
+          isOpen={!!selectedMarketId}
+          onClose={() => setSelectedMarketId(null)}
+          title={`${selectedMarket.numDossier}`}
+          subtitle={selectedMarket.objet}
           size="xl"
           footer={selectedMarket.dates_realisees.signature_marche ? (
             <div className="flex items-center justify-between w-full">
@@ -209,7 +211,7 @@ export const Execution: React.FC = () => {
                              ].map((item, idx) => (
                                <div key={idx} className={`p-4 ${theme.card} border-white/5 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-all gap-4`}>
                                   <div className="flex-1 min-w-0">
-                                    <span className={`text-[11px] font-black ${theme.textMain} uppercase tracking-tight block truncate`}>{item.label}</span>
+                                    <span className={`text-[11px] font-black ${theme.textMain} uppercase tracking-tight block`}>{item.label}</span>
                                     {/* CORRECTION : Ajout des champs de date pour OS, PV Provisoire et PV Définitif */}
                                     {item.isDateable && item.dateKey && (
                                       <div className="mt-2 w-full md:w-44">
@@ -246,7 +248,7 @@ export const Execution: React.FC = () => {
                                 ].map((s) => (
                                   <div key={s.step} className={`p-4 ${theme.card} border-danger/10 text-center space-y-3 flex flex-col items-center min-w-0`}>
                                     <p className={`text-[8px] font-black ${theme.textSecondary} uppercase tracking-widest`}>Étape {s.step}</p>
-                                    <p className={`text-[10px] font-black ${theme.textMain} uppercase leading-none truncate w-full`}>{s.label}</p>
+                                    <p className={`text-[10px] font-black ${theme.textMain} uppercase leading-none`}>{s.label}</p>
                                     <div className="w-full flex justify-center">
                                       <FileManager existingDocId={(selectedMarket.execution as any)[s.key]} onUpload={(id) => handleDocUpload(selectedMarket.id, s.key, id)} />
                                     </div>
@@ -269,7 +271,7 @@ export const Execution: React.FC = () => {
                           </div>
                           {selectedMarket.execution.type_retenue_garantie === 'Caution Bancaire' && (
                              <div className={`p-4 bg-white/5 rounded-xl border border-accent/20 flex items-center justify-between gap-4 animate-in slide-in-from-top-2`}>
-                                <span className={`text-[10px] font-black ${theme.textSecondary} uppercase italic leading-none truncate flex-1`}>Preuve Caution Bancaire</span>
+                                <span className={`text-[10px] font-black ${theme.textSecondary} uppercase italic leading-none flex-1`}>Preuve Caution Bancaire</span>
                                 <FileManager existingDocId={selectedMarket.execution.doc_caution_bancaire_id} onUpload={(id) => handleDocUpload(selectedMarket.id, 'doc_caution_bancaire_id', id)} />
                              </div>
                           )}

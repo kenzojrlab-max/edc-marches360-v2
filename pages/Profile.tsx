@@ -125,7 +125,7 @@ export const Profile: React.FC = () => {
             
             <div className="pt-2">
               <label className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} ml-1`}>Email (Non modifiable)</label>
-              <div className={`mt-1.5 w-full p-3 ${theme.input} opacity-50 cursor-not-allowed text-sm font-bold truncate`}>
+              <div className={`mt-1.5 w-full p-3 ${theme.input} opacity-50 cursor-not-allowed text-sm font-bold`}>
                 {user?.email}
               </div>
             </div>

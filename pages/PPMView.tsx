@@ -19,6 +19,7 @@ import { Marche } from '../types';
 import { Table } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { createStyles } from 'antd-style';
+import { TruncatedText } from '../components/TruncatedText';
 
 // --- STYLES DÉFINIS COMME HOOKS (SANS PARENTHÈSES À LA FIN) ---
 
@@ -281,7 +282,7 @@ export const PPMView: React.FC = () => {
           return (
             <div className="flex flex-col gap-2">
               <span className={`text-[10px] font-black px-3 py-1 ${theme.buttonShape} w-fit ${m.is_annule ? 'bg-danger text-white' : m.is_infructueux ? 'bg-warning text-black' : 'bg-primary text-white'}`}>{m.numDossier}</span>
-              <span className={`text-xs font-black ${theme.textMain} line-clamp-2 uppercase whitespace-normal leading-snug`}>{m.objet}</span>
+              <TruncatedText text={m.objet} className={`text-xs font-black ${theme.textMain} line-clamp-2 uppercase whitespace-normal leading-snug`} />
               <div className="flex flex-wrap gap-1 mt-1">
                 {isResilie && <span className="px-2 py-0.5 bg-red-600 text-white text-[8px] font-black rounded uppercase tracking-tighter shadow-sm animate-pulse">Marché Résilié</span>}
                 {m.is_annule && <span className="px-2 py-0.5 bg-black text-white text-[8px] font-black rounded uppercase tracking-tighter">Dossier Annulé</span>}
@@ -321,9 +322,7 @@ export const PPMView: React.FC = () => {
         key: 'activite',
         width: 150,
         render: (value) => (
-          <span className={`text-[10px] font-bold ${theme.textSecondary} uppercase line-clamp-2`}>
-            {value || '-'}
-          </span>
+          <TruncatedText text={value || '-'} className={`text-[10px] font-bold ${theme.textSecondary} uppercase line-clamp-2`} />
         ),
       },
       {
@@ -424,9 +423,16 @@ export const PPMView: React.FC = () => {
     return [...baseColumns, ...jalonColumns, ...endColumns];
   }, [theme, isJalonApplicable, setDetailMarketId, isDarkTheme]);
 
-  // Données du tableau avec key pour Ant Design
+  // Données du tableau avec key pour Ant Design - TRI PAR NUMÉRO DE DOSSIER CROISSANT
   const tableData = useMemo(() =>
-    filteredMarkets.map(m => ({ ...m, key: m.id })),
+    [...filteredMarkets]
+      .sort((a, b) => {
+        // Extraire les parties numériques du numDossier pour un tri naturel
+        const numA = parseInt(a.numDossier?.replace(/\D/g, '') || '0', 10);
+        const numB = parseInt(b.numDossier?.replace(/\D/g, '') || '0', 10);
+        return numA - numB;
+      })
+      .map(m => ({ ...m, key: m.id })),
   [filteredMarkets]);
 
   const calculateProgress = (m: Marche) => {
@@ -520,7 +526,7 @@ export const PPMView: React.FC = () => {
                   <div className={`w-16 h-16 ${theme.card} flex items-center justify-center font-black text-xl ${theme.textAccent}`}>{selectedMarket.numDossier.charAt(0)}</div>
                   <div className="max-w-3xl">
                     <h2 className={`text-xl font-black ${theme.textMain} uppercase leading-none`}>{selectedMarket.numDossier}</h2>
-                    <p className={`text-sm font-bold ${theme.textSecondary} mt-1 line-clamp-1 uppercase`}>{selectedMarket.objet}</p>
+                    <TruncatedText text={selectedMarket.objet} as="p" className={`text-sm font-bold ${theme.textSecondary} mt-1 line-clamp-1 uppercase`} />
                   </div>
                 </div>
                 <button onClick={() => setDetailMarketId(null)} className={`${theme.buttonSecondary} ${theme.buttonShape} px-6 py-4 flex items-center gap-3 font-black text-xs uppercase transition-all`}>Fermer <X size={18}/></button>

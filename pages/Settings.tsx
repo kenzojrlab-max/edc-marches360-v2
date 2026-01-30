@@ -11,6 +11,7 @@ import {
   AlertTriangle, RefreshCcw, CheckSquare, Square
 } from 'lucide-react';
 import { formatDate } from '../utils/date';
+import { TruncatedText } from '../components/TruncatedText';
 
 export const Settings: React.FC = () => {
   const { users, updateUserRole, deleteUser, user: currentUser, can } = useAuth();
@@ -251,7 +252,7 @@ export const Settings: React.FC = () => {
                           <td className="p-8"><span className={`text-[11px] font-bold ${theme.textSecondary}`}>{new Date(log.timestamp).toLocaleString('fr-FR')}</span></td>
                           <td className="p-8"><div><p className={`text-[11px] font-black ${theme.textMain} uppercase`}>{log.userName}</p><span className={`text-[8px] font-black px-2 py-0.5 rounded-lg bg-black/5 ${theme.textAccent}`}>{log.userRole}</span></div></td>
                           <td className="p-8"><span className={`text-[10px] font-black ${theme.textAccent} uppercase tracking-widest`}>{log.module}</span></td>
-                          <td className="p-8"><div><p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none mb-1`}>{log.action}</p><p className={`text-[10px] font-medium ${theme.textSecondary} line-clamp-1`}>{log.details}</p></div></td>
+                          <td className="p-8"><div><p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none mb-1`}>{log.action}</p><TruncatedText text={log.details} as="p" className={`text-[10px] font-medium ${theme.textSecondary} line-clamp-1`} /></div></td>
                        </tr>
                      ))}
                   </tbody>
@@ -282,7 +283,7 @@ export const Settings: React.FC = () => {
                           return (
                             <tr key={m.id} className={`transition-all ${rowHoverBg} ${isSelected ? 'bg-primary/5' : ''}`}>
                                <td className="p-6 text-center"><button onClick={() => toggleSelectTrash(m.id)} className={`transition-transform hover:scale-110 ${isSelected ? theme.textAccent : 'text-slate-400'}`}>{isSelected ? <CheckSquare size={18} /> : <Square size={18} />}</button></td>
-                               <td className="p-6"><div onClick={() => toggleSelectTrash(m.id)} className="cursor-pointer"><p className={`text-[11px] font-black ${theme.textAccent} uppercase tracking-tighter mb-1`}>{m.numDossier}</p><p className={`text-xs font-bold ${theme.textMain} line-clamp-1`}>{m.objet}</p></div></td>
+                               <td className="p-6"><div onClick={() => toggleSelectTrash(m.id)} className="cursor-pointer"><p className={`text-[11px] font-black ${theme.textAccent} uppercase tracking-tighter mb-1`}>{m.numDossier}</p><TruncatedText text={m.objet} as="p" className={`text-xs font-bold ${theme.textMain} line-clamp-1`} /></div></td>
                                <td className="p-6 text-right"><div className="flex items-center justify-end gap-3"><button onClick={() => restoreMarket(m.id)} className={`px-4 py-2 ${theme.buttonPrimary} rounded-xl text-[9px] font-black uppercase tracking-widest transition-all`}>Restaurer</button><button onClick={() => permanentDeleteMarket(m.id)} className={`p-2.5 text-slate-400 hover:text-danger hover:bg-danger/10 ${theme.buttonShape} transition-all`}><Trash2 size={16} /></button></div></td>
                             </tr>
                           );

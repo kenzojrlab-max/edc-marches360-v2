@@ -1,9 +1,32 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Marche, StatutGlobal } from '../types';
 import { useLogs } from './LogsContext';
+import { useProjects } from './ProjectContext';
 import { db, auth } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+
+// Fonction utilitaire pour normaliser les chaînes de caractères (pour comparaison)
+const normalizeForComparison = (str: string): string => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+// Fonction pour générer une clé d'identification unique pour un marché
+// Critères : objet, budget, fonction, activité
+const generateMarketKey = (m: { objet: string; montant_prevu: number; fonction: string; activite: string }): string => {
+  return [
+    normalizeForComparison(m.objet),
+    Math.round(m.montant_prevu || 0).toString(),
+    normalizeForComparison(m.fonction),
+    normalizeForComparison(m.activite)
+  ].join('|');
+};
 
 interface MarketContextType {
   markets: Marche[];
@@ -27,8 +50,9 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [markets, setMarkets] = useState<Marche[]>([]);
   const [deletedMarkets, setDeletedMarkets] = useState<Marche[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+
   const { addLog } = useLogs();
+  const { projects } = useProjects();
 
   // AJOUT : Écoute de l'état d'authentification
   useEffect(() => {
@@ -45,15 +69,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    const currentYear = new Date().getFullYear();
-    const startOfYear = `${currentYear}-01-01`;
-
-    const marketsQuery = query(
-      collection(db, "markets"),
-      where("date_creation", ">=", startOfYear)
-    );
-
-    const unsubscribe = onSnapshot(marketsQuery, (snapshot) => {
+    // Récupérer TOUS les marchés sans filtre de date
+    const unsubscribe = onSnapshot(collection(db, "markets"), (snapshot) => {
       const marketsData = snapshot.docs.map(doc => {
         const m = doc.data() as Marche;
         return {
@@ -240,7 +257,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const field = type === 'prevues' ? 'dates_prevues' : 'dates_realisees';
       const marketRef = doc(db, "markets", marketId);
-      
+
       const updates: any = {
         [`${field}.${key}`]: value
       };
@@ -250,6 +267,57 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       await updateDoc(marketRef, updates);
+
+      // SYNCHRONISATION AUTOMATIQUE vers les années suivantes
+      // Si on saisit une date réalisée, on la propage aux marchés correspondants des années suivantes
+      if (type === 'realisees' && value) {
+        const currentMarket = markets.find(m => m.id === marketId);
+        if (!currentMarket) return;
+
+        // Trouver le projet du marché actuel pour connaître son année
+        const currentProject = projects.find(p => p.id === currentMarket.projet_id);
+        if (!currentProject) return;
+
+        const currentYear = currentProject.exercice;
+        const currentMarketKey = generateMarketKey(currentMarket);
+
+        // Trouver tous les marchés correspondants dans les années SUIVANTES
+        const matchingMarkets = markets.filter(m => {
+          // Exclure le marché actuel
+          if (m.id === marketId) return false;
+
+          // Vérifier si c'est le même marché (mêmes critères)
+          if (generateMarketKey(m) !== currentMarketKey) return false;
+
+          // Vérifier que c'est une année SUIVANTE
+          const marketProject = projects.find(p => p.id === m.projet_id);
+          if (!marketProject) return false;
+
+          return marketProject.exercice > currentYear;
+        });
+
+        // Mettre à jour les marchés correspondants
+        if (matchingMarkets.length > 0) {
+          const batch = writeBatch(db);
+
+          matchingMarkets.forEach(m => {
+            const matchingMarketRef = doc(db, "markets", m.id);
+            const syncUpdates: any = {
+              [`dates_realisees.${key}`]: value
+            };
+
+            // Si c'est la signature, mettre à jour le statut aussi
+            if (key === 'signature_marche') {
+              syncUpdates.statut_global = StatutGlobal.SIGNE;
+            }
+
+            batch.update(matchingMarketRef, syncUpdates);
+          });
+
+          await batch.commit();
+          console.log(`Synchronisation: ${matchingMarkets.length} marché(s) mis à jour pour le jalon ${key}`);
+        }
+      }
     } catch (error) {
       console.error("Erreur updateJalon:", error);
     }
