@@ -36,6 +36,14 @@ export const Tracking: React.FC = () => {
     filteredMarkets
   } = useMarketFilter(markets, projects);
   
+  // --- AJOUT DU TRI : Tri naturel sur le numéro de dossier ---
+  const sortedMarkets = [...filteredMarkets].sort((a, b) => {
+    const numA = a.numDossier || '';
+    const numB = b.numDossier || '';
+    // numeric: true permet de trier "2" avant "10" correctement
+    return numA.localeCompare(numB, undefined, { numeric: true, sensitivity: 'base' });
+  });
+  
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
   const [activePhaseId, setActivePhaseId] = useState<string>(JALONS_GROUPS[0].id);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -99,7 +107,8 @@ export const Tracking: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-        {filteredMarkets.length > 0 ? filteredMarkets.map(m => {
+        {/* UTILISATION DE sortedMarkets AU LIEU DE filteredMarkets */}
+        {sortedMarkets.length > 0 ? sortedMarkets.map(m => {
           const status = calculateAvancement(m);
           return (
             <div key={m.id} onClick={() => { setSelectedMarketId(m.id); setActivePhaseId(JALONS_GROUPS[0].id); }} className={`group ${theme.card} p-8 md:p-10 cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full`}>

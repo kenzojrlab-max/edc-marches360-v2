@@ -86,6 +86,32 @@
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
     }
+
+    /* --- ANIMATIONS PARTICULES POUR FileManager (Upload & Download) --- */
+    .fm-particle {
+      position: absolute;
+      font-family: monospace;
+      font-size: 12px;
+      color: #4ade80;
+      pointer-events: none;
+      font-weight: bold;
+      text-shadow: 0 0 2px rgba(74, 222, 128, 0.5);
+    }
+
+    /* Animation Sortie / Extraction (particules vers le haut) - Téléchargement */
+    @keyframes fmFlowUp {
+      0% { opacity: 1; transform: translate(-50%, 0) scale(0.5); }
+      100% { opacity: 0; transform: translate(-50%, -40px) scale(1.5); }
+    }
+    .fm-particle-out { animation: fmFlowUp 0.8s ease-out forwards; }
+
+    /* Animation Entrée / Archivage (particules vers le bas) - Upload */
+    @keyframes fmFlowDown {
+      0% { opacity: 0; transform: translate(-50%, -35px) scale(1.5); }
+      50% { opacity: 1; }
+      100% { opacity: 1; transform: translate(-50%, 0) scale(0.5); }
+    }
+    .fm-particle-in { animation: fmFlowDown 0.6s ease-in forwards; }
   </style>
   <script>
     tailwind.config = {
