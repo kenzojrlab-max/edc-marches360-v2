@@ -3,19 +3,22 @@
  * La clé API reste UNIQUEMENT côté serveur (jamais exposée au client)
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as logger from "firebase-functions/logger";
 
-const API_KEY = process.env.GEMINI_API_KEY;
+// Déclaration du secret Firebase (configuré via: firebase functions:secrets:set GEMINI_API_KEY)
+const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
-export const generateAIResponse = onCall({ cors: true, timeoutSeconds: 120 }, async (request) => {
+export const generateAIResponse = onCall({ cors: true, timeoutSeconds: 120, secrets: [geminiApiKey] }, async (request) => {
 
   // Sécurité : Vérifier que l'utilisateur est authentifié
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Vous devez être connecté pour utiliser l\'IA.');
   }
 
-  if (!API_KEY) {
+  const apiKey = geminiApiKey.value();
+  if (!apiKey) {
     logger.error("La clé API Gemini est manquante dans la configuration.");
     throw new HttpsError('internal', 'Erreur de configuration serveur (Clé API).');
   }
@@ -27,7 +30,7 @@ export const generateAIResponse = onCall({ cors: true, timeoutSeconds: 120 }, as
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(API_KEY);
+    const genAI = new GoogleGenerativeAI(apiKey);
 
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
