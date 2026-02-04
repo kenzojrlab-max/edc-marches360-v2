@@ -129,8 +129,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (userData: Omit<User, 'id' | 'created_at'>) => {
+    if (!userData.password || userData.password.length < 8) {
+      throw new Error("Le mot de passe est obligatoire et doit contenir au moins 8 caractères.");
+    }
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password || 'password123'); 
+      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
       const fbUser = userCredential.user;
 
       const newUser: User = {
@@ -180,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  const can = (action: string): boolean => {
+  const can = (action: 'WRITE' | 'DOWNLOAD' | 'IMPORT' | 'MANAGE_USERS' | 'CONFIG_SYSTEM'): boolean => {
     if (!user) return false;
     if (user.statut !== 'actif') return false;
 
@@ -205,7 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isSuperAdmin: user?.role === UserRole.SUPER_ADMIN,
       isAdmin: user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN,
       isGuest: user?.role === UserRole.GUEST,
-      can: can as any
+      can
     }}>
       {children}
     </AuthContext.Provider>

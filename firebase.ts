@@ -27,7 +27,7 @@ if (typeof window !== "undefined") {
 
   initializeAppCheck(app, {
     // Ta clé du site reCAPTCHA v3
-    provider: new ReCaptchaV3Provider('6LfWA04sAAAAAPBUXQaj3Tm55jEwHUk9oSRwOEFU'),
+    provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
     isTokenAutoRefreshEnabled: true
   });
 }

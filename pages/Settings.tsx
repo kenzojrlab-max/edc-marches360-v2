@@ -6,12 +6,14 @@ import { useLogs } from '../contexts/LogsContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { UserRole } from '../types';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
-import { 
+import {
   Users, History, Trash2, Check, X, Activity, Search, Database, Layers, Plus,
   AlertTriangle, RefreshCcw, CheckSquare, Square
 } from 'lucide-react';
 import { formatDate } from '../utils/date';
 import { TruncatedText } from '../components/TruncatedText';
+import { collection, getDocs, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export const Settings: React.FC = () => {
   const { users, updateUserRole, deleteUser, user: currentUser, can } = useAuth();
@@ -34,7 +36,7 @@ export const Settings: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'logs' | 'trash' | 'maintenance'>(can('MANAGE_USERS') ? 'users' : 'logs');
   const [pendingRoles, setPendingRoles] = useState<Record<string, UserRole>>({});
-  const [newItemName, setNewItemName] = useState('');
+  const [newItemNames, setNewItemNames] = useState<Record<string, string>>({ fonction: '', ao: '', prestation: '' });
   const [logSearch, setLogSearch] = useState('');
   const [selectedTrashIds, setSelectedTrashIds] = useState<string[]>([]);
 
@@ -58,12 +60,13 @@ export const Settings: React.FC = () => {
   };
 
   const handleAddItem = (type: 'fonction' | 'ao' | 'prestation') => {
-    if (!newItemName.trim()) return;
-    const name = newItemName.toUpperCase();
+    const value = newItemNames[type];
+    if (!value?.trim()) return;
+    const name = value.toUpperCase();
     if (type === 'fonction') addFonction(name);
     if (type === 'ao') addAOType(name);
     if (type === 'prestation') addMarketType(name);
-    setNewItemName('');
+    setNewItemNames(prev => ({ ...prev, [type]: '' }));
   };
 
   const handleDeleteItem = (type: 'fonction' | 'ao' | 'prestation', label: string) => {
@@ -81,20 +84,49 @@ export const Settings: React.FC = () => {
     if (type === 'prestation') removeMarketType(label);
   };
 
-  const handlePurgeData = () => {
-    if (window.confirm("⚠️ ATTENTION : Vous allez supprimer TOUS les Projets, Marchés et Documents liés.\n\nCette action est irréversible et permet de repartir sur une base propre.\n\nVoulez-vous continuer ?")) {
-      localStorage.removeItem('edc_projects');
-      localStorage.removeItem('edc_markets');
-      localStorage.removeItem('edc_deleted_markets');
-      localStorage.removeItem('edc_library');
-      window.location.reload();
+  const purgeCollection = async (collectionName: string) => {
+    const snapshot = await getDocs(collection(db, collectionName));
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(d => batch.delete(doc(db, collectionName, d.id)));
+    await batch.commit();
+  };
+
+  const handlePurgeData = async () => {
+    if (window.confirm("ATTENTION : Vous allez supprimer TOUS les Projets, Marchés et Documents liés dans Firestore.\n\nCette action est irréversible.\n\nVoulez-vous continuer ?")) {
+      try {
+        await purgeCollection("projects");
+        await purgeCollection("markets");
+        await purgeCollection("deleted_markets");
+        await purgeCollection("library");
+        // Nettoyage localStorage résiduel
+        localStorage.removeItem('edc_projects');
+        localStorage.removeItem('edc_markets');
+        localStorage.removeItem('edc_deleted_markets');
+        localStorage.removeItem('edc_library');
+        addLog('Maintenance', 'Purge des données', 'Tous les projets, marchés et documents ont été supprimés.');
+        window.location.reload();
+      } catch (error) {
+        console.error("Erreur lors de la purge:", error);
+        alert("Erreur lors de la purge. Vérifiez vos permissions.");
+      }
     }
   };
 
-  const handleFactoryReset = () => {
-    if (window.confirm("⛔ DANGER : RÉINITIALISATION D'USINE\n\nTout sera effacé : Utilisateurs, Configuration, Logs, Données.\nVous serez déconnecté.\n\nConfirmer ?")) {
-      localStorage.clear();
-      window.location.reload();
+  const handleFactoryReset = async () => {
+    if (window.confirm("DANGER : REINITIALISATION D'USINE\n\nTout sera effacé : Configuration, Logs, Données.\nVous serez déconnecté.\n\nConfirmer ?")) {
+      try {
+        await purgeCollection("projects");
+        await purgeCollection("markets");
+        await purgeCollection("deleted_markets");
+        await purgeCollection("library");
+        await purgeCollection("audit_logs");
+        await purgeCollection("config");
+        localStorage.clear();
+        window.location.reload();
+      } catch (error) {
+        console.error("Erreur lors du reset:", error);
+        alert("Erreur lors de la réinitialisation. Vérifiez vos permissions.");
+      }
     }
   };
 
@@ -221,7 +253,7 @@ export const Settings: React.FC = () => {
                     ))}
                   </div>
                   <div className="flex gap-2">
-                    <input type="text" placeholder="Ajouter..." className={`${theme.input} flex-1 text-[10px] font-bold`} value={newItemName} onChange={e => setNewItemName(e.target.value)} />
+                    <input type="text" placeholder="Ajouter..." className={`${theme.input} flex-1 text-[10px] font-bold`} value={newItemNames[section.id] || ''} onChange={e => setNewItemNames(prev => ({ ...prev, [section.id]: e.target.value }))} />
                     <button onClick={() => handleAddItem(section.id)} className={`p-3 ${theme.buttonPrimary} rounded-xl shadow-lg shadow-primary/20`}><Plus size={18} /></button>
                   </div>
                 </section>

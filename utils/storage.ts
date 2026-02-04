@@ -11,14 +11,7 @@ import {
   deleteDoc 
 } from "firebase/firestore";
 import { db, storage as firebaseStorage } from "../firebase"; 
-import { Marche, User, PieceJointe } from "../types";
-
-// Clés pour le stockage local (Données légères uniquement)
-const STORAGE_KEYS = {
-  MARKETS: 'edc_markets',
-  // USERS: 'edc_users', // SUPPRIMÉ
-  // SESSION: 'edc_session' // SUPPRIMÉ
-};
+import { PieceJointe } from "../types";
 
 export const storage = {
   // =================================================================
@@ -120,33 +113,4 @@ export const storage = {
     }
   },
 
-  // =================================================================
-  // 2. GESTION DES DONNÉES MÉTIER (LOCALSTORAGE - TEMPORAIRE)
-  // =================================================================
-
-  getMarkets: (): Marche[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.MARKETS);
-    return data ? JSON.parse(data) : [];
-  },
-  saveMarkets: (markets: Marche[]) => {
-    localStorage.setItem(STORAGE_KEYS.MARKETS, JSON.stringify(markets));
-  },
-  
-  // USERS & SESSION : SUPPRIMÉS POUR EVITER CONFLITS AVEC FIREBASE AUTH
-  /*
-  getUsers: (): User[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.USERS);
-    return data ? JSON.parse(data) : [];
-  },
-  saveUsers: (users: User[]) => {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-  },
-  getSession: (): User | null => {
-    const data = localStorage.getItem(STORAGE_KEYS.SESSION);
-    return data ? JSON.parse(data) : null;
-  },
-  setSession: (user: User | null) => {
-    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
-  }
-  */
 };

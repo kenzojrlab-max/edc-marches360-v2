@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { LibraryDocument } from '../types';
-// Importation des outils Firebase Firestore pour la synchronisation
 import { collection, onSnapshot, setDoc, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface LibraryContextType {
   libraryDocs: LibraryDocument[];
@@ -15,19 +15,26 @@ const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
 export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [libraryDocs, setLibraryDocs] = useState<LibraryDocument[]>([]);
 
-  // CORRECTION : Utilisation de onSnapshot pour écouter la base de données en temps réel
+  // Écoute Firestore UNIQUEMENT si l'utilisateur est authentifié
   useEffect(() => {
-    // On écoute la collection "library" dans Firestore
-    // Dès qu'un changement arrive (ajout sur PC), le mobile reçoit l'info instantanément
-    const unsubscribe = onSnapshot(collection(db, "library"), (snapshot) => {
-      const docs = snapshot.docs.map(doc => doc.data() as LibraryDocument);
-      setLibraryDocs(docs);
-    }, (error) => {
-      console.error("Erreur de synchronisation Library:", error);
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setLibraryDocs([]);
+        return;
+      }
+
+      const unsubSnapshot = onSnapshot(collection(db, "library"), (snapshot) => {
+        const docs = snapshot.docs.map(doc => doc.data() as LibraryDocument);
+        setLibraryDocs(docs);
+      }, (error) => {
+        console.error("Erreur de synchronisation Library:", error);
+      });
+
+      // Nettoyage du listener Firestore quand l'auth change
+      return () => unsubSnapshot();
     });
 
-    // Nettoyage de l'écouteur quand on quitte
-    return () => unsubscribe();
+    return () => unsubAuth();
   }, []);
 
   const addLibraryDoc = async (newDoc: LibraryDocument) => {

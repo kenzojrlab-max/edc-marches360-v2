@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Marche, Projet } from '../types';
-import { FONCTIONS } from '../constants';
+import { useConfig } from '../contexts/ConfigContext';
 
 // Fonction utilitaire pour normaliser les chaînes de caractères (comparaison insensible à la casse et aux accents)
 const normalizeString = (str: string): string => {
@@ -54,6 +54,8 @@ const getYearFromDate = (dateStr: string | undefined): number | null => {
 };
 
 export const useMarketFilter = (markets: Marche[], projects: Projet[]) => {
+  const { fonctions } = useConfig();
+
   // --- Année en cours par défaut ---
   const currentYear = new Date().getFullYear().toString();
 
@@ -123,13 +125,13 @@ export const useMarketFilter = (markets: Marche[], projects: Projet[]) => {
     }
   }, [selectedYear, financementOptions]);
 
-  // Options de fonction analytique avec "Toutes les fonctions"
+  // Options de fonction analytique dynamiques depuis ConfigContext
   const fonctionOptions = useMemo(() => {
     return [
       { value: '', label: 'Toutes les fonctions' },
-      ...FONCTIONS.map(f => ({ value: f, label: f }))
+      ...fonctions.map(f => ({ value: f, label: f }))
     ];
-  }, []);
+  }, [fonctions]);
 
   // --- Logique de filtrage centrale ---
   const filteredMarkets = useMemo(() => {

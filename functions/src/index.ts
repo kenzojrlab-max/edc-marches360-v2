@@ -1,46 +1,48 @@
 /**
- * Importation des modules nécessaires
+ * Cloud Function pour l'IA Gemini
+ * La clé API reste UNIQUEMENT côté serveur (jamais exposée au client)
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as logger from "firebase-functions/logger";
 
-// 1. Initialisation de Gemini avec la clé API
-// IMPORTANT : La clé sera stockée dans les variables d'environnement
 const API_KEY = process.env.GEMINI_API_KEY;
 
-// 2. Définition de la fonction 'generateAIResponse'
-// cors: true permet à ton site React d'appeler cette fonction sans être bloqué
-export const generateAIResponse = onCall({ cors: true, timeoutSeconds: 60 }, async (request) => {
-  
-  // Vérification de sécurité de base
+export const generateAIResponse = onCall({ cors: true, timeoutSeconds: 120 }, async (request) => {
+
+  // Sécurité : Vérifier que l'utilisateur est authentifié
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Vous devez être connecté pour utiliser l\'IA.');
+  }
+
   if (!API_KEY) {
     logger.error("La clé API Gemini est manquante dans la configuration.");
     throw new HttpsError('internal', 'Erreur de configuration serveur (Clé API).');
   }
 
-  // Récupération du prompt envoyé par ton application React
-  const { prompt } = request.data;
+  const { prompt, mode } = request.data;
 
   if (!prompt) {
     throw new HttpsError('invalid-argument', 'Le prompt est vide.');
   }
 
   try {
-    // Connexion à Gemini
     const genAI = new GoogleGenerativeAI(API_KEY);
-    
-    // On utilise le modèle flash (rapide et efficace)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    // Génération de la réponse
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: mode === 'REPORT' ? 4000 : 1000,
+      }
+    });
+
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
 
-    logger.info("Réponse IA générée avec succès");
+    logger.info(`Réponse IA générée (mode: ${mode || 'CHAT'}) pour ${request.auth.uid}`);
 
-    // On renvoie le texte à ton application React
     return { response: text };
 
   } catch (error: any) {

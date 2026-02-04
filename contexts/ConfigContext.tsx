@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { FONCTIONS as INITIAL_FONCTIONS } from '../constants';
 import { AOType, MarketType } from '../types';
 
@@ -58,35 +59,42 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Écoute Firestore UNIQUEMENT si l'utilisateur est authentifié
   useEffect(() => {
-    // Connexion à Firestore (Cloud)
-    // On écoute le document "general" dans la collection "config"
-    const configRef = doc(db, "config", "general");
-    
-    const unsubscribe = onSnapshot(configRef, async (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        // Fusion avec les valeurs par défaut (au cas où certains champs manquent)
-        setConfig({
-          ...DEFAULT_CONFIG,
-          ...data
-        } as AppConfig);
-      } else {
-        // Si elle n'existe pas (premier lancement), on crée la version par défaut dans le Cloud
-        try {
-          await setDoc(configRef, DEFAULT_CONFIG);
-          setConfig(DEFAULT_CONFIG);
-        } catch (error) {
-          console.warn("Impossible de créer la config initiale:", error);
-        }
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setConfig(DEFAULT_CONFIG);
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Erreur de synchronisation Config:", error);
-      setIsLoading(false);
+
+      const configRef = doc(db, "config", "general");
+
+      const unsubSnapshot = onSnapshot(configRef, async (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setConfig({
+            ...DEFAULT_CONFIG,
+            ...data
+          } as AppConfig);
+        } else {
+          try {
+            await setDoc(configRef, DEFAULT_CONFIG);
+            setConfig(DEFAULT_CONFIG);
+          } catch (error) {
+            console.warn("Impossible de créer la config initiale:", error);
+          }
+        }
+        setIsLoading(false);
+      }, (error) => {
+        console.error("Erreur de synchronisation Config:", error);
+        setIsLoading(false);
+      });
+
+      return () => unsubSnapshot();
     });
 
-    return () => unsubscribe();
+    return () => unsubAuth();
   }, []);
 
   // =================================================================

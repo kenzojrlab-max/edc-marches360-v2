@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuditLog, UserRole } from '../types';
 import { db, auth } from '../firebase';
-import { collection, addDoc, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, limit, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 interface LogsContextType {
@@ -46,22 +46,32 @@ export const LogsProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addLog = async (module: string, action: string, details: string) => {
     try {
       const user = auth.currentUser;
-      
-      // AJOUT : On ne crée un log que si l'utilisateur est connecté
+
       if (!user) {
         console.warn("addLog ignoré : utilisateur non connecté");
         return;
       }
-      
+
+      // Récupérer le vrai rôle depuis le profil Firestore de l'utilisateur
+      let userRole: UserRole = UserRole.GUEST;
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          userRole = userDoc.data().role || UserRole.GUEST;
+        }
+      } catch {
+        // Si on ne peut pas lire le profil, on garde GUEST par sécurité
+      }
+
       const newLog: Omit<AuditLog, 'id'> = {
         timestamp: new Date().toISOString(),
-        userName: user?.displayName || user?.email || 'Système',
-        userRole: UserRole.GUEST, 
+        userName: user.displayName || user.email || 'Système',
+        userRole,
         module,
         action,
         details
       };
-      
+
       await addDoc(collection(db, "audit_logs"), newLog);
     } catch (error) {
       console.error("Erreur addLog:", error);

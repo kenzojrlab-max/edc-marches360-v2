@@ -21,7 +21,6 @@ export const Login: React.FC = () => {
   
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
-  const [resetNewPassword, setResetNewPassword] = useState('');
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -237,19 +236,18 @@ export const Login: React.FC = () => {
         <div className="space-y-6 pt-4">
            <div className="text-center space-y-2">
               <div className={`w-16 h-16 bg-blue-edc-50 text-blue-edc-900 ${theme.buttonShape} flex items-center justify-center mx-auto mb-4 shadow-inner`}><RefreshCcw size={28} /></div>
-              <p className={`text-xs font-medium ${theme.textSecondary} leading-relaxed px-4`}>Saisissez votre email et le nouveau mot de passe.</p>
+              <p className={`text-xs font-medium ${theme.textSecondary} leading-relaxed px-4`}>Saisissez votre email. Un lien de réinitialisation vous sera envoyé par email.</p>
            </div>
            <div className="space-y-4">
               <BulleInput label="Email" icon={Mail} value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} autoComplete="off" />
-              <BulleInput label="Nouveau Passe" icon={Lock} type="password" value={resetNewPassword} onChange={(e) => setResetNewPassword(e.target.value)} autoComplete="off" />
            </div>
            <button onClick={handleDoReset} className={`${theme.buttonPrimary} w-full py-4 ${theme.buttonShape} font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3`}>
-             <Save size={16} /> Réinitialiser
+             <Save size={16} /> Envoyer le lien
            </button>
         </div>
       </Modal>
       
-      <p className={`absolute bottom-4 ${theme.textSecondary} text-[8px] font-black uppercase tracking-[0.3em] opacity-40`}>© 2025 EDC S.A. • Secure Enterprise Access</p>
+      <p className={`absolute bottom-4 ${theme.textSecondary} text-[8px] font-black uppercase tracking-[0.3em] opacity-40`}>© {new Date().getFullYear()} EDC S.A. • Secure Enterprise Access</p>
     </div>
   );
 };

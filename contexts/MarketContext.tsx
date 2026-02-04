@@ -143,12 +143,10 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           
           const safeMarket = JSON.parse(JSON.stringify(m));
 
-          if (!safeMarket.docs || Object.keys(safeMarket.docs).length === 0) {
-            delete safeMarket.docs;
-          }
-          if (!safeMarket.comments || Object.keys(safeMarket.comments).length === 0) {
-            delete safeMarket.comments;
-          }
+          // Garder docs et comments comme objets vides au lieu de les supprimer
+          // pour éviter les erreurs "Cannot read property of undefined" ailleurs
+          if (!safeMarket.docs) safeMarket.docs = {};
+          if (!safeMarket.comments) safeMarket.comments = {};
 
           batch.set(docRef, safeMarket, { merge: true });
         });
