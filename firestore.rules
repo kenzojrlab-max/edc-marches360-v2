@@ -37,16 +37,17 @@ service cloud.firestore {
     }
 
     function canDownload() {
-      // Droit DOWNLOAD : Tout le monde sauf GUEST
-      return isActif() && getUserData().role != 'GUEST';
+      // Droit DOWNLOAD : Tous les utilisateurs actifs (y compris GUEST)
+      return isActif();
     }
 
     // --- RÈGLES PAR COLLECTION ---
 
     // 1. Collection USERS (Gestion des utilisateurs)
     match /users/{userId} {
-      // Lecture : Admin (pour la liste) ou soi-même (pour charger son profil)
-      allow read: if isActif() && (isAdmin() || request.auth.uid == userId);
+      // Lecture : Soi-même (authentifié) ou Admin actif (pour la liste)
+      // Note: On permet la lecture de son propre profil sans isActif() pour éviter la dépendance circulaire à l'inscription
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       
       // Création : Soi-même (inscription) en GUEST actif uniquement, ou Super Admin
       allow create: if isAuthenticated() && (

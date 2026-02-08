@@ -15,7 +15,7 @@ const Footer: React.FC = () => {
         </div>
         
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-          © {new Date().getFullYear()} - Direction des Systèmes d'Information
+          © {new Date().getFullYear()} - Service Passation des Marchés et Gestion des contrats Projet
         </p>
       </div>
     </footer>

@@ -7,7 +7,7 @@ import { Marche, Projet } from '../types';
 // Plus aucune clé n'est exposée dans le bundle client
 const functions = getFunctions(getApp(), 'us-central1');
 
-const MAX_ITEMS_CONTEXT = 50;
+const MAX_ITEMS_CONTEXT = 200; // Augmenté pour supporter plus de marchés
 
 const cleanText = (text: string | undefined, maxLength: number = 100): string => {
   if (!text) return "Non renseigné";
@@ -19,8 +19,8 @@ const getGreetingByTime = (): string => {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 12) return "Bonjour";
   if (hour >= 12 && hour < 18) return "Bon après-midi";
-  if (hour >= 18 && hour < 22) return "Bonsoir";
-  return "Bonne nuit";
+  if (hour >= 18 || hour < 5) return "Bonsoir"; // Soir jusqu'à 5h du matin
+  return "Bonjour"; // Fallback
 };
 
 const prepareDataContext = (markets: Marche[], projects: Projet[]) => {
@@ -68,9 +68,7 @@ export const sendMessageToGemini = async (
     ? "le matin"
     : currentHour >= 12 && currentHour < 18
     ? "l'après-midi"
-    : currentHour >= 18 && currentHour < 22
-    ? "le soir"
-    : "la nuit";
+    : "le soir"; // 18h-5h = le soir
 
   const chatSystemPrompt = `
     Tu es l'Assistant Virtuel "EDC Marchés360", expert en analyse de données de marchés publics.

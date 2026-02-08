@@ -147,6 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       await setDoc(doc(db, "users", fbUser.uid), newUser);
+      setUser(newUser); // Définir immédiatement pour éviter la race condition
 
     } catch (error: any) {
       console.error("Erreur inscription:", error);
@@ -189,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     switch (action) {
       case 'WRITE': return [UserRole.SUPER_ADMIN, UserRole.ADMIN].includes(user.role);
-      case 'DOWNLOAD': return user.role !== UserRole.GUEST;
+      case 'DOWNLOAD': return true; // Tous les utilisateurs actifs peuvent télécharger (y compris GUEST)
       case 'IMPORT': return [UserRole.SUPER_ADMIN, UserRole.ADMIN].includes(user.role);
       case 'MANAGE_USERS': return user.role === UserRole.SUPER_ADMIN;
       case 'CONFIG_SYSTEM': return user.role === UserRole.SUPER_ADMIN;

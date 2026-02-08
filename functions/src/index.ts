@@ -10,7 +10,7 @@ import * as admin from "firebase-admin";
 
 // Déclaration du secret Firebase (configuré via: firebase functions:secrets:set GEMINI_API_KEY)
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
-const ALLOWED_AI_ROLES = new Set(["SUPER_ADMIN", "ADMIN", "USER"]);
+const ALLOWED_AI_ROLES = new Set(["SUPER_ADMIN", "ADMIN", "USER", "GUEST"]);
 
 if (admin.apps.length === 0) {
   admin.initializeApp();
@@ -62,7 +62,7 @@ export const generateAIResponse = onCall({ cors: true, timeoutSeconds: 120, secr
       model: "gemini-2.5-flash",
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: mode === 'REPORT' ? 4000 : 1000,
+        maxOutputTokens: mode === 'REPORT' ? 16000 : 2000, // Augmenté pour rapports complets
       }
     });
 
