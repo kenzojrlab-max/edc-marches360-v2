@@ -61,7 +61,14 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Écoute Firestore UNIQUEMENT si l'utilisateur est authentifié
   useEffect(() => {
+    let unsubSnapshot: (() => void) | null = null;
+
     const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubSnapshot) {
+        unsubSnapshot();
+        unsubSnapshot = null;
+      }
+
       if (!user) {
         setConfig(DEFAULT_CONFIG);
         setIsLoading(false);
@@ -70,7 +77,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const configRef = doc(db, "config", "general");
 
-      const unsubSnapshot = onSnapshot(configRef, async (docSnap) => {
+      unsubSnapshot = onSnapshot(configRef, async (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setConfig({
@@ -90,11 +97,12 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error("Erreur de synchronisation Config:", error);
         setIsLoading(false);
       });
-
-      return () => unsubSnapshot();
     });
 
-    return () => unsubAuth();
+    return () => {
+      if (unsubSnapshot) unsubSnapshot();
+      unsubAuth();
+    };
   }, []);
 
   // =================================================================

@@ -16,7 +16,7 @@ import { collection, getDocs, deleteDoc, doc, writeBatch } from 'firebase/firest
 import { db } from '../firebase';
 
 export const Settings: React.FC = () => {
-  const { users, updateUserRole, deleteUser, user: currentUser, can } = useAuth();
+  const { users, updateUserRole, deleteUser, user: currentUser, can, isSuperAdmin } = useAuth();
   const { markets, deletedMarkets, restoreMarket, permanentDeleteMarket } = useMarkets();
   const { fonctions, addFonction, removeFonction, aoTypes, addAOType, removeAOType, marketTypes, addMarketType, removeMarketType } = useConfig();
   const { auditLogs, addLog } = useLogs();
@@ -86,12 +86,24 @@ export const Settings: React.FC = () => {
 
   const purgeCollection = async (collectionName: string) => {
     const snapshot = await getDocs(collection(db, collectionName));
-    const batch = writeBatch(db);
-    snapshot.docs.forEach(d => batch.delete(doc(db, collectionName, d.id)));
-    await batch.commit();
+    const BATCH_SIZE = 450;
+    const docsToDelete = snapshot.docs;
+
+    for (let i = 0; i < docsToDelete.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      docsToDelete.slice(i, i + BATCH_SIZE).forEach(d => {
+        batch.delete(doc(db, collectionName, d.id));
+      });
+      await batch.commit();
+    }
   };
 
   const handlePurgeData = async () => {
+    if (!isSuperAdmin) {
+      alert("Action réservée au Super Administrateur.");
+      return;
+    }
+
     if (window.confirm("ATTENTION : Vous allez supprimer TOUS les Projets, Marchés et Documents liés dans Firestore.\n\nCette action est irréversible.\n\nVoulez-vous continuer ?")) {
       try {
         await purgeCollection("projects");
@@ -113,6 +125,11 @@ export const Settings: React.FC = () => {
   };
 
   const handleFactoryReset = async () => {
+    if (!isSuperAdmin) {
+      alert("Action réservée au Super Administrateur.");
+      return;
+    }
+
     if (window.confirm("DANGER : REINITIALISATION D'USINE\n\nTout sera effacé : Configuration, Logs, Données.\nVous serez déconnecté.\n\nConfirmer ?")) {
       try {
         await purgeCollection("projects");
@@ -179,7 +196,9 @@ export const Settings: React.FC = () => {
           <button onClick={() => setActiveTab('structure')} className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${activeTab === 'structure' ? theme.buttonPrimary : `${theme.textSecondary} hover:bg-black/5`}`}><Database size={16} /> Structure</button>
           <button onClick={() => setActiveTab('logs')} className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${activeTab === 'logs' ? theme.buttonPrimary : `${theme.textSecondary} hover:bg-black/5`}`}><History size={16} /> Logs</button>
           <button onClick={() => setActiveTab('trash')} className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${activeTab === 'trash' ? theme.buttonPrimary : `${theme.textSecondary} hover:bg-black/5`}`}><Trash2 size={16} /> Corbeille</button>
-          <button onClick={() => setActiveTab('maintenance')} className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${activeTab === 'maintenance' ? 'bg-red-500 text-white' : `${theme.textSecondary} hover:bg-red-500/10 hover:text-red-500`}`}><Activity size={16} /> Maintenance</button>
+          {isSuperAdmin && (
+            <button onClick={() => setActiveTab('maintenance')} className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonShape} text-xs font-black uppercase tracking-widest transition-none whitespace-nowrap ${activeTab === 'maintenance' ? 'bg-red-500 text-white' : `${theme.textSecondary} hover:bg-red-500/10 hover:text-red-500`}`}><Activity size={16} /> Maintenance</button>
+          )}
         </div>
       </div>
 
@@ -328,7 +347,7 @@ export const Settings: React.FC = () => {
         )}
 
         {/* MAINTENANCE TAB */}
-        {activeTab === 'maintenance' && (
+        {activeTab === 'maintenance' && isSuperAdmin && (
           <div className="px-2 animate-in fade-in duration-200">
              <div className={`${theme.card} p-12 border-red-500/10`}>
                 <div className="flex items-center gap-4 mb-8 text-red-500"><AlertTriangle size={32} /><div><h3 className="text-xl font-black uppercase tracking-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>Zone de Maintenance</h3><p className={`text-xs font-bold ${theme.textSecondary}`}>Actions destructives irréversibles.</p></div></div>

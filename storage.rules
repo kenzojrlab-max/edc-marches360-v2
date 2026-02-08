@@ -1,0 +1,42 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isActif() {
+      return isAuthenticated()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && getUserData().statut == 'actif';
+    }
+
+    function isAdmin() {
+      return isActif() && (getUserData().role in ['SUPER_ADMIN', 'ADMIN']);
+    }
+
+    function canDownload() {
+      return isActif() && getUserData().role != 'GUEST';
+    }
+
+    // Dossiers applicatifs
+    match /marches_docs/{allPaths=**} {
+      allow read: if canDownload();
+      allow write: if isAdmin();
+    }
+
+    match /library_docs/{allPaths=**} {
+      allow read: if canDownload();
+      allow write: if isAdmin();
+    }
+
+    // Refus explicite par défaut
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

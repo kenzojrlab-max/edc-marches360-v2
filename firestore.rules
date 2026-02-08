@@ -48,8 +48,15 @@ service cloud.firestore {
       // Lecture : Admin (pour la liste) ou soi-même (pour charger son profil)
       allow read: if isActif() && (isAdmin() || request.auth.uid == userId);
       
-      // Création : Soi-même (inscription) ou Super Admin
-      allow create: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      // Création : Soi-même (inscription) en GUEST actif uniquement, ou Super Admin
+      allow create: if isAuthenticated() && (
+        (
+          request.auth.uid == userId &&
+          request.resource.data.role == 'GUEST' &&
+          request.resource.data.statut == 'actif'
+        ) ||
+        isSuperAdmin()
+      );
 
       // Modification : Super Admin uniquement (MANAGE_USERS) ou soi-même (photo/profil)
       // Note: On bloque la modification du champ 'role' par l'utilisateur lui-même pour éviter l'élévation de privilège

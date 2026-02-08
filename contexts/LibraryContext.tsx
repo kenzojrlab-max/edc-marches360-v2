@@ -17,24 +17,31 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Écoute Firestore UNIQUEMENT si l'utilisateur est authentifié
   useEffect(() => {
+    let unsubSnapshot: (() => void) | null = null;
+
     const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubSnapshot) {
+        unsubSnapshot();
+        unsubSnapshot = null;
+      }
+
       if (!user) {
         setLibraryDocs([]);
         return;
       }
 
-      const unsubSnapshot = onSnapshot(collection(db, "library"), (snapshot) => {
+      unsubSnapshot = onSnapshot(collection(db, "library"), (snapshot) => {
         const docs = snapshot.docs.map(doc => doc.data() as LibraryDocument);
         setLibraryDocs(docs);
       }, (error) => {
         console.error("Erreur de synchronisation Library:", error);
       });
-
-      // Nettoyage du listener Firestore quand l'auth change
-      return () => unsubSnapshot();
     });
 
-    return () => unsubAuth();
+    return () => {
+      if (unsubSnapshot) unsubSnapshot();
+      unsubAuth();
+    };
   }, []);
 
   const addLibraryDoc = async (newDoc: LibraryDocument) => {

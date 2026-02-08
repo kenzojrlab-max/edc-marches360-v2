@@ -16,7 +16,7 @@ export const DocumentsManage: React.FC = () => {
   const navigate = useNavigate();
   const { addLibraryDoc, libraryDocs, removeLibraryDoc } = useLibrary();
   const { user } = useAuth();
-  const { theme, themeType } = useTheme();
+  const { theme } = useTheme();
   
   const [showModal, setShowModal] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -188,7 +188,7 @@ export const DocumentsManage: React.FC = () => {
                <Upload className={`mx-auto text-slate-300 group-hover:${theme.textAccent} transition-all`} size={32} />
                <div>
                   <p className={`text-sm font-black ${theme.textMain}`}>{file ? file.name : "Glissez votre fichier ici"}</p>
-                  <p className={`text-[10px] font-bold ${theme.textSecondary} uppercase mt-1`}>PDF, Excel, Word (Max 50MB)</p>
+                  <p className={`text-[10px] font-bold ${theme.textSecondary} uppercase mt-1`}>PDF, Excel, Word (Max 25 Mo)</p>
                </div>
             </div>
 

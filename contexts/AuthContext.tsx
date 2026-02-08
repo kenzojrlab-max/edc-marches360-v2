@@ -140,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: fbUser.uid,
         name: userData.name,
         email: userData.email,
-        role: userData.role || UserRole.GUEST,
+        role: UserRole.GUEST,
         statut: 'actif',
         fonction: userData.fonction,
         created_at: new Date().toISOString()

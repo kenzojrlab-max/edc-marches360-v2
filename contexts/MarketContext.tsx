@@ -211,14 +211,18 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const targets = markets.filter(m => m.projet_id === projectId);
       if (targets.length === 0) return;
 
-      const batch = writeBatch(db);
-      targets.forEach(m => {
-        batch.delete(doc(db, "markets", m.id));
-        const safeMarket = JSON.parse(JSON.stringify(m));
-        batch.set(doc(db, "deleted_markets", m.id), safeMarket);
-      });
+      const ITEMS_PER_BATCH = 225; // 2 opérations par marché (delete + set)
 
-      await batch.commit();
+      for (let i = 0; i < targets.length; i += ITEMS_PER_BATCH) {
+        const batch = writeBatch(db);
+        targets.slice(i, i + ITEMS_PER_BATCH).forEach(m => {
+          batch.delete(doc(db, "markets", m.id));
+          const safeMarket = JSON.parse(JSON.stringify(m));
+          batch.set(doc(db, "deleted_markets", m.id), safeMarket);
+        });
+        await batch.commit();
+      }
+
       addLog('Système', 'Suppression en cascade', `${targets.length} marchés archivés suite à la suppression du projet.`);
     } catch (error) {
       console.error("Erreur removeMarketsByProjectId:", error);
