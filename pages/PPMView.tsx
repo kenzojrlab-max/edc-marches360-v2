@@ -8,7 +8,7 @@ import { useMarketLifecycle } from '../hooks/useMarketLifecycle';
 import {
   Search, ExternalLink, X, FileBox, FileCheck, AlertTriangle,
   CheckCircle2, UserCheck, Banknote, Gavel, Ban,
-  Clock, Info as InfoIcon, MessageSquare, Calendar
+  Clock, Info as InfoIcon, MessageSquare, Calendar, Activity
 } from 'lucide-react';
 import { JALONS_PPM_CONFIG, JALONS_LABELS, JALONS_GROUPS } from '../constants';
 import { formatDate, getLateStatus, calculateDaysBetween } from '../utils/date';
