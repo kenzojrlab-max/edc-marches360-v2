@@ -144,14 +144,51 @@ export const PPMManage: React.FC = () => {
     XLSX.writeFile(wb, fileName);
   };
 
-  const excelDateToISO = (serial: any) => {
+  const excelDateToISO = (serial: any): string => {
     if (!serial) return "";
-    if (serial instanceof Date) return serial.toISOString().split('T')[0];
-    if (typeof serial === 'string') return serial;
-    try {
-      const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
-      return isNaN(date.getTime()) ? "" : date.toISOString().split('T')[0];
-    } catch (e) { return ""; }
+
+    // Si c'est déjà un objet Date
+    if (serial instanceof Date) {
+      return isNaN(serial.getTime()) ? "" : serial.toISOString().split('T')[0];
+    }
+
+    // Si c'est une chaîne de caractères
+    if (typeof serial === 'string') {
+      const trimmed = serial.trim();
+      if (!trimmed) return "";
+
+      // Vérifier si c'est déjà au format ISO (YYYY-MM-DD)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return trimmed;
+      }
+
+      // Convertir DD/MM/YYYY ou DD-MM-YYYY en YYYY-MM-DD
+      const ddmmyyyyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (ddmmyyyyMatch) {
+        const [, day, month, year] = ddmmyyyyMatch;
+        const d = day.padStart(2, '0');
+        const m = month.padStart(2, '0');
+        return `${year}-${m}-${d}`;
+      }
+
+      // Essayer de parser comme date standard
+      const parsed = new Date(trimmed);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split('T')[0];
+      }
+
+      return ""; // Format non reconnu
+    }
+
+    // Si c'est un nombre (serial Excel)
+    if (typeof serial === 'number') {
+      try {
+        const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
+        return isNaN(date.getTime()) ? "" : date.toISOString().split('T')[0];
+      } catch (e) { return ""; }
+    }
+
+    return "";
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,43 +278,49 @@ export const PPMManage: React.FC = () => {
           let aggregatedTitulaire: string | undefined = undefined;
           let aggregatedMontantTTC: number | undefined = undefined;
 
+          // RÈGLE 1 : Agrégation UNIQUEMENT si le marché précédent n'était PAS infructueux ou annulé
+          // Un marché infructueux/annulé = nouvelle procédure qui recommence à zéro
+          const shouldAggregate = existingMarket && !existingMarket.is_infructueux && !existingMarket.is_annule;
+
           if (existingMarket) {
             aggregatedCount++;
 
-            // AGRÉGATION DES DATES RÉALISÉES
-            // Copier TOUTES les dates_realisees de l'ancien marché vers le nouveau
-            // Chaque jalon qui a une date réalisée en 2022 conserve cette date en 2023
-            // Les dates_prevues de l'ancien marché ne sont PAS transférées
-            Object.entries(existingMarket.dates_realisees || {}).forEach(([key, value]) => {
-              if (value) {
-                aggregatedDatesRealisees[key] = value;
-              }
-            });
+            if (shouldAggregate) {
+              // AGRÉGATION DES DATES RÉALISÉES (uniquement si marché précédent valide)
+              // Copier TOUTES les dates_realisees de l'ancien marché vers le nouveau
+              Object.entries(existingMarket.dates_realisees || {}).forEach(([key, value]) => {
+                if (value) {
+                  aggregatedDatesRealisees[key] = value;
+                }
+              });
 
-            // Fusionner les documents
-            aggregatedDocs = { ...existingMarket.docs };
-            // Fusionner les commentaires
-            aggregatedComments = { ...existingMarket.comments };
-            // Garder le statut s'il est plus avancé
-            if (existingMarket.statut_global === StatutGlobal.SIGNE || existingMarket.statut_global === StatutGlobal.EN_COURS) {
-              aggregatedStatut = existingMarket.statut_global;
+              // Fusionner les documents
+              aggregatedDocs = { ...existingMarket.docs };
+              // Fusionner les commentaires
+              aggregatedComments = { ...existingMarket.comments };
+              // Garder le statut s'il est plus avancé
+              if (existingMarket.statut_global === StatutGlobal.SIGNE || existingMarket.statut_global === StatutGlobal.EN_COURS) {
+                aggregatedStatut = existingMarket.statut_global;
+              }
+              // Garder le titulaire et montant TTC réel
+              aggregatedTitulaire = existingMarket.titulaire;
+              aggregatedMontantTTC = existingMarket.montant_ttc_reel;
             }
-            // Garder le titulaire et montant TTC réel
-            aggregatedTitulaire = existingMarket.titulaire;
-            aggregatedMontantTTC = existingMarket.montant_ttc_reel;
+            // Si infructueux/annulé : on ne récupère RIEN, le marché repart à zéro
           }
 
-          // NOUVELLE LOGIQUE : Construire dates_prevues en excluant les jalons déjà réalisés
-          // Si un jalon a déjà une date réalisée, on ne met PAS de date prévue
-          // Si le fichier Excel contient du texte au lieu d'une date, on le stocke comme commentaire
+          // RÈGLE 2 : Catégorisation des dates selon l'année du PPM
+          // - Date < année du projet → dates_realisees
+          // - Date >= année du projet → dates_prevues
+          const projectYear = project?.exercice || new Date().getFullYear();
           const dates_prevues: Record<string, string> = {};
+          const dates_realisees_from_excel: Record<string, string> = {};
 
           JALONS_PPM_KEYS.forEach((key) => {
             const rawValue = rawExcelDates[key];
-            const hasRealisee = !!aggregatedDatesRealisees[key];
 
-            // Si ce jalon est déjà réalisé, on n'ajoute PAS de date prévue
-            if (hasRealisee) {
+            // Si ce jalon est déjà réalisé (via agrégation), on n'ajoute PAS de nouvelle date
+            if (aggregatedDatesRealisees[key]) {
               // Si le fichier Excel contient du texte (pas une date), on le stocke comme commentaire
               if (rawValue && typeof rawValue === 'string' && isNaN(Date.parse(rawValue))) {
                 const sanitizedText = sanitizeInput(rawValue);
@@ -285,15 +328,22 @@ export const PPMManage: React.FC = () => {
                   aggregatedComments[key] = sanitizedText;
                 }
               }
-              return; // Ne pas ajouter de date_prevue pour ce jalon
+              return; // Ne pas ajouter de date pour ce jalon (déjà agrégé)
             }
 
-            // Si pas encore réalisé, on traite la valeur Excel
+            // Traiter la valeur Excel
             if (rawValue) {
               const dateStr = excelDateToISO(rawValue);
               if (dateStr && dateStr.length > 0) {
-                // C'est une date valide
-                dates_prevues[key] = dateStr;
+                // C'est une date valide - catégoriser selon l'année
+                const dateYear = new Date(dateStr).getFullYear();
+                if (dateYear < projectYear) {
+                  // Date antérieure à l'année du PPM → Réalisée
+                  dates_realisees_from_excel[key] = dateStr;
+                } else {
+                  // Date >= année du PPM → Prévue
+                  dates_prevues[key] = dateStr;
+                }
               } else if (typeof rawValue === 'string' && rawValue.trim().length > 0) {
                 // C'est du texte, on le stocke comme commentaire
                 const sanitizedText = sanitizeInput(rawValue);
@@ -303,6 +353,9 @@ export const PPMManage: React.FC = () => {
               }
             }
           });
+
+          // Fusionner les dates réalisées (agrégées + celles du fichier Excel)
+          const finalDatesRealisees = { ...aggregatedDatesRealisees, ...dates_realisees_from_excel };
 
           return {
             // CORRECTION : Toujours créer un nouvel ID pour le nouveau projet
@@ -320,17 +373,18 @@ export const PPMManage: React.FC = () => {
             source_financement: finalSource,
             nom_bailleur: nomBailleur,
             dates_prevues: dates_prevues,
-            dates_realisees: Object.fromEntries(Object.entries(aggregatedDatesRealisees).filter(([_, v]) => v !== undefined)) as Record<string, string>,
+            dates_realisees: Object.fromEntries(Object.entries(finalDatesRealisees).filter(([_, v]) => v !== undefined)) as Record<string, string>,
             comments: Object.fromEntries(Object.entries(aggregatedComments).filter(([_, v]) => v !== undefined)) as Record<string, string>,
             docs: Object.fromEntries(Object.entries(aggregatedDocs).filter(([_, v]) => v !== undefined)) as Record<string, string>,
             statut_global: aggregatedStatut,
-            is_infructueux: existingMarket?.is_infructueux || false,
-            is_annule: existingMarket?.is_annule || false,
-            has_additif: existingMarket?.has_additif || false,
-            has_recours: existingMarket?.has_recours || false,
+            // Si le marché précédent était infructueux/annulé, on repart à zéro (false pour tous les flags)
+            is_infructueux: shouldAggregate ? (existingMarket?.is_infructueux || false) : false,
+            is_annule: shouldAggregate ? (existingMarket?.is_annule || false) : false,
+            has_additif: shouldAggregate ? (existingMarket?.has_additif || false) : false,
+            has_recours: shouldAggregate ? (existingMarket?.has_recours || false) : false,
             titulaire: aggregatedTitulaire,
             montant_ttc_reel: aggregatedMontantTTC,
-            execution: existingMarket?.execution || { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 },
+            execution: shouldAggregate ? (existingMarket?.execution || { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 }) : { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 },
             created_by: existingMarket?.created_by || user?.id || 'system',
             date_creation: existingMarket?.date_creation || new Date(baseTime + (i * 10)).toISOString()
           };

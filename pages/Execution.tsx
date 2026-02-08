@@ -117,7 +117,10 @@ export const Execution: React.FC = () => {
                 <span className={`px-2 py-0.5 ${theme.buttonShape} text-[9px] font-black uppercase tracking-widest bg-primary/10 text-primary`}>{m.numDossier}</span>
                 {isLocked ? <Lock size={16} className={theme.textSecondary} /> : <div className="w-3 h-3 bg-success rounded-full animate-pulse shadow-sm"></div>}
               </div>
-              <TruncatedText text={m.objet} as="h3" className={`text-md md:text-lg font-black ${theme.textMain} uppercase leading-snug group-hover:text-primary transition-colors mb-4 line-clamp-2`} />
+              <TruncatedText text={m.objet} as="h3" className={`text-md md:text-lg font-black ${theme.textMain} uppercase leading-snug group-hover:text-primary transition-colors mb-2 line-clamp-2`} />
+              {m.activite && (
+                <p className={`text-[10px] font-bold ${theme.textSecondary} uppercase tracking-wide mb-4`}>{m.activite}</p>
+              )}
               <div className="mt-auto p-4 bg-black/5 rounded-2xl border border-white/5">
                 {isLocked ? (
                   <p className={`text-[9px] font-bold ${theme.textSecondary} uppercase italic flex items-center gap-2 leading-none`}><Lock size={12}/> Signature requise</p>

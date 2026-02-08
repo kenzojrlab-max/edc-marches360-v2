@@ -46,13 +46,6 @@ const matchFonction = (marketFonction: string, selectedFonction: string): boolea
   return false;
 };
 
-// Fonction pour extraire l'année d'une date ISO
-const getYearFromDate = (dateStr: string | undefined): number | null => {
-  if (!dateStr) return null;
-  const year = parseInt(dateStr.substring(0, 4));
-  return isNaN(year) ? null : year;
-};
-
 export const useMarketFilter = (markets: Marche[], projects: Projet[]) => {
   const { fonctions } = useConfig();
 
@@ -140,69 +133,14 @@ export const useMarketFilter = (markets: Marche[], projects: Projet[]) => {
       const parentProject = projects.find(p => p.id === m.projet_id);
       const exerciceProjet = parentProject?.exercice;
 
-      // 2. Filtre par Année - LOGIQUE AMÉLIORÉE
+      // 2. Filtre par Année - LOGIQUE SIMPLIFIÉE
+      // Un marché appartient TOUJOURS à l'année de son projet (exercice)
+      // Cela garantit qu'un marché importé pour 2023 apparaît toujours en 2023,
+      // même s'il a des dates réalisées de 2022 (agrégées ou catégorisées)
       let matchYear = true;
       if (selectedYear) {
         const yearFilter = parseInt(selectedYear);
-
-        // A. Marché CLÔTURÉ (signé et avec PV de réception définitif ou provisoire)
-        // => Doit apparaître pour l'année de clôture (PV de réception)
-        if (m.dates_realisees.signature_marche) {
-          const datePvDefinitif = m.execution?.date_pv_definitif;
-          const datePvProvisoire = m.execution?.date_pv_provisoire;
-
-          // Si le marché a un PV de réception, utiliser cette date pour l'année
-          if (datePvDefinitif) {
-            const yearCloture = getYearFromDate(datePvDefinitif);
-            matchYear = yearCloture === yearFilter;
-          } else if (datePvProvisoire) {
-            const yearCloture = getYearFromDate(datePvProvisoire);
-            matchYear = yearCloture === yearFilter;
-          } else {
-            // Si pas de PV mais signé, utiliser l'année de signature
-            const yearSignature = getYearFromDate(m.dates_realisees.signature_marche);
-            if (yearSignature) {
-              matchYear = yearSignature === yearFilter;
-            } else {
-              // Fallback sur l'exercice du projet
-              matchYear = exerciceProjet === yearFilter;
-            }
-          }
-        }
-        // B. Marché RÉSILIÉ => Doit apparaître pour l'année de résiliation
-        else if (m.execution?.is_resilie) {
-          // Utiliser la date de décision de résiliation si disponible
-          // Sinon, utiliser l'exercice du projet
-          matchYear = exerciceProjet === yearFilter;
-        }
-        // C. Marché ANNULÉ => Doit apparaître pour l'année de la date d'annulation ou exercice du projet
-        else if (m.is_annule) {
-          const dateAnnulation = m.dates_realisees.notification; // La notification finale peut être utilisée comme date d'annulation
-          if (dateAnnulation) {
-            const yearAnnulation = getYearFromDate(dateAnnulation);
-            matchYear = yearAnnulation === yearFilter;
-          } else {
-            // Fallback: année de l'exercice du projet (année de saisie)
-            matchYear = exerciceProjet === yearFilter;
-          }
-        }
-        // D. Marché INFRUCTUEUX => Doit apparaître pour l'année de déclaration infructueux ou exercice du projet
-        else if (m.is_infructueux) {
-          // Utiliser la date de déclaration infructueux si disponible
-          const dateInfructueux = m.dates_realisees.infructueux;
-          if (dateInfructueux) {
-            const yearInfructueux = getYearFromDate(dateInfructueux);
-            matchYear = yearInfructueux === yearFilter;
-          } else {
-            // Fallback: année de l'exercice du projet (année de saisie PPM)
-            matchYear = exerciceProjet === yearFilter;
-          }
-        }
-        // E. Marché EN COURS (planifié, lancé, attribué mais pas encore signé)
-        // => Utiliser l'exercice du projet
-        else {
-          matchYear = exerciceProjet === yearFilter;
-        }
+        matchYear = exerciceProjet === yearFilter;
       }
 
       // 3. Filtre par Financement (Budget EDC ou nom du bailleur - niveau marché ou projet)

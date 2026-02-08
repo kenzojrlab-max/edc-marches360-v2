@@ -119,7 +119,10 @@ export const Tracking: React.FC = () => {
                   {status.label}
                 </div>
               </div>
-              <TruncatedText text={m.objet} as="h3" className={`text-md md:text-lg font-black ${theme.textMain} uppercase leading-snug group-hover:text-primary transition-colors mb-4 line-clamp-2`} />
+              <TruncatedText text={m.objet} as="h3" className={`text-md md:text-lg font-black ${theme.textMain} uppercase leading-snug group-hover:text-primary transition-colors mb-2 line-clamp-2`} />
+              {m.activite && (
+                <p className={`text-[10px] font-bold ${theme.textSecondary} uppercase tracking-wide mb-4`}>{m.activite}</p>
+              )}
               <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
                 <div className={`flex items-center gap-2 text-[10px] font-black ${theme.textSecondary} uppercase tracking-widest`}><Activity size={14} className={theme.textAccent} /><span>Pilotage actif</span></div>
                 <ChevronRight size={16} strokeWidth={theme.iconStroke} className={`${theme.iconStyle} ${theme.textSecondary} group-hover:text-primary transition-all`} />

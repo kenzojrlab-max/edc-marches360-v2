@@ -266,6 +266,12 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (key === 'signature_marche' && value) {
         updates.statut_global = StatutGlobal.SIGNE;
+
+        // Auto-remplir montant_ttc_reel avec montant_prevu si non saisi
+        const currentMarket = markets.find(m => m.id === marketId);
+        if (currentMarket && !currentMarket.montant_ttc_reel && currentMarket.montant_prevu) {
+          updates.montant_ttc_reel = currentMarket.montant_prevu;
+        }
       }
 
       await updateDoc(marketRef, updates);
@@ -308,9 +314,14 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               [`dates_realisees.${key}`]: value
             };
 
-            // Si c'est la signature, mettre à jour le statut aussi
+            // Si c'est la signature, mettre à jour le statut et le montant si nécessaire
             if (key === 'signature_marche') {
               syncUpdates.statut_global = StatutGlobal.SIGNE;
+
+              // Propager montant_ttc_reel si non défini dans le marché cible
+              if (!m.montant_ttc_reel && currentMarket.montant_prevu) {
+                syncUpdates.montant_ttc_reel = currentMarket.montant_prevu;
+              }
             }
 
             batch.update(matchingMarketRef, syncUpdates);
