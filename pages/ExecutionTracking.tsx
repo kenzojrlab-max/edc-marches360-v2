@@ -24,12 +24,13 @@ const useLightTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #22c55e #FDFEFE; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #FDFEFE; } .ant-table-body::-webkit-scrollbar-thumb { background: #22c55e; border-radius: 4px; } }
-    .ant-table-thead > tr > th { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 2px solid #e5e7eb !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
+    .ant-table-thead > tr > th { background: #e6f4ea !important; color: #1a2333 !important; border-bottom: 2px solid #c3dfc9 !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #1a2333 !important; }
     .ant-table-tbody > tr > td { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 1px solid #e5e7eb !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #f3f4f6 !important; }
-    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 4 !important; }
-    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 2 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #e6f4ea !important; z-index: 100 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 5 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #f3f4f6 !important; }
   `,
 }));
@@ -38,12 +39,13 @@ const useDarkTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #22c55e #1a2333; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #1a2333; } .ant-table-body::-webkit-scrollbar-thumb { background: #22c55e; border-radius: 4px; } }
-    .ant-table-thead > tr > th { background: #0f172a !important; color: #ffffff !important; border-bottom: 2px solid rgba(255,255,255,0.1) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
+    .ant-table-thead > tr > th { background: #0d2818 !important; color: #ffffff !important; border-bottom: 2px solid rgba(34,197,94,0.3) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #ffffff !important; }
     .ant-table-tbody > tr > td { background: #1e293b !important; color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #334155 !important; }
-    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #0f172a !important; z-index: 4 !important; }
-    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #1e293b !important; z-index: 2 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #0d2818 !important; z-index: 100 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #1e293b !important; z-index: 5 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #334155 !important; }
   `,
 }));
@@ -93,6 +95,19 @@ export const ExecutionTracking: React.FC = () => {
   } = useMarketFilter(markets, projects);
 
   const [detailMarketId, setDetailMarketId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
+    try { const s = localStorage.getItem('exec_hidden_cols'); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
+  });
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const toggleColumnVisibility = (key: string) => {
+    setHiddenColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      localStorage.setItem('exec_hidden_cols', JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   // Marchés filtrés pour l'exécution
   const filteredMarkets = useMemo(() => {
@@ -121,8 +136,31 @@ export const ExecutionTracking: React.FC = () => {
       );
     }
 
+    // Filtre par statut rapide
+    if (statusFilter !== 'all') {
+      result = result.filter(m => {
+        if (statusFilter === 'resilie') return !!m.execution?.is_resilie;
+        if (statusFilter === 'cloture') return isClosed(m);
+        if (statusFilter === 'en_cours') return !isClosed(m) && !m.execution?.is_resilie;
+        return true;
+      });
+    }
+
     return result;
-  }, [getExecutionMarkets, selectedYear, selectedFinancement, searchTerm, projects]);
+  }, [getExecutionMarkets, selectedYear, selectedFinancement, searchTerm, projects, statusFilter, isClosed]);
+
+  // Override des cellules header pour forcer le z-index sur les colonnes fixées
+  const tableComponents = useMemo(() => ({
+    header: {
+      cell: (props: any) => {
+        const isFixed = props.className && (props.className.includes('ant-table-cell-fix-left') || props.className.includes('ant-table-cell-fix-right'));
+        const style = isFixed
+          ? { ...props.style, zIndex: 100 }
+          : { ...props.style, zIndex: 1 };
+        return <th {...props} style={style} />;
+      },
+    },
+  }), []);
 
   // Colonnes du tableau
   const tableColumns: TableColumnsType<Marche> = useMemo(() => {
@@ -133,6 +171,7 @@ export const ExecutionTracking: React.FC = () => {
         key: 'dossier',
         fixed: 'left',
         width: 350,
+
         render: (_, m) => {
           const isResilie = !!m.execution?.is_resilie;
           const isClotured = isClosed(m);
@@ -179,6 +218,7 @@ export const ExecutionTracking: React.FC = () => {
         key: 'montant',
         width: 180,
         align: 'right',
+        sorter: (a: Marche, b: Marche) => (a.montant_ttc_reel || 0) - (b.montant_ttc_reel || 0),
         render: (value) => (
           <span className={`text-sm font-black ${theme.textMain}`}>
             {value ? value.toLocaleString() : '-'} <span className={`text-[9px] ${theme.textSecondary}`}>FCFA</span>
@@ -252,14 +292,15 @@ export const ExecutionTracking: React.FC = () => {
         fixed: 'right',
         width: 100,
         align: 'center',
-        render: (_, m) => (
+
+        render: (_: any, m: Marche) => (
           <button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape} transition-colors`}>
             <ExternalLink size={18} />
           </button>
         ),
       },
-    ];
-  }, [theme, selectedYear, getOriginYear, isFromPreviousYear, isClosed]);
+    ].filter(c => !hiddenColumns.has(c.key as string));
+  }, [theme, selectedYear, getOriginYear, isFromPreviousYear, isClosed, hiddenColumns]);
 
   const tableData = useMemo(() =>
     filteredMarkets.map(m => ({ ...m, key: m.id })),
@@ -337,14 +378,50 @@ export const ExecutionTracking: React.FC = () => {
         </div>
       </div>
 
+      {/* FILTRES RAPIDES & SÉLECTEUR DE COLONNES */}
+      <div className="flex items-center justify-between gap-4 px-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { key: 'all', label: 'Tous' },
+            { key: 'en_cours', label: 'En cours' },
+            { key: 'cloture', label: 'Clôturés' },
+            { key: 'resilie', label: 'Résiliés' },
+          ].map(f => (
+            <button key={f.key} onClick={() => setStatusFilter(f.key)} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${statusFilter === f.key ? 'bg-green-500 text-white shadow-lg' : `${theme.card} ${theme.textSecondary} hover:opacity-80`}`}>{f.label}</button>
+          ))}
+        </div>
+        <div className="relative">
+          <button onClick={() => setShowColumnSelector(!showColumnSelector)} className={`px-3 py-1.5 text-[10px] font-black uppercase ${theme.card} ${theme.textSecondary} rounded-lg border border-white/10`}>Colonnes</button>
+          {showColumnSelector && (
+            <div className={`absolute right-0 top-full mt-1 ${theme.card} shadow-2xl rounded-lg p-3 z-50 min-w-[200px] border border-white/10`}>
+              {[
+                { key: 'origine', label: 'Origine PPM' },
+                { key: 'titulaire', label: 'Titulaire' },
+                { key: 'montant', label: 'Montant TTC Réel' },
+                { key: 'signature', label: 'Date Signature' },
+                { key: 'decomptes', label: 'Décomptes' },
+                { key: 'avenants', label: 'Avenants' },
+                { key: 'avancement', label: 'Avancement' },
+              ].map(col => (
+                <label key={col.key} className={`flex items-center gap-2 py-1.5 text-[11px] font-bold ${theme.textMain} cursor-pointer`}>
+                  <input type="checkbox" checked={!hiddenColumns.has(col.key)} onChange={() => toggleColumnVisibility(col.key)} className="rounded" />
+                  {col.label}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* TABLEAU */}
       <div className={`${theme.card} flex flex-col relative overflow-hidden z-10`}>
         <Table<Marche>
           className={styles.customTable}
           columns={tableColumns}
           dataSource={tableData}
+          components={tableComponents}
           scroll={{ x: 'max-content', y: 55 * 10 }}
-          pagination={false}
+          pagination={{ pageSize: 15, showTotal: (total: number, range: [number, number]) => <span className={`text-xs font-bold ${theme.textSecondary}`}>{range[0]}-{range[1]} sur {total} marchés</span>, showSizeChanger: false }}
           bordered={false}
           size="middle"
           rowClassName={(record) => {

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   TrendingUp, BarChart2, Activity, Briefcase, ChevronRight, Clock, AlertTriangle,
-  Layers, DollarSign, FileStack, Gavel, Ban
+  Layers, DollarSign, FileStack, Gavel, Ban, X
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -49,6 +49,38 @@ export const Dashboard: React.FC = () => {
     alertsList, marchesSignesParExercice, tauxExecutionParExercice, executionPPMParFonction,
     tauxBudgetaireParFonction, COLORS
   } = useDashboardStats(filteredMarkets, markets, projects);
+
+  // États pour les modals KPI
+  const [modalPPM, setModalPPM] = React.useState(false);
+  const [modalVolume, setModalVolume] = React.useState(false);
+  const [modalInfructueux, setModalInfructueux] = React.useState(false);
+
+  // Marchés non lancés (pas de date lancement_ao)
+  const marchesNonLances = React.useMemo(() =>
+    filteredMarkets.filter(m => !m.dates_realisees.lancement_ao),
+    [filteredMarkets]
+  );
+
+  // Marchés réalisés (signés) avec calcul du délai
+  const marchesRealises = React.useMemo(() =>
+    filteredMarkets
+      .filter(m => m.dates_realisees.lancement_ao)
+      .map(m => {
+        const dateLancement = new Date(m.dates_realisees.lancement_ao!);
+        const dateSignature = m.dates_realisees.signature_marche
+          ? new Date(m.dates_realisees.signature_marche)
+          : new Date();
+        const delaiJours = Math.round((dateSignature.getTime() - dateLancement.getTime()) / (1000 * 60 * 60 * 24));
+        return { ...m, delaiJours };
+      }),
+    [filteredMarkets]
+  );
+
+  // Marchés infructueux
+  const marchesInfructueux = React.useMemo(() =>
+    filteredMarkets.filter(m => m.is_infructueux),
+    [filteredMarkets]
+  );
 
   // État pour l'analyseur dynamique
   const [analyseMetrique, setAnalyseMetrique] = React.useState<'volume' | 'budget' | 'delai' | 'taux'>('volume');
@@ -100,7 +132,7 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
         
         {/* KPI 1 : Nombre de Marchés prévus au PPM */}
-        <div className={`${theme.card} p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform h-full`}>
+        <div onClick={() => setModalPPM(true)} className={`${theme.card} p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform h-full cursor-pointer`}>
            <div className="flex items-start justify-between mb-4">
               <p className={`text-sm font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Nombre de Marchés prévus au PPM</p>
               <FileStack size={24} strokeWidth={theme.iconStroke} className={`${theme.iconStyle} ${theme.textSecondary}`} />
@@ -117,7 +149,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* KPI 2 : Volume total des marchés */}
-        <div className={`${theme.card} p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform h-full`}>
+        <div onClick={() => setModalVolume(true)} className={`${theme.card} p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform h-full cursor-pointer`}>
            <div className="flex items-start justify-between mb-4">
               <p className={`text-sm font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Volume total des marchés</p>
               <DollarSign size={24} strokeWidth={theme.iconStroke} className={`${theme.iconStyle} text-success`} />
@@ -188,7 +220,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* KPI 6 : Nombre de procédures infructueuses ou annulées */}
-        <div className={`${theme.card} p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform h-full`}>
+        <div onClick={() => setModalInfructueux(true)} className={`${theme.card} p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform h-full cursor-pointer`}>
            <div className="flex items-start justify-between mb-4">
               <p className={`text-sm font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Procédures infructueuses / annulées</p>
               <Ban size={24} strokeWidth={theme.iconStroke} className={`${theme.iconStyle} text-danger`} />
@@ -198,9 +230,6 @@ export const Dashboard: React.FC = () => {
                  <h3 className={`text-4xl font-black ${theme.textMain}`}>{failureStats.realise}</h3>
                  <span className={`text-xs font-bold ${theme.textSecondary} uppercase`}>Dossiers</span>
               </div>
-              <p className={`text-sm font-bold ${theme.textSecondary} mt-2`}>
-                 Objectif tolérance : {failureStats.prevu}
-              </p>
            </div>
         </div>
 
@@ -414,6 +443,128 @@ export const Dashboard: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </div>
+      {/* MODAL : Marchés non lancés (PPM) */}
+      {modalPPM && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setModalPPM(false)}>
+          <div className={`${theme.card} w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col m-4`} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <h3 className={`text-lg font-black uppercase tracking-widest ${theme.textMain}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Marchés non lancés ({marchesNonLances.length})
+              </h3>
+              <button onClick={() => setModalPPM(false)} className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}><X size={20} /></button>
+            </div>
+            <div className="overflow-auto flex-1 p-6">
+              {marchesNonLances.length === 0 ? (
+                <p className={`text-center py-10 ${theme.textSecondary} italic`}>Tous les marchés ont été lancés.</p>
+              ) : (
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className={`text-xs font-black uppercase tracking-widest ${theme.textSecondary} border-b border-white/10`}>
+                      <th className="pb-4 pr-4">N° Dossier</th>
+                      <th className="pb-4 pr-4">Objet du marché</th>
+                      <th className="pb-4 pr-4">Type AO</th>
+                      <th className="pb-4 text-right">Montant prévu</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marchesNonLances.map(m => (
+                      <tr key={m.id} className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer`} onClick={() => { setModalPPM(false); navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`); }}>
+                        <td className={`py-4 pr-4 text-sm font-bold ${theme.textMain}`}>{m.numDossier}</td>
+                        <td className={`py-4 pr-4 text-sm ${theme.textSecondary}`}><TruncatedText text={m.objet} as="span" className="line-clamp-1" /></td>
+                        <td className={`py-4 pr-4 text-xs font-bold ${theme.textSecondary} uppercase`}>{m.typeAO}</td>
+                        <td className={`py-4 text-sm font-bold ${theme.textMain} text-right`}>{formatCurrency(m.montant_prevu)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL : Marchés réalisés (Volume) */}
+      {modalVolume && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setModalVolume(false)}>
+          <div className={`${theme.card} w-full max-w-5xl max-h-[80vh] overflow-hidden flex flex-col m-4`} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <h3 className={`text-lg font-black uppercase tracking-widest ${theme.textMain}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Marchés réalisés ({marchesRealises.length})
+              </h3>
+              <button onClick={() => setModalVolume(false)} className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}><X size={20} /></button>
+            </div>
+            <div className="overflow-auto flex-1 p-6">
+              {marchesRealises.length === 0 ? (
+                <p className={`text-center py-10 ${theme.textSecondary} italic`}>Aucun marché réalisé.</p>
+              ) : (
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className={`text-xs font-black uppercase tracking-widest ${theme.textSecondary} border-b border-white/10`}>
+                      <th className="pb-4 pr-4">Nom du marché</th>
+                      <th className="pb-4 pr-4">Attributaire</th>
+                      <th className="pb-4 pr-4 text-center">Délai (jours)</th>
+                      <th className="pb-4 text-right">Montant</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marchesRealises.map(m => (
+                      <tr key={m.id} className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer`} onClick={() => { setModalVolume(false); navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`); }}>
+                        <td className={`py-4 pr-4 text-sm ${theme.textMain}`}><TruncatedText text={m.objet} as="span" className="line-clamp-1 font-bold" /></td>
+                        <td className={`py-4 pr-4 text-sm ${theme.textSecondary}`}>{m.titulaire || '—'}</td>
+                        <td className={`py-4 pr-4 text-sm font-bold text-center ${!m.dates_realisees.signature_marche ? 'text-warning' : theme.textMain}`}>
+                          {m.delaiJours}j {!m.dates_realisees.signature_marche && <span className="text-xs font-normal">(en cours)</span>}
+                        </td>
+                        <td className={`py-4 text-sm font-bold ${theme.textMain} text-right`}>{formatCurrency(m.montant_ttc_reel || m.montant_prevu)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL : Procédures infructueuses */}
+      {modalInfructueux && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setModalInfructueux(false)}>
+          <div className={`${theme.card} w-full max-w-5xl max-h-[80vh] overflow-hidden flex flex-col m-4`} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <h3 className={`text-lg font-black uppercase tracking-widest ${theme.textMain}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Procédures infructueuses ({marchesInfructueux.length})
+              </h3>
+              <button onClick={() => setModalInfructueux(false)} className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}><X size={20} /></button>
+            </div>
+            <div className="overflow-auto flex-1 p-6">
+              {marchesInfructueux.length === 0 ? (
+                <p className={`text-center py-10 ${theme.textSecondary} italic`}>Aucune procédure infructueuse.</p>
+              ) : (
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className={`text-xs font-black uppercase tracking-widest ${theme.textSecondary} border-b border-white/10`}>
+                      <th className="pb-4 pr-4">Nom du marché</th>
+                      <th className="pb-4 pr-4">Date de lancement</th>
+                      <th className="pb-4">Motif d'infructuosité</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marchesInfructueux.map(m => (
+                      <tr key={m.id} className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer`} onClick={() => { setModalInfructueux(false); navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`); }}>
+                        <td className={`py-4 pr-4 text-sm font-bold ${theme.textMain}`}><TruncatedText text={m.objet} as="span" className="line-clamp-1" /></td>
+                        <td className={`py-4 pr-4 text-sm ${theme.textSecondary}`}>
+                          {m.dates_realisees.lancement_ao ? new Date(m.dates_realisees.lancement_ao).toLocaleDateString('fr-FR') : '—'}
+                        </td>
+                        <td className={`py-4 text-sm ${theme.textSecondary}`}>{m.motif_infructueux || <span className="italic opacity-50">Non renseigné</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

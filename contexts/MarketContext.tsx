@@ -35,6 +35,8 @@ interface MarketContextType {
   addMarkets: (newMarkets: Marche[]) => Promise<void>;
   updateMarket: (id: string, updates: Partial<Marche>) => void;
   updateMarketDoc: (marketId: string, jalonKey: string, docId: string) => void;
+  addMarketDocToArray: (marketId: string, jalonKey: string, docId: string) => void;
+  removeMarketDocFromArray: (marketId: string, jalonKey: string, docId: string) => void;
   removeMarket: (id: string) => void;
   removeMarketsByProjectId: (projectId: string) => void;
   restoreMarket: (id: string) => void;
@@ -187,6 +189,60 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     } catch (error) {
       console.error("Erreur updateMarketDoc:", error);
+    }
+  };
+
+  // Ajouter un document à un tableau de documents pour un jalon
+  const addMarketDocToArray = async (marketId: string, jalonKey: string, docId: string) => {
+    try {
+      const currentMarket = markets.find(m => m.id === marketId);
+      if (!currentMarket) return;
+
+      const currentDocs = currentMarket.docs?.[jalonKey];
+      let newDocs: string[];
+
+      if (!currentDocs) {
+        newDocs = [docId];
+      } else if (Array.isArray(currentDocs)) {
+        newDocs = [...currentDocs, docId];
+      } else {
+        // Migration: ancien format string vers tableau
+        newDocs = [currentDocs, docId];
+      }
+
+      const marketRef = doc(db, "markets", marketId);
+      await updateDoc(marketRef, {
+        [`docs.${jalonKey}`]: newDocs
+      });
+    } catch (error) {
+      console.error("Erreur addMarketDocToArray:", error);
+    }
+  };
+
+  // Supprimer un document d'un tableau de documents pour un jalon
+  const removeMarketDocFromArray = async (marketId: string, jalonKey: string, docId: string) => {
+    try {
+      const currentMarket = markets.find(m => m.id === marketId);
+      if (!currentMarket) return;
+
+      const currentDocs = currentMarket.docs?.[jalonKey];
+      let newDocs: string[] | undefined;
+
+      if (Array.isArray(currentDocs)) {
+        newDocs = currentDocs.filter(id => id !== docId);
+        if (newDocs.length === 0) newDocs = undefined;
+      } else if (currentDocs === docId) {
+        newDocs = undefined;
+      } else {
+        return; // Document non trouvé
+      }
+
+      const marketRef = doc(db, "markets", marketId);
+      await updateDoc(marketRef, {
+        [`docs.${jalonKey}`]: newDocs || null
+      });
+    } catch (error) {
+      console.error("Erreur removeMarketDocFromArray:", error);
     }
   };
 
@@ -349,7 +405,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   return (
     <MarketContext.Provider value={{
-      markets, deletedMarkets, addMarket, addMarkets, updateMarket, updateMarketDoc, 
+      markets, deletedMarkets, addMarket, addMarkets, updateMarket, updateMarketDoc,
+      addMarketDocToArray, removeMarketDocFromArray,
       removeMarket, removeMarketsByProjectId, restoreMarket, permanentDeleteMarket, getMarketById, updateJalon, updateComment
     }}>
       {children}

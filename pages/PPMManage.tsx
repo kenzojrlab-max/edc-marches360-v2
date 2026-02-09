@@ -381,6 +381,7 @@ export const PPMManage: React.FC = () => {
             is_infructueux: shouldAggregate ? (existingMarket?.is_infructueux || false) : false,
             is_annule: shouldAggregate ? (existingMarket?.is_annule || false) : false,
             has_additif: shouldAggregate ? (existingMarket?.has_additif || false) : false,
+            type_ouverture: shouldAggregate ? (existingMarket?.type_ouverture || '2_temps') : '2_temps',
             has_recours: shouldAggregate ? (existingMarket?.has_recours || false) : false,
             titulaire: aggregatedTitulaire,
             montant_ttc_reel: aggregatedMontantTTC,
@@ -444,7 +445,7 @@ export const PPMManage: React.FC = () => {
         </div>
       </div>
 
-      <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 relative z-[10]`}>
+      <div className={`${theme.card} p-4 flex flex-col md:flex-row items-center gap-6 relative z-[20]`}>
         <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden lg:flex`}>
           <Layers size={20} strokeWidth={theme.iconStroke} className={theme.iconStyle} />
           <span className="text-[10px] font-black uppercase tracking-widest" style={{ fontFamily: "'DM Sans', sans-serif" }}>Filtres</span>
@@ -464,7 +465,7 @@ export const PPMManage: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-[1]">
         {filteredProjects.map(p => (
           <div key={p.id} onDoubleClick={() => navigate(`/ppm-manage/${p.id}`)} className={`${theme.card} p-10 cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-2 flex flex-col h-full group`}>
              <div className="flex items-center justify-between mb-6">

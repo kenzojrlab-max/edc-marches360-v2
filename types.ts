@@ -115,8 +115,9 @@ export interface ExecutionData {
   doc_decision_resiliation_id?: string;
 }
 
+export type TypeOuverture = '1_temps' | '2_temps';
+
 export interface MarcheDates {
-  saisine_prev?: string;
   saisine_cipm?: string;
   examen_dao?: string;
   validation_dossier?: string;
@@ -127,15 +128,21 @@ export interface MarcheDates {
   validation_eval?: string;
   ano_bailleur_eval?: string;
   ouverture_financiere?: string;
+  rapport_consolide?: string;
+  validation_rapport_consolide?: string;
+  ano_bailleur_consolide?: string;
+  depouillement_1t?: string;
+  validation_rapport_1t?: string;
+  ano_bailleur_1t?: string;
   infructueux?: string;
   prop_attribution?: string;
+  negociation_contractuelle?: string;
   avis_conforme_ca?: string;
   ano_bailleur_attrib?: string;
   publication?: string;
   notification_attrib?: string;
   souscription?: string;
   saisine_cipm_projet?: string;
-  examen_projet?: string;
   validation_projet?: string;
   ano_bailleur_projet?: string;
   signature_marche?: string;
@@ -160,12 +167,14 @@ export interface Marche {
   dates_prevues: MarcheDates;
   dates_realisees: MarcheDates;
   comments: Record<string, string>;
-  docs: Record<string, string | undefined>;
+  docs: Record<string, string | string[] | undefined>;
   statut_global: StatutGlobal;
   is_infructueux: boolean;
   is_annule: boolean;
   has_additif: boolean;
+  type_ouverture: TypeOuverture;
   motif_annulation?: string;
+  motif_infructueux?: string;
   has_recours: boolean;
   recours_issue?: string;
   titulaire?: string;

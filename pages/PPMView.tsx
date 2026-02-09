@@ -7,14 +7,15 @@ import { useMarketLogic } from '../hooks/useMarketLogic';
 import { useMarketLifecycle } from '../hooks/useMarketLifecycle';
 import {
   Search, ExternalLink, X, FileBox, FileCheck, AlertTriangle,
-  CheckCircle2, UserCheck, Banknote, Gavel, Ban,
-  Clock, Info as InfoIcon, MessageSquare, Calendar, Activity
+  UserCheck, Banknote, Gavel, Ban,
+  Clock, Info as InfoIcon, Activity
 } from 'lucide-react';
-import { JALONS_PPM_CONFIG, JALONS_LABELS, JALONS_GROUPS } from '../constants';
+import { JALONS_PPM_CONFIG, JALONS_LABELS, JALONS_GROUPS, JALONS_PPM_KEYS, getJalonsGroupsForMarket } from '../constants';
 import { formatDate, getLateStatus, calculateDaysBetween } from '../utils/date';
 import { useSearchParams } from 'react-router-dom';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { FileManager } from '../components/FileManager';
+import { MultiFileManager } from '../components/MultiFileManager';
 import { Marche } from '../types';
 import { Table } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -27,12 +28,13 @@ const useLightTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #FDFEFE; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #FDFEFE; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
-    .ant-table-thead > tr > th { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 2px solid #e5e7eb !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
+    .ant-table-thead > tr > th { background: #e0eaf7 !important; color: #1a2333 !important; border-bottom: 2px solid #b8cce8 !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #1a2333 !important; }
     .ant-table-tbody > tr > td { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 1px solid #e5e7eb !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #f3f4f6 !important; }
-    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 4 !important; }
-    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 2 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #e0eaf7 !important; z-index: 100 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 5 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #f3f4f6 !important; }
     .ant-table-tbody > tr.highlighted-row > td, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-left, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-right { background: #fef3c7 !important; }
     .date-cell { font-size: 12px !important; font-weight: 700 !important; }
@@ -48,12 +50,13 @@ const useDarkTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #1a2333; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #1a2333; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
-    .ant-table-thead > tr > th { background: #0f172a !important; color: #ffffff !important; border-bottom: 2px solid rgba(255,255,255,0.1) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
+    .ant-table-thead > tr > th { background: #0d1a30 !important; color: #ffffff !important; border-bottom: 2px solid rgba(59,130,246,0.3) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #ffffff !important; }
     .ant-table-tbody > tr > td { background: #1e293b !important; color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #334155 !important; }
-    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #0f172a !important; z-index: 4 !important; }
-    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #1e293b !important; z-index: 2 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #0d1a30 !important; z-index: 100 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #1e293b !important; z-index: 5 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #334155 !important; }
     .ant-table-tbody > tr.highlighted-row > td, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-left, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-right { background: #422006 !important; }
     .date-cell { font-size: 12px !important; font-weight: 700 !important; }
@@ -84,6 +87,40 @@ const CircularProgress = ({ percent, color, icon: Icon }: { percent: number, col
       </div>
     </div>
   );
+};
+
+// Clés des jalons à griser si le marché est infructueux (après prop_attribution)
+const JALONS_AFTER_INFRUCTUEUX = [
+  'negociation_contractuelle', 'avis_conforme_ca', 'ano_bailleur_attrib', 'publication',
+  'souscription', 'saisine_cipm_projet',
+  'ano_bailleur_projet', 'signature_marche'
+];
+
+// Groupes de jalons PPM pour colonnes repliables
+const PPM_JALON_GROUPS = [
+  { id: 'preparation', label: 'Préparation', keys: ['saisine_cipm', 'examen_dao', 'ano_bailleur_dao', 'lancement_ao'] },
+  { id: 'consultation', label: 'Consultation', keys: ['depouillement'] },
+  { id: 'attribution', label: 'Attribution', keys: ['prop_attribution', 'negociation_contractuelle', 'ano_bailleur_attrib', 'avis_conforme_ca', 'publication'] },
+  { id: 'contractualisation', label: 'Contract.', keys: ['souscription', 'saisine_cipm_projet', 'ano_bailleur_projet', 'signature_marche'] },
+];
+
+// Fonction pour calculer l'état dynamique basé sur la dernière date renseignée
+const getEtatDynamique = (m: Marche): { label: string; color: string } => {
+  // Statuts terminaux prioritaires
+  if (m.is_annule) return { label: "Annulé", color: "bg-danger text-white" };
+  if (m.is_infructueux) return { label: "Infructueux", color: "bg-warning text-black" };
+  if (m.dates_realisees?.signature_marche) return { label: "Signé", color: "bg-success text-white" };
+
+  // Parcourir les jalons dans l'ordre inverse pour trouver le dernier renseigné
+  const jalonsOrder = JALONS_PPM_KEYS;
+  for (let i = jalonsOrder.length - 1; i >= 0; i--) {
+    const key = jalonsOrder[i];
+    if (m.dates_realisees?.[key as keyof typeof m.dates_realisees]) {
+      return { label: JALONS_LABELS[key] || key, color: "bg-primary/10 text-primary" };
+    }
+  }
+
+  return { label: "Non lancé", color: "bg-slate-100 text-slate-600" };
 };
 
 export const PPMView: React.FC = () => {
@@ -117,7 +154,31 @@ export const PPMView: React.FC = () => {
   const [detailMarketId, setDetailMarketId] = useState<string | null>(null);
   const [scrolledId, setScrolledId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
+    try { const s = localStorage.getItem('ppmview_hidden_cols'); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
+  });
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
+  const toggleColumnVisibility = (key: string) => {
+    setHiddenColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      localStorage.setItem('ppmview_hidden_cols', JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   useEffect(() => {
     const highlightedId = searchParams.get('id');
@@ -128,11 +189,35 @@ export const PPMView: React.FC = () => {
         const parentProject = projects.find(p => p.id === targetMarket.projet_id);
         if (parentProject) {
           setSelectedYear(parentProject.exercice.toString());
-          // Définir le financement en fonction du projet parent
           const financement = parentProject.sourceFinancement === 'BUDGET_EDC'
             ? 'Budget EDC'
             : parentProject.nomBailleur || '';
           setSelectedFinancement(financement);
+        }
+        // Réinitialiser les filtres qui pourraient masquer le marché
+        setSearchTerm('');
+        setStatusFilter('all');
+
+        // Calculer la page de pagination où se trouve le marché
+        const allFiltered = markets
+          .filter(m => {
+            const pp = projects.find(p => p.id === m.projet_id);
+            const matchYear = parentProject ? pp?.exercice.toString() === parentProject.exercice.toString() : true;
+            let matchFinancement = true;
+            if (parentProject) {
+              const fin = parentProject.sourceFinancement === 'BUDGET_EDC' ? 'Budget EDC' : parentProject.nomBailleur || '';
+              if (fin) {
+                if (fin === 'Budget EDC') matchFinancement = m.source_financement === 'BUDGET_EDC';
+                else matchFinancement = m.nom_bailleur === fin || pp?.nomBailleur === fin;
+              }
+            }
+            return matchYear && matchFinancement;
+          })
+          .sort((a, b) => parseInt(a.numDossier?.replace(/\D/g, '') || '0', 10) - parseInt(b.numDossier?.replace(/\D/g, '') || '0', 10));
+
+        const targetIndex = allFiltered.findIndex(m => m.id === highlightedId);
+        if (targetIndex >= 0) {
+          setCurrentPage(Math.floor(targetIndex / 15) + 1);
         }
       }
       setScrolledId(highlightedId);
@@ -144,7 +229,7 @@ export const PPMView: React.FC = () => {
           newParams.delete('id');
           setSearchParams(newParams, { replace: true });
         }
-      }, 600);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [searchParams, markets, projects]);
@@ -237,10 +322,8 @@ export const PPMView: React.FC = () => {
 
   const filteredMarkets = useMemo(() => {
     return markets.filter(m => {
-      // NOUVEAU : Exclure les marchés signés (ils sont dans "Suivi Exécution Marchés")
-      // On garde : non signés, non annulés, non infructueux
-      if (!isInPassation(m)) return false;
-
+      // MODIFIÉ : Inclure tous les marchés (signés, infructueux, annulés)
+      // pour avoir une vue complète du plan de passation
       const parentProject = projects.find(p => p.id === m.projet_id);
 
       // Filtre par Année
@@ -262,9 +345,31 @@ export const PPMView: React.FC = () => {
       // Filtre par recherche texte
       const matchSearch = (m.numDossier || "").toLowerCase().includes(searchTerm.toLowerCase()) || (m.objet || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchFinancement && matchSearch && matchYear;
+      // Filtre par statut rapide
+      let matchStatus = true;
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'signe') matchStatus = !!m.dates_realisees?.signature_marche;
+        else if (statusFilter === 'annule') matchStatus = !!m.is_annule;
+        else if (statusFilter === 'infructueux') matchStatus = !!m.is_infructueux;
+        else if (statusFilter === 'en_cours') matchStatus = !m.dates_realisees?.signature_marche && !m.is_annule && !m.is_infructueux;
+      }
+
+      return matchFinancement && matchSearch && matchYear && matchStatus;
     });
-  }, [markets, projects, selectedFinancement, selectedYear, searchTerm, isInPassation]);
+  }, [markets, projects, selectedFinancement, selectedYear, searchTerm, isInPassation, statusFilter]);
+
+  // Override des cellules header pour forcer le z-index sur les colonnes fixées
+  const tableComponents = useMemo(() => ({
+    header: {
+      cell: (props: any) => {
+        const isFixed = props.className && (props.className.includes('ant-table-cell-fix-left') || props.className.includes('ant-table-cell-fix-right'));
+        const style = isFixed
+          ? { ...props.style, zIndex: 100 }
+          : { ...props.style, zIndex: 1 };
+        return <th {...props} style={style} />;
+      },
+    },
+  }), []);
 
   // Configuration des colonnes pour Ant Design Table
   const tableColumns: TableColumnsType<Marche> = useMemo(() => {
@@ -276,6 +381,7 @@ export const PPMView: React.FC = () => {
         key: 'dossier',
         fixed: 'left',
         width: 420,
+
         render: (_, m) => {
           const isResilie = !!m.execution.is_resilie;
           const isClosed = !!m.execution.doc_pv_definitif_id;
@@ -299,6 +405,7 @@ export const PPMView: React.FC = () => {
         key: 'budget',
         width: 180,
         align: 'right',
+        sorter: (a: Marche, b: Marche) => (a.montant_prevu || 0) - (b.montant_prevu || 0),
         render: (value) => (
           <span className={`text-sm font-black ${theme.textMain}`}>
             {(value || 0).toLocaleString()} <span className={`text-[9px] ${theme.textSecondary}`}>FCFA</span>
@@ -341,53 +448,105 @@ export const PPMView: React.FC = () => {
           );
         },
       },
+      {
+        title: 'État',
+        key: 'etat',
+        width: 180,
+        render: (_, m) => {
+          const etat = getEtatDynamique(m);
+          const icon = m.is_annule ? <Ban size={10} className="inline mr-1" />
+            : m.is_infructueux ? <AlertTriangle size={10} className="inline mr-1" />
+            : m.dates_realisees?.signature_marche ? <FileCheck size={10} className="inline mr-1" />
+            : <Clock size={10} className="inline mr-1" />;
+          return (
+            <span className={`text-[9px] font-black px-3 py-1.5 rounded-lg ${etat.color} inline-flex items-center gap-1`}>
+              {icon}{etat.label}
+            </span>
+          );
+        },
+      },
     ];
 
-    // Colonnes des jalons (groupées avec Prévue/Réalisée)
-    const jalonColumns: TableColumnsType<Marche> = JALONS_PPM_CONFIG.map(jalon => ({
-      title: jalon.label,
-      key: jalon.key,
-      children: [
-        {
-          title: 'Prévue',
-          dataIndex: ['dates_prevues', jalon.key],
-          key: `${jalon.key}_prevue`,
-          width: 110,
+    // Colonnes des jalons (groupées et repliables)
+    const jalonColumns: TableColumnsType<Marche> = PPM_JALON_GROUPS.flatMap(group => {
+      const isExpanded = expandedGroups.has(group.id);
+
+      if (!isExpanded) {
+        return [{
+          title: (<span onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleGroup(group.id); }} className="cursor-pointer select-none whitespace-nowrap">{'\u25B8'} {group.label}</span>),
+          key: `group_${group.id}`,
+          width: 140,
           align: 'center' as const,
           render: (_: any, m: Marche) => {
-            if (!isJalonApplicable(m, jalon.key)) return <span className="date-cell text-[10px] opacity-30 italic">N/A</span>;
-            const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
-            return <span className="date-cell date-prevue">{formatDate(p || null)}</span>;
-          },
-        },
-        {
-          title: 'Réalisée',
-          dataIndex: ['dates_realisees', jalon.key],
-          key: `${jalon.key}_realisee`,
-          width: 110,
-          align: 'center' as const,
-          render: (_: any, m: Marche) => {
-            if (!isJalonApplicable(m, jalon.key)) return null;
-            const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
-            const r = m.dates_realisees[jalon.key as keyof typeof m.dates_realisees];
-            const comment = m.comments?.[jalon.key];
-            const s = getLateStatus(p || null, r || null);
-            const statusClass = s === 'late' ? 'date-realisee-late' : s === 'done' ? 'date-realisee-done' : 'date-realisee-pending';
+            const applicable = group.keys.filter(k => isJalonApplicable(m, k) && !(m.is_infructueux && JALONS_AFTER_INFRUCTUEUX.includes(k)));
+            const completed = applicable.filter(k => m.dates_realisees[k as keyof typeof m.dates_realisees]).length;
+            if (applicable.length === 0) return <span className="text-[10px] opacity-30 italic">N/A</span>;
+            const pct = Math.round((completed / applicable.length) * 100);
             return (
-              <div
-                title={comment ? `OBSERVATION : ${comment}` : undefined}
-                className={`date-cell ${statusClass}`}
-              >
-                <div className="flex items-center justify-center gap-1.5">
-                  {formatDate(r || null)}
-                  {comment && <InfoIcon size={14} className="text-blue-500 cursor-help" />}
+              <div className="flex items-center gap-1.5 justify-center">
+                <div className="w-10 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(148,163,184,0.2)' }}>
+                  <div className={`h-full rounded-full ${pct === 100 ? 'bg-green-500' : pct > 0 ? 'bg-blue-500' : 'bg-slate-400'}`} style={{ width: `${pct}%` }} />
                 </div>
+                <span className={`text-[9px] font-black ${pct === 100 ? 'text-green-500' : theme.textSecondary}`}>{completed}/{applicable.length}</span>
               </div>
             );
           },
-        },
-      ],
-    }));
+        }] as TableColumnsType<Marche>;
+      }
+
+      return [{
+        title: (<span onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleGroup(group.id); }} className="cursor-pointer select-none whitespace-nowrap">{'\u25BE'} {group.label}</span>),
+        key: `group_${group.id}`,
+        children: group.keys.map(key => {
+          const jalon = JALONS_PPM_CONFIG.find(j => j.key === key)!;
+          return {
+            title: jalon.label,
+            key: jalon.key,
+            children: [
+              {
+                title: 'Prévue',
+                dataIndex: ['dates_prevues', jalon.key],
+                key: `${jalon.key}_prevue`,
+                width: 110,
+                align: 'center' as const,
+                render: (_: any, m: Marche) => {
+                  const isGrayed = m.is_infructueux && JALONS_AFTER_INFRUCTUEUX.includes(jalon.key);
+                  if (!isJalonApplicable(m, jalon.key)) return <span className="date-cell text-[10px] opacity-30 italic">N/A</span>;
+                  if (isGrayed) return <span className="date-cell text-[10px] opacity-30 italic">-</span>;
+                  const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
+                  return <span className="date-cell date-prevue">{formatDate(p || null)}</span>;
+                },
+              },
+              {
+                title: 'Réalisée',
+                dataIndex: ['dates_realisees', jalon.key],
+                key: `${jalon.key}_realisee`,
+                width: 110,
+                align: 'center' as const,
+                render: (_: any, m: Marche) => {
+                  const isGrayed = m.is_infructueux && JALONS_AFTER_INFRUCTUEUX.includes(jalon.key);
+                  if (!isJalonApplicable(m, jalon.key)) return null;
+                  if (isGrayed) return <span className="date-cell text-[10px] opacity-30 italic">-</span>;
+                  const p = m.dates_prevues[jalon.key as keyof typeof m.dates_prevues];
+                  const r = m.dates_realisees[jalon.key as keyof typeof m.dates_realisees];
+                  const comment = m.comments?.[jalon.key];
+                  const s = getLateStatus(p || null, r || null);
+                  const statusClass = s === 'late' ? 'date-realisee-late' : s === 'done' ? 'date-realisee-done' : 'date-realisee-pending';
+                  return (
+                    <div title={comment ? `OBSERVATION : ${comment}` : undefined} className={`date-cell ${statusClass}`}>
+                      <div className="flex items-center justify-center gap-1.5">
+                        {formatDate(r || null)}
+                        {comment && <InfoIcon size={14} className="text-blue-500 cursor-help" />}
+                      </div>
+                    </div>
+                  );
+                },
+              },
+            ],
+          };
+        }),
+      }] as TableColumnsType<Marche>;
+    });
 
     // Colonnes finales
     const endColumns: TableColumnsType<Marche> = [
@@ -397,11 +556,23 @@ export const PPMView: React.FC = () => {
         width: 200,
         render: (_, m) => {
           const delaiPrevu = (m.dates_prevues.saisine_cipm && m.dates_prevues.signature_marche) ? calculateDaysBetween(m.dates_prevues.saisine_cipm, m.dates_prevues.signature_marche) : null;
-          const delaiRealise = (m.dates_realisees.saisine_cipm && m.dates_realisees.signature_marche) ? calculateDaysBetween(m.dates_realisees.saisine_cipm, m.dates_realisees.signature_marche) : null;
+
+          // Calcul du délai réalisé: si pas de signature, utiliser la date du jour
+          const today = new Date().toISOString().split('T')[0];
+          const dateFinRealise = m.dates_realisees.signature_marche || today;
+          const delaiRealise = m.dates_realisees.saisine_cipm ? calculateDaysBetween(m.dates_realisees.saisine_cipm, dateFinRealise) : null;
+          const isProvisoire = m.dates_realisees.saisine_cipm && !m.dates_realisees.signature_marche;
+
           return (
             <div className="flex flex-col gap-2">
               <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter"><span className={theme.textSecondary}>Prévu :</span><span className={theme.textMain}>{delaiPrevu !== null ? `${delaiPrevu} j` : '-'}</span></div>
-              <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter"><span className={theme.textSecondary}>Réalisé :</span><span className={delaiRealise !== null ? theme.textAccent : theme.textSecondary}>{delaiRealise !== null ? `${delaiRealise} j` : '-'}</span></div>
+              <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
+                <span className={theme.textSecondary}>Réalisé :</span>
+                <span className={delaiRealise !== null ? (isProvisoire ? 'text-warning' : theme.textAccent) : theme.textSecondary}>
+                  {delaiRealise !== null ? `${delaiRealise} j` : '-'}
+                  {isProvisoire && <span className="text-[8px] ml-1">(en cours)</span>}
+                </span>
+              </div>
             </div>
           );
         },
@@ -412,6 +583,7 @@ export const PPMView: React.FC = () => {
         fixed: 'right',
         width: 100,
         align: 'center',
+
         render: (_, m) => (
           <button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape} transition-colors`}>
             <ExternalLink size={18} />
@@ -420,8 +592,9 @@ export const PPMView: React.FC = () => {
       },
     ];
 
-    return [...baseColumns, ...jalonColumns, ...endColumns];
-  }, [theme, isJalonApplicable, setDetailMarketId, isDarkTheme]);
+    const filteredBaseColumns = baseColumns.filter(c => !hiddenColumns.has(c.key as string));
+    return [...filteredBaseColumns, ...jalonColumns, ...endColumns];
+  }, [theme, isJalonApplicable, setDetailMarketId, isDarkTheme, expandedGroups, hiddenColumns]);
 
   // Données du tableau avec key pour Ant Design - TRI PAR NUMÉRO DE DOSSIER CROISSANT
   const tableData = useMemo(() =>
@@ -435,42 +608,51 @@ export const PPMView: React.FC = () => {
       .map(m => ({ ...m, key: m.id })),
   [filteredMarkets]);
 
+  // Fonction utilitaire pour vérifier si un jalon a au moins un document
+  const jalonHasDocument = (docValue: string | string[] | undefined): boolean => {
+    if (!docValue) return false;
+    if (Array.isArray(docValue)) return docValue.length > 0;
+    return !!docValue;
+  };
+
   const calculateProgress = (m: Marche) => {
-    const allBaseKeys = JALONS_GROUPS.flatMap(g => g.keys);
+    const allBaseKeys = getJalonsGroupsForMarket(m.type_ouverture || '2_temps').flatMap(g => g.keys);
 
     // Filtrer les étapes pertinentes avec le Hook
     const relevantKeys = allBaseKeys.filter(key => {
         // Règle 1 : Applicabilité (ANO)
         if (!isJalonApplicable(m, key)) return false;
-        
+
         // Règle 2 : Additif
         if (key === 'additif' && !m.has_additif) return false;
-        
+
         // Règle 3 : Exceptions graphiques (non comptées dans le % global)
         if (key === 'annule' || key === 'infructueux' || key === 'recours') return false;
-        
+
+        // Règle 4 : Exclure les champs non-documentaires du calcul
+        if (key === 'titulaire' || key === 'montant_ttc_reel') return false;
+
         return true;
     });
 
+    // Calcul basé UNIQUEMENT sur les documents (pas les dates)
     const completedCount = relevantKeys.filter(k => {
-      // Cas spéciaux : titulaire et montant_ttc_reel sont stockés directement dans Marche, pas dans dates_realisees
-      if (k === 'titulaire') return !!m.titulaire;
-      if (k === 'montant_ttc_reel') return !!m.montant_ttc_reel;
-      // Cas standard : vérifier dates_realisees OU docs
-      return !!m.dates_realisees[k as keyof typeof m.dates_realisees] || !!m.docs?.[k];
+      return jalonHasDocument(m.docs?.[k]);
     }).length;
+
     const passPercent = relevantKeys.length > 0 ? (completedCount / relevantKeys.length) * 100 : 0;
-    
+
     const exec = m.execution;
     const execWeight = [exec.ref_contrat, exec.doc_notif_contrat_id, exec.doc_notif_os_id, exec.doc_pv_provisoire_id].filter(Boolean).length;
     return { passation: Math.min(passPercent, 100), execution: (execWeight / 4) * 100 };
   };
 
-  const getStepStatus = (date: string | undefined, docId: string | undefined) => {
-    if (date && docId) return { label: "Étape Finalisée & Archivée", color: "text-green-500 font-black", icon: <CheckCircle2 size={12}/> };
-    if (date) return { label: `Validé le ${formatDate(date)}`, color: "text-primary font-bold", icon: <CheckCircle2 size={12}/> };
-    if (docId) return { label: "Preuve Enregistrée", color: "text-accent font-bold", icon: <FileCheck size={12}/> };
-    return { label: "En attente de confirmation", color: "text-slate-500 italic", icon: <Clock size={12}/> };
+  // Statut basé uniquement sur les documents
+  const getDocumentStatus = (docId: string | string[] | undefined) => {
+    if (jalonHasDocument(docId)) {
+      return { label: "Document disponible", color: "text-green-500 font-black", icon: <FileCheck size={12}/> };
+    }
+    return { label: "En attente de document", color: "text-slate-500 italic", icon: <Clock size={12}/> };
   };
 
   const selectedMarket = markets.find(m => m.id === detailMarketId);
@@ -494,14 +676,50 @@ export const PPMView: React.FC = () => {
         </div>
       </div>
 
+      {/* FILTRES RAPIDES & SÉLECTEUR DE COLONNES */}
+      <div className="flex items-center justify-between gap-4 px-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { key: 'all', label: 'Tous' },
+            { key: 'en_cours', label: 'En cours' },
+            { key: 'signe', label: 'Signés' },
+            { key: 'infructueux', label: 'Infructueux' },
+            { key: 'annule', label: 'Annulés' },
+          ].map(f => (
+            <button key={f.key} onClick={() => setStatusFilter(f.key)} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${statusFilter === f.key ? 'bg-primary text-white shadow-lg' : `${theme.card} ${theme.textSecondary} hover:opacity-80`}`}>{f.label}</button>
+          ))}
+        </div>
+        <div className="relative">
+          <button onClick={() => setShowColumnSelector(!showColumnSelector)} className={`px-3 py-1.5 text-[10px] font-black uppercase ${theme.card} ${theme.textSecondary} rounded-lg border border-white/10`}>Colonnes</button>
+          {showColumnSelector && (
+            <div className={`absolute right-0 top-full mt-1 ${theme.card} shadow-2xl rounded-lg p-3 z-50 min-w-[200px] border border-white/10`}>
+              {[
+                { key: 'budget', label: 'Budget Estimé' },
+                { key: 'fonction', label: 'Fonction Analytique' },
+                { key: 'activite', label: 'Activité' },
+                { key: 'financement', label: 'Financement' },
+                { key: 'etat', label: 'État' },
+                { key: 'synthese', label: 'Synthèse Délais' },
+              ].map(col => (
+                <label key={col.key} className={`flex items-center gap-2 py-1.5 text-[11px] font-bold ${theme.textMain} cursor-pointer`}>
+                  <input type="checkbox" checked={!hiddenColumns.has(col.key)} onChange={() => toggleColumnVisibility(col.key)} className="rounded" />
+                  {col.label}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* TABLEAU */}
       <div className={`${theme.card} flex flex-col relative overflow-hidden z-10`}>
         <Table<Marche>
           className={styles.customTable}
           columns={tableColumns}
           dataSource={tableData}
+          components={tableComponents}
           scroll={{ x: 'max-content', y: 55 * 10 }}
-          pagination={false}
+          pagination={{ current: currentPage, pageSize: 15, onChange: (page: number) => setCurrentPage(page), showTotal: (total: number, range: [number, number]) => <span className={`text-xs font-bold ${theme.textSecondary}`}>{range[0]}-{range[1]} sur {total} marchés</span>, showSizeChanger: false }}
           bordered={false}
           size="middle"
           rowClassName={(record) => {
@@ -536,7 +754,10 @@ export const PPMView: React.FC = () => {
                 <div className="flex-1 flex flex-col overflow-hidden">
                    <div className="px-12 py-5 bg-black/5 border-b border-white/5 flex items-center justify-between">
                       <h3 className={`text-sm font-black uppercase tracking-[0.15em] ${theme.textAccent}`}>Phase Passation détaillée</h3>
-                      <span className={`px-3 py-1 ${theme.card} text-[9px] font-black uppercase`}>{selectedMarket.source_financement}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 ${theme.card} text-[9px] font-black uppercase`}>{selectedMarket.source_financement}</span>
+                        <span className={`px-3 py-1 ${theme.card} text-[9px] font-black uppercase`}>{selectedMarket.type_ouverture === '1_temps' ? 'Ouverture 1 temps' : 'Ouverture 2 temps'}</span>
+                      </div>
                    </div>
                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12">
                       <div className="mb-12 flex justify-center"><CircularProgress percent={calculateProgress(selectedMarket).passation} color={theme.textAccent} icon={FileBox} /></div>
@@ -570,28 +791,27 @@ export const PPMView: React.FC = () => {
                            </div>
                          )}
 
-                         {JALONS_GROUPS.filter(g => isPhaseAccessible(selectedMarket, g.id)).map((group) => (
+                         {getJalonsGroupsForMarket(selectedMarket.type_ouverture || '2_temps').filter(g => isPhaseAccessible(selectedMarket, g.id)).map((group) => (
                            <div key={group.id} className="space-y-4">
                               <h4 className={`text-xs font-black uppercase tracking-widest ${theme.textSecondary} px-4 py-1.5 rounded-full w-fit bg-black/5`}>{group.label}</h4>
                               <div className="grid grid-cols-1 gap-2">
                                  {group.keys.filter(key => {
                                     // Utilisation du Hook pour le filtrage
                                     if (!isJalonApplicable(selectedMarket, key)) return false;
-                                    
+
                                     // Exceptions
                                     if (['annule', 'infructueux', 'recours'].includes(key)) return false;
                                     if (key === 'additif' && !selectedMarket.has_additif) return false;
-                                    
+
                                     // Arrêt workflow
                                     if (!isJalonActive(selectedMarket, key)) return false;
-                                    
+
                                     return true;
                                  }).map(key => {
-                                    const date = selectedMarket.dates_realisees[key as keyof typeof selectedMarket.dates_realisees];
                                     const docId = selectedMarket.docs?.[key];
-                                    const comment = selectedMarket.comments?.[key];
-                                    const status = getStepStatus(date, docId);
+                                    const status = getDocumentStatus(docId);
 
+                                    // Cas spéciaux sans documents
                                     if (key === 'titulaire') return (
                                       <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex items-center justify-between bg-primary/5 hover:bg-primary/10 transition-all`}>
                                          <div className="flex items-center gap-4">
@@ -609,56 +829,16 @@ export const PPMView: React.FC = () => {
                                       </div>
                                     );
 
-                                    if (key === 'saisine_prev') return (
-                                      <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex flex-col gap-3 hover:bg-white/5 transition-all group`}>
-                                         <div className="flex items-center justify-between">
-                                            <div className="flex flex-col gap-0.5">
-                                               <p className={`text-xs font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
-                                               {/* Afficher la date réalisée si elle existe */}
-                                               {date ? (
-                                                 <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
-                                                   <Calendar size={12}/> Réalisé le {formatDate(date)}
-                                                 </span>
-                                               ) : (
-                                                 <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-slate-500 italic">
-                                                   <Clock size={12}/> En attente
-                                                 </span>
-                                               )}
-                                            </div>
-                                         </div>
-                                         {comment && (
-                                           <div className="flex items-start gap-2 bg-black/10 p-3 rounded-xl border border-white/5">
-                                              <MessageSquare size={12} className="text-blue-500 mt-0.5 shrink-0" />
-                                              <p className="text-[10px] font-medium text-slate-300 italic">{comment}</p>
-                                           </div>
-                                         )}
-                                      </div>
-                                    );
-
+                                    // Rendu standard : Nom du jalon + État document + Documents à télécharger
                                     return (
-                                      <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex flex-col gap-3 hover:bg-white/5 transition-all group`}>
-                                         <div className="flex items-center justify-between">
-                                            <div className="flex flex-col gap-0.5">
-                                               <p className={`text-xs font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
-                                               {/* Afficher la date réalisée clairement */}
-                                               {date ? (
-                                                 <span className="text-[10px] uppercase tracking-tighter flex items-center gap-1.5 text-green-500 font-black">
-                                                   <Calendar size={12}/> Réalisé le {formatDate(date)}
-                                                 </span>
-                                               ) : (
-                                                 <span className={`text-[10px] uppercase tracking-tighter flex items-center gap-1.5 ${status.color}`}>
-                                                   {status.icon} {status.label}
-                                                 </span>
-                                               )}
-                                            </div>
-                                            <FileManager existingDocId={docId} onUpload={() => {}} disabled />
+                                      <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex items-center justify-between hover:bg-white/5 transition-all group`}>
+                                         <div className="flex flex-col gap-0.5">
+                                            <p className={`text-xs font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key] || key}</p>
+                                            <span className={`text-[10px] uppercase tracking-tighter flex items-center gap-1.5 ${status.color}`}>
+                                               {status.icon} {status.label}
+                                            </span>
                                          </div>
-                                         {comment && (
-                                           <div className="flex items-start gap-2 bg-black/10 p-3 rounded-xl border border-white/5">
-                                              <MessageSquare size={12} className="text-blue-500 mt-0.5 shrink-0" />
-                                              <p className="text-[10px] font-medium text-slate-300 italic">{comment}</p>
-                                           </div>
-                                         )}
+                                         <MultiFileManager existingDocIds={docId} onAdd={() => {}} onRemove={() => {}} viewOnly />
                                       </div>
                                     );
                                  })}

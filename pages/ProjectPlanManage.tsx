@@ -26,12 +26,13 @@ const useLightTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #FDFEFE; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #FDFEFE; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
-    .ant-table-thead > tr > th { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 2px solid #e5e7eb !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
+    .ant-table-thead > tr > th { background: #e0eaf7 !important; color: #1a2333 !important; border-bottom: 2px solid #b8cce8 !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #1a2333 !important; }
     .ant-table-tbody > tr > td { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 1px solid #e5e7eb !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #f3f4f6 !important; }
-    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 4 !important; }
-    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 2 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #e0eaf7 !important; z-index: 100 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 5 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #f3f4f6 !important; }
   `,
 }));
@@ -40,12 +41,13 @@ const useDarkTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #1a2333; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #1a2333; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
-    .ant-table-thead > tr > th { background: #0f172a !important; color: #ffffff !important; border-bottom: 2px solid rgba(255,255,255,0.1) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; }
+    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
+    .ant-table-thead > tr > th { background: #0d1a30 !important; color: #ffffff !important; border-bottom: 2px solid rgba(59,130,246,0.3) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #ffffff !important; }
     .ant-table-tbody > tr > td { background: #1e293b !important; color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #334155 !important; }
-    .ant-table-thead .ant-table-cell-fix-left, .ant-table-thead .ant-table-cell-fix-right { background: #0f172a !important; z-index: 4 !important; }
-    .ant-table-tbody .ant-table-cell-fix-left, .ant-table-tbody .ant-table-cell-fix-right { background: #1e293b !important; z-index: 2 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #0d1a30 !important; z-index: 100 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #1e293b !important; z-index: 5 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #334155 !important; }
   `,
 }));
@@ -61,14 +63,36 @@ export const ProjectPlanManage: React.FC = () => {
   const { user, can } = useAuth();
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
+    try { const s = localStorage.getItem('planmanage_hidden_cols'); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
+  });
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
+  const toggleColumnVisibility = (key: string) => {
+    setHiddenColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      localStorage.setItem('planmanage_hidden_cols', JSON.stringify([...next]));
+      return next;
+    });
+  };
   const [editingMarket, setEditingMarket] = useState<Marche | null>(null);
 
   const [formData, setFormData] = useState<Partial<Marche>>({
     numDossier: '', objet: '', activite: '', fonction: FONCTIONS[0],
     typeAO: AOType.AON, typePrestation: MarketType.TRAVAUX, montant_prevu: 0,
     imputation_budgetaire: '', source_financement: SourceFinancement.BUDGET_EDC, nom_bailleur: '',
-    dates_prevues: {} as MarcheDates, comments: {}, docs: {}, has_additif: false
+    dates_prevues: {} as MarcheDates, comments: {}, docs: {}, has_additif: false, type_ouverture: '2_temps' as const
   });
 
   const project = projects.find(p => p.id === projectId);
@@ -111,7 +135,8 @@ export const ProjectPlanManage: React.FC = () => {
         dates_prevues: {} as MarcheDates,
         comments: {},
         docs: {},
-        has_additif: false
+        has_additif: false,
+        type_ouverture: '2_temps' as const
       });
     }
     setIsModalOpen(true);
@@ -179,14 +204,36 @@ export const ProjectPlanManage: React.FC = () => {
     }));
   };
 
+  // Groupes de jalons PPM pour colonnes repliables
+  const PPM_JALON_GROUPS = [
+    { id: 'preparation', label: 'Préparation', keys: ['saisine_cipm', 'examen_dao', 'ano_bailleur_dao', 'lancement_ao'] },
+    { id: 'consultation', label: 'Consultation', keys: ['depouillement'] },
+    { id: 'attribution', label: 'Attribution', keys: ['prop_attribution', 'negociation_contractuelle', 'ano_bailleur_attrib', 'avis_conforme_ca', 'publication'] },
+    { id: 'contractualisation', label: 'Contract.', keys: ['souscription', 'saisine_cipm_projet', 'ano_bailleur_projet', 'signature_marche'] },
+  ];
+
+  // Override des cellules header pour forcer le z-index sur les colonnes fixées
+  const tableComponents = useMemo(() => ({
+    header: {
+      cell: (props: any) => {
+        const isFixed = props.className && (props.className.includes('ant-table-cell-fix-left') || props.className.includes('ant-table-cell-fix-right'));
+        const style = isFixed
+          ? { ...props.style, zIndex: 100 }
+          : { ...props.style, zIndex: 1 };
+        return <th {...props} style={style} />;
+      },
+    },
+  }), []);
+
   // Configuration des colonnes pour Ant Design Table
-  const tableColumns: TableColumnsType<Marche> = [
+  const baseColumns: TableColumnsType<Marche> = [
     {
       title: 'Dossier & Objet',
       dataIndex: 'numDossier',
       key: 'dossier',
-      fixed: 'left',
+      fixed: 'left' as const,
       width: 350,
+
       render: (_, m) => (
         <div className="flex flex-col">
           <span className={`text-[10px] font-black ${theme.textAccent} uppercase`}>{m.numDossier}</span>
@@ -200,6 +247,7 @@ export const ProjectPlanManage: React.FC = () => {
       key: 'budget',
       width: 180,
       align: 'right',
+      sorter: (a: Marche, b: Marche) => (a.montant_prevu || 0) - (b.montant_prevu || 0),
       render: (value) => (
         <span className={`text-sm font-black ${theme.textMain}`}>{(value || 0).toLocaleString()}</span>
       ),
@@ -240,44 +288,85 @@ export const ProjectPlanManage: React.FC = () => {
         );
       },
     },
-    // Colonnes des jalons (groupées avec Prévue/Réalisée)
-    ...JALONS_PPM_CONFIG.map(jalon => ({
-      title: jalon.label,
-      key: jalon.key,
-      children: [
-        {
-          title: 'Prévue',
-          dataIndex: ['dates_prevues', jalon.key],
-          key: `${jalon.key}_prevue`,
-          width: 100,
-          align: 'center' as const,
-          render: (_: any, m: Marche) => (
-            <span className={`text-[10px] font-black ${theme.textAccent}`}>
-              {formatDate(m.dates_prevues[jalon.key as keyof typeof m.dates_prevues] || null)}
-            </span>
-          ),
+  ];
+
+  // Colonnes de jalons repliables par groupe
+  const jalonColumns: TableColumnsType<Marche> = PPM_JALON_GROUPS.flatMap(group => {
+    const isExpanded = expandedGroups.has(group.id);
+
+    if (!isExpanded) {
+      return [{
+        title: (<span onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleGroup(group.id); }} className="cursor-pointer select-none whitespace-nowrap">{'\u25B8'} {group.label}</span>),
+        key: `group_${group.id}`,
+        width: 140,
+        align: 'center' as const,
+        render: (_: any, m: Marche) => {
+          const total = group.keys.length;
+          const filled = group.keys.filter(k => m.dates_prevues[k as keyof typeof m.dates_prevues]).length;
+          const pct = Math.round((filled / total) * 100);
+          return (
+            <div className="flex items-center gap-1.5 justify-center">
+              <div className="w-10 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(148,163,184,0.2)' }}>
+                <div className={`h-full rounded-full ${pct === 100 ? 'bg-green-500' : pct > 0 ? 'bg-blue-500' : 'bg-slate-400'}`} style={{ width: `${pct}%` }} />
+              </div>
+              <span className={`text-[9px] font-black ${pct === 100 ? 'text-green-500' : theme.textSecondary}`}>{filled}/{total}</span>
+            </div>
+          );
         },
-        {
-          title: 'Réalisée',
-          dataIndex: ['dates_realisees', jalon.key],
-          key: `${jalon.key}_realisee`,
-          width: 100,
-          align: 'center' as const,
-          render: (_: any, m: Marche) => (
-            <span className={`text-[10px] font-black ${theme.textSecondary}`}>
-              {formatDate(m.dates_realisees[jalon.key as keyof typeof m.dates_realisees] || null)}
-            </span>
-          ),
-        },
-      ],
-    })),
+      }] as TableColumnsType<Marche>;
+    }
+
+    return [{
+      title: (<span onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleGroup(group.id); }} className="cursor-pointer select-none whitespace-nowrap">{'\u25BE'} {group.label}</span>),
+      key: `group_${group.id}`,
+      children: group.keys.map(key => {
+        const jalon = JALONS_PPM_CONFIG.find(j => j.key === key)!;
+        return {
+          title: jalon.label,
+          key: jalon.key,
+          children: [
+            {
+              title: 'Prévue',
+              dataIndex: ['dates_prevues', jalon.key],
+              key: `${jalon.key}_prevue`,
+              width: 100,
+              align: 'center' as const,
+              render: (_: any, m: Marche) => (
+                <span className={`text-[10px] font-black ${theme.textAccent}`}>
+                  {formatDate(m.dates_prevues[jalon.key as keyof typeof m.dates_prevues] || null)}
+                </span>
+              ),
+            },
+            {
+              title: 'Réalisée',
+              dataIndex: ['dates_realisees', jalon.key],
+              key: `${jalon.key}_realisee`,
+              width: 100,
+              align: 'center' as const,
+              render: (_: any, m: Marche) => (
+                <span className={`text-[10px] font-black ${theme.textSecondary}`}>
+                  {formatDate(m.dates_realisees[jalon.key as keyof typeof m.dates_realisees] || null)}
+                </span>
+              ),
+            },
+          ],
+        };
+      }),
+    }] as TableColumnsType<Marche>;
+  });
+
+  const filteredBaseColumns = baseColumns.filter(c => !hiddenColumns.has(c.key as string));
+  const tableColumns: TableColumnsType<Marche> = [
+    ...filteredBaseColumns,
+    ...jalonColumns,
     // Colonne Actions
     {
       title: 'Actions',
       key: 'actions',
-      fixed: 'right',
+      fixed: 'right' as const,
       width: 120,
-      align: 'center',
+      align: 'center' as const,
+
       render: (_: any, m: Marche) => (
         <div className="flex items-center justify-center gap-2">
           <button onClick={() => openModal(m)} className={`p-2.5 ${theme.buttonSecondary} ${theme.buttonShape} transition-all`}>
@@ -348,14 +437,37 @@ export const ProjectPlanManage: React.FC = () => {
         </div>
       </div>
 
+      {/* SÉLECTEUR DE COLONNES */}
+      <div className="flex items-center justify-end px-2">
+        <div className="relative">
+          <button onClick={() => setShowColumnSelector(!showColumnSelector)} className={`px-3 py-1.5 text-[10px] font-black uppercase ${theme.card} ${theme.textSecondary} rounded-lg border border-white/10`}>Colonnes</button>
+          {showColumnSelector && (
+            <div className={`absolute right-0 top-full mt-1 ${theme.card} shadow-2xl rounded-lg p-3 z-50 min-w-[200px] border border-white/10`}>
+              {[
+                { key: 'budget', label: 'Budget Estimé' },
+                { key: 'fonction', label: 'Fonction Analytique' },
+                { key: 'activite', label: 'Activité' },
+                { key: 'financement', label: 'Financement' },
+              ].map(col => (
+                <label key={col.key} className={`flex items-center gap-2 py-1.5 text-[11px] font-bold ${theme.textMain} cursor-pointer`}>
+                  <input type="checkbox" checked={!hiddenColumns.has(col.key)} onChange={() => toggleColumnVisibility(col.key)} className="rounded" />
+                  {col.label}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Tableau Structurel */}
       <div className={`${theme.card} flex flex-col relative overflow-hidden`}>
         <Table<Marche>
           className={styles.customTable}
           columns={tableColumns}
           dataSource={tableData}
+          components={tableComponents}
           scroll={{ x: 'max-content', y: 55 * 10 }}
-          pagination={false}
+          pagination={{ pageSize: 15, showTotal: (total: number, range: [number, number]) => <span className={`text-xs font-bold ${theme.textSecondary}`}>{range[0]}-{range[1]} sur {total} marchés</span>, showSizeChanger: false }}
           bordered={false}
           size="middle"
           rowClassName="hover:bg-white/5 transition-all"

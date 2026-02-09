@@ -9,21 +9,28 @@ import {
   Save, Search, CheckCircle2, Clock, Activity, Settings2, ChevronRight,
   ArrowLeft, ArrowRight, UserCheck, Banknote, AlertTriangle, XCircle, Ban, Layers, History, FileText, Gavel
 } from 'lucide-react';
-import { JALONS_LABELS, JALONS_GROUPS } from '../constants';
+import { JALONS_LABELS, JALONS_GROUPS, getJalonsGroupsForMarket } from '../constants';
 import { Modal } from '../components/Modal';
 import { BulleInput } from '../components/BulleInput';
-import { FileManager } from '../components/FileManager';
+import { MultiFileManager } from '../components/MultiFileManager';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { SourceFinancement, StatutGlobal } from '../types';
 import Footer from '../components/Footer';
 import { TruncatedText } from '../components/TruncatedText';
 
+// Clés des jalons à griser si le marché est infructueux (après prop_attribution)
+const JALONS_AFTER_INFRUCTUEUX = [
+  'negociation_contractuelle', 'avis_conforme_ca', 'ano_bailleur_attrib', 'publication', 'notification_attrib',
+  'titulaire', 'montant_ttc_reel', 'souscription', 'saisine_cipm_projet',
+  'validation_projet', 'ano_bailleur_projet', 'signature_marche'
+];
+
 export const Tracking: React.FC = () => {
-  const { markets, updateMarket, updateMarketDoc, updateJalon } = useMarkets();
+  const { markets, updateMarket, addMarketDocToArray, removeMarketDocFromArray, updateJalon } = useMarkets();
   const { projects } = useProjects();
   const { can } = useAuth();
   const { theme } = useTheme();
-  
+
   const { isJalonApplicable, isJalonActive, isPhaseAccessible } = useMarketLogic();
   
   // --- CORRECTION : Utilisation du Hook de filtrage ---
@@ -50,10 +57,13 @@ export const Tracking: React.FC = () => {
 
   const jalonsKeys = JALONS_GROUPS.flatMap(g => g.keys);
 
+  // Groupes de jalons dynamiques selon le type d'ouverture du marché sélectionné
+  const getMarketGroups = (market: any) => getJalonsGroupsForMarket(market?.type_ouverture || '2_temps');
+
   const calculateAvancement = (m: any) => {
     if (m.is_annule) return { label: "Annulé", color: "bg-danger/10 text-danger" };
     if (m.is_infructueux) return { label: "Infructueux", color: "bg-warning/10 text-warning" };
-    let lastJalonLabel = "Inscrit au PPM";
+    let lastJalonLabel = "Non lancé";
     const datesRealisees = m.dates_realisees || {};
     for (let i = jalonsKeys.length - 1; i >= 0; i--) {
       const key = jalonsKeys[i];
@@ -77,7 +87,8 @@ export const Tracking: React.FC = () => {
   };
 
   const selectedMarket = markets.find(m => m.id === selectedMarketId);
-  const activePhase = JALONS_GROUPS.find(g => g.id === activePhaseId);
+  const marketGroups = selectedMarket ? getMarketGroups(selectedMarket) : JALONS_GROUPS;
+  const activePhase = marketGroups.find(g => g.id === activePhaseId);
 
   return (
     <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500 max-w-[1400px] mx-auto pb-40">
@@ -157,7 +168,7 @@ export const Tracking: React.FC = () => {
         }>
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="w-full lg:w-64 flex lg:flex-col gap-2 overflow-x-auto pb-2 shrink-0">
-              {JALONS_GROUPS.map((group) => {
+              {marketGroups.map((group) => {
                 const accessible = isPhaseAccessible(selectedMarket, group.id);
                 return (
                   <button 
@@ -176,8 +187,25 @@ export const Tracking: React.FC = () => {
             <div className="flex-1 space-y-6">
               <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <h3 className={`text-md font-black ${theme.textMain} uppercase tracking-tight`}>{activePhase?.label}</h3>
-                <div className={`px-3 py-1 ${theme.card} text-[9px] font-black uppercase`}>Étape {JALONS_GROUPS.indexOf(activePhase!) + 1}/5</div>
+                <div className={`px-3 py-1 ${theme.card} text-[9px] font-black uppercase`}>Étape {marketGroups.indexOf(activePhase!) + 1}/5</div>
               </div>
+
+              {activePhaseId === 'consultation' && (
+                <div className={`p-6 ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'} rounded-3xl border space-y-4 mb-4`}>
+                  <div className="flex items-center justify-between">
+                    <div className={`flex items-center gap-3 ${theme.textSecondary} font-black uppercase text-xs`}>Type d'ouverture</div>
+                    <CustomBulleSelect
+                      label=""
+                      value={selectedMarket.type_ouverture === '1_temps' ? '1_TEMPS' : '2_TEMPS'}
+                      options={[
+                        { value: '2_TEMPS', label: 'Ouverture en 2 temps' },
+                        { value: '1_TEMPS', label: 'Ouverture en 1 temps' }
+                      ]}
+                      onChange={v => updateMarket(selectedMarket.id, { type_ouverture: v === '1_TEMPS' ? '1_temps' : '2_temps' })}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-4">
                 {activePhase?.keys.filter(k => isJalonActive(selectedMarket, k)).map((key) => {
@@ -185,7 +213,10 @@ export const Tracking: React.FC = () => {
                   const parentProject = projects.find(p => p.id === selectedMarket.projet_id);
                   const currentVal = selectedMarket.dates_realisees[key as keyof typeof selectedMarket.dates_realisees];
                   let isHistorical = false;
-                  
+
+                  // Grisage si marché infructueux et champ après prop_attribution
+                  const isGrayedByInfructueux = selectedMarket.is_infructueux && JALONS_AFTER_INFRUCTUEUX.includes(key);
+
                   if (currentVal && parentProject) {
                     const dateYear = new Date(currentVal).getFullYear();
                     if (dateYear < parentProject.exercice) {
@@ -199,7 +230,18 @@ export const Tracking: React.FC = () => {
                           <div className={`flex items-center gap-3 ${theme.mode === 'dark' ? 'text-white' : 'text-warning'} font-black uppercase text-xs`}><AlertTriangle size={18}/> Dossier Infructueux ?</div>
                           <CustomBulleSelect label="" value={selectedMarket.is_infructueux ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {is_infructueux: v==='OUI', statut_global: v==='OUI' ? StatutGlobal.INFRUCTUEUX : StatutGlobal.EN_COURS})} />
                        </div>
-                       {selectedMarket.is_infructueux && <div className="flex justify-end pt-2"><FileManager existingDocId={selectedMarket.docs?.['infructueux_doc']} onUpload={(id) => updateMarketDoc(selectedMarket.id, 'infructueux_doc', id)} /></div>}
+                       {selectedMarket.is_infructueux && (
+                         <div className="space-y-4 animate-in fade-in">
+                           <BulleInput label="Motif d'infructuosité" value={selectedMarket.motif_infructueux} onChange={e => updateMarket(selectedMarket.id, {motif_infructueux: e.target.value})} />
+                           <div className="flex justify-end">
+                             <MultiFileManager
+                               existingDocIds={selectedMarket.docs?.['infructueux_doc']}
+                               onAdd={(id) => addMarketDocToArray(selectedMarket.id, 'infructueux_doc', id)}
+                               onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'infructueux_doc', id)}
+                             />
+                           </div>
+                         </div>
+                       )}
                     </div>
                   );
 
@@ -212,7 +254,13 @@ export const Tracking: React.FC = () => {
                        {selectedMarket.is_annule && (
                          <div className="space-y-4 animate-in fade-in">
                             <BulleInput label="Motif d'annulation" value={selectedMarket.motif_annulation} onChange={e => updateMarket(selectedMarket.id, {motif_annulation: e.target.value})} />
-                            <div className="flex justify-end"><FileManager existingDocId={selectedMarket.docs?.['annule_doc']} onUpload={(id) => updateMarketDoc(selectedMarket.id, 'annule_doc', id)} /></div>
+                            <div className="flex justify-end">
+                              <MultiFileManager
+                                existingDocIds={selectedMarket.docs?.['annule_doc']}
+                                onAdd={(id) => addMarketDocToArray(selectedMarket.id, 'annule_doc', id)}
+                                onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'annule_doc', id)}
+                              />
+                            </div>
                          </div>
                        )}
                     </div>
@@ -227,7 +275,11 @@ export const Tracking: React.FC = () => {
                        {selectedMarket.has_additif && (
                          <div className="flex items-center justify-between gap-4 animate-in slide-in-from-top-2">
                            <BulleInput type="date" label="Date de l'additif" value={selectedMarket.dates_realisees.additif} onChange={e => updateJalon(selectedMarket.id, 'realisees', 'additif', e.target.value)} />
-                           <FileManager existingDocId={selectedMarket.docs?.['additif']} onUpload={(id) => updateMarketDoc(selectedMarket.id, 'additif', id)} />
+                           <MultiFileManager
+                             existingDocIds={selectedMarket.docs?.['additif']}
+                             onAdd={(id) => addMarketDocToArray(selectedMarket.id, 'additif', id)}
+                             onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'additif', id)}
+                           />
                          </div>
                        )}
                     </div>
@@ -244,7 +296,11 @@ export const Tracking: React.FC = () => {
                             <BulleInput label="Verdict / Issue du recours" value={selectedMarket.recours_issue || ''} onChange={e => updateMarket(selectedMarket.id, {recours_issue: e.target.value})} />
                             <div className={`flex items-center justify-between p-4 ${theme.card} border-white/5`}>
                                <p className="text-[10px] font-black text-slate-400 uppercase">Décision du recours</p>
-                               <FileManager existingDocId={selectedMarket.docs?.['recours_doc']} onUpload={(id) => updateMarketDoc(selectedMarket.id, 'recours_doc', id)} />
+                               <MultiFileManager
+                                 existingDocIds={selectedMarket.docs?.['recours_doc']}
+                                 onAdd={(id) => addMarketDocToArray(selectedMarket.id, 'recours_doc', id)}
+                                 onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'recours_doc', id)}
+                               />
                             </div>
                          </div>
                        )}
@@ -252,41 +308,64 @@ export const Tracking: React.FC = () => {
                   );
 
                   if (key === 'titulaire') return (
-                    <div key={key} className={`p-6 ${theme.card} border-white/5 flex items-center gap-4`}>
+                    <div key={key} className={`p-6 ${theme.card} border-white/5 flex items-center gap-4 ${isGrayedByInfructueux ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
                        <UserCheck className={theme.textAccent} size={20} />
-                       <BulleInput label={JALONS_LABELS[key]} value={selectedMarket.titulaire || ''} onChange={e => updateMarket(selectedMarket.id, {titulaire: e.target.value})} />
+                       <BulleInput label={JALONS_LABELS[key]} value={selectedMarket.titulaire || ''} onChange={e => updateMarket(selectedMarket.id, {titulaire: e.target.value})} disabled={isGrayedByInfructueux} />
+                       {isGrayedByInfructueux && <span className="text-[8px] italic opacity-60">(Infructueux)</span>}
                     </div>
                   );
 
                   if (key === 'montant_ttc_reel') return (
-                    <div key={key} className={`p-6 ${theme.card} border-white/5 flex items-center gap-4`}>
+                    <div key={key} className={`p-6 ${theme.card} border-white/5 flex items-center gap-4 ${isGrayedByInfructueux ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
                        <Banknote className="text-success" size={20} />
-                       <BulleInput label={JALONS_LABELS[key]} type="number" value={selectedMarket.montant_ttc_reel || ''} onChange={e => updateMarket(selectedMarket.id, {montant_ttc_reel: Number(e.target.value)})} />
+                       <BulleInput label={JALONS_LABELS[key]} type="number" value={selectedMarket.montant_ttc_reel || ''} onChange={e => updateMarket(selectedMarket.id, {montant_ttc_reel: Number(e.target.value)})} disabled={isGrayedByInfructueux} />
+                       {isGrayedByInfructueux && <span className="text-[8px] italic opacity-60">(Infructueux)</span>}
                     </div>
                   );
                   
+                  if (key === 'negociation_contractuelle') return (
+                    <div key={key} className={`p-6 ${theme.card} flex items-center justify-between group border-white/5 ${isGrayedByInfructueux ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
+                       <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 ${theme.card} ${theme.textAccent} flex items-center justify-center group-hover:scale-110 transition-transform`}><FileText size={20}/></div>
+                          <p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key]}</p>
+                       </div>
+                       <MultiFileManager
+                         existingDocIds={selectedMarket.docs?.[key]}
+                         onAdd={(id) => addMarketDocToArray(selectedMarket.id, key, id)}
+                         onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, key, id)}
+                         disabled={!can('WRITE') || isGrayedByInfructueux}
+                       />
+                    </div>
+                  );
+
                   if (key === 'dao_doc' || key === 'adf_doc') return (
                     <div key={key} className={`p-6 ${theme.card} flex items-center justify-between group border-white/5`}>
                        <div className="flex items-center gap-4">
                           <div className={`w-10 h-10 ${theme.card} ${theme.textAccent} flex items-center justify-center group-hover:scale-110 transition-transform`}><FileText size={20}/></div>
                           <p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key]}</p>
                        </div>
-                       <FileManager existingDocId={selectedMarket.docs?.[key]} onUpload={(id) => updateMarketDoc(selectedMarket.id, key, id)} disabled={!can('WRITE')} />
+                       <MultiFileManager
+                         existingDocIds={selectedMarket.docs?.[key]}
+                         onAdd={(id) => addMarketDocToArray(selectedMarket.id, key, id)}
+                         onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, key, id)}
+                         disabled={!can('WRITE')}
+                       />
                     </div>
                   );
                   
                   return (
-                    <div 
-                      key={key} 
-                      className={`p-4 ${theme.card} border-white/5 flex items-center justify-between gap-4 
-                        ${isRestricted ? 'opacity-30 pointer-events-none grayscale' : ''}
-                        ${isHistorical ? 'opacity-70 bg-black/5' : ''} 
+                    <div
+                      key={key}
+                      className={`p-4 ${theme.card} border-white/5 flex items-center justify-between gap-4
+                        ${isRestricted || isGrayedByInfructueux ? 'opacity-30 pointer-events-none grayscale' : ''}
+                        ${isHistorical ? 'opacity-70 bg-black/5' : ''}
                       `}
                     >
                        <div className="flex flex-col">
                          <p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none pr-2`}>
                            {JALONS_LABELS[key] || key}
                            {isRestricted && <span className="text-[8px] italic opacity-60 ml-2">(N/A)</span>}
+                           {isGrayedByInfructueux && <span className="text-[8px] italic opacity-60 ml-2">(Infructueux)</span>}
                          </p>
                          {isHistorical && currentVal && (
                            <span className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase mt-1">
@@ -301,13 +380,14 @@ export const Tracking: React.FC = () => {
                               type="date"
                               value={currentVal || ''}
                               onChange={e => updateJalon(selectedMarket.id, 'realisees', key, e.target.value)}
-                              disabled={!can('WRITE') || isRestricted}
+                              disabled={!can('WRITE') || isRestricted || isGrayedByInfructueux}
                             />
                           </div>
-                          <FileManager
-                            existingDocId={selectedMarket.docs?.[key]}
-                            onUpload={(id) => updateMarketDoc(selectedMarket.id, key, id)}
-                            disabled={!can('WRITE') || isRestricted}
+                          <MultiFileManager
+                            existingDocIds={selectedMarket.docs?.[key]}
+                            onAdd={(id) => addMarketDocToArray(selectedMarket.id, key, id)}
+                            onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, key, id)}
+                            disabled={!can('WRITE') || isRestricted || isGrayedByInfructueux}
                           />
                        </div>
                     </div>
@@ -316,16 +396,16 @@ export const Tracking: React.FC = () => {
               </div>
 
               <div className="pt-6 border-t border-white/5 flex justify-between">
-                 <button 
-                  disabled={JALONS_GROUPS.indexOf(activePhase!) === 0} 
-                  onClick={() => setActivePhaseId(JALONS_GROUPS[JALONS_GROUPS.indexOf(activePhase!) - 1].id)} 
+                 <button
+                  disabled={marketGroups.indexOf(activePhase!) === 0}
+                  onClick={() => setActivePhaseId(marketGroups[marketGroups.indexOf(activePhase!) - 1].id)}
                   className={`flex items-center gap-2 text-[10px] font-black uppercase ${theme.textSecondary} disabled:opacity-0 transition-all hover:translate-x-[-4px]`}
                  >
                    <ArrowLeft size={14} /> Précédent
                  </button>
-                 <button 
-                  disabled={JALONS_GROUPS.indexOf(activePhase!) === JALONS_GROUPS.length - 1 || !isPhaseAccessible(selectedMarket, JALONS_GROUPS[JALONS_GROUPS.indexOf(activePhase!) + 1].id)} 
-                  onClick={() => setActivePhaseId(JALONS_GROUPS[JALONS_GROUPS.indexOf(activePhase!) + 1].id)} 
+                 <button
+                  disabled={marketGroups.indexOf(activePhase!) === marketGroups.length - 1 || !isPhaseAccessible(selectedMarket, marketGroups[marketGroups.indexOf(activePhase!) + 1].id)}
+                  onClick={() => setActivePhaseId(marketGroups[marketGroups.indexOf(activePhase!) + 1].id)}
                   className={`flex items-center gap-2 text-[10px] font-black uppercase ${theme.textAccent} disabled:opacity-0 transition-all hover:translate-x-[4px]`}
                  >
                    Suivant <ArrowRight size={14} />
