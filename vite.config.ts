@@ -12,5 +12,32 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, '.'),
     }
-  }
+  },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'antd',
+      'firebase/app',
+      'firebase/firestore',
+      'firebase/auth',
+      'firebase/storage',
+      'recharts',
+      'lucide-react',
+    ],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-antd': ['antd', 'antd-style'],
+          'vendor-firebase': ['firebase/app', 'firebase/firestore', 'firebase/auth', 'firebase/storage'],
+          'vendor-charts': ['recharts'],
+          'vendor-xlsx': ['xlsx'],
+        },
+      },
+    },
+  },
 });

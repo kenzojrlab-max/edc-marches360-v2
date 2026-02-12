@@ -7,21 +7,22 @@ import { useMarketLogic } from '../hooks/useMarketLogic';
 import { useMarketFilter } from '../hooks/useMarketFilter'; // AJOUT
 import { 
   Save, Search, CheckCircle2, Clock, Activity, Settings2, ChevronRight,
-  ArrowLeft, ArrowRight, UserCheck, Banknote, AlertTriangle, XCircle, Ban, Layers, History, FileText, Gavel
+  ArrowLeft, ArrowRight, UserCheck, Banknote, AlertTriangle, XCircle, Ban, Layers, History, FileText
 } from 'lucide-react';
 import { JALONS_LABELS, JALONS_GROUPS, getJalonsGroupsForMarket } from '../constants';
 import { Modal } from '../components/Modal';
 import { BulleInput } from '../components/BulleInput';
 import { MultiFileManager } from '../components/MultiFileManager';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
-import { SourceFinancement, StatutGlobal } from '../types';
+import { SourceFinancement, StatutGlobal, RecoursStatut } from '../types';
 import Footer from '../components/Footer';
 import { TruncatedText } from '../components/TruncatedText';
+import { RecoursSection } from '../components/RecoursSection';
 
 // Clés des jalons à griser si le marché est infructueux (après prop_attribution)
 const JALONS_AFTER_INFRUCTUEUX = [
-  'negociation_contractuelle', 'avis_conforme_ca', 'ano_bailleur_attrib', 'publication', 'notification_attrib',
-  'titulaire', 'montant_ttc_reel', 'souscription', 'saisine_cipm_projet',
+  'negociation_contractuelle', 'avis_conforme_ca', 'ano_bailleur_attrib', 'notification_attrib',
+  'titulaire', 'montant_ttc_reel', 'delai_contractuel', 'souscription', 'saisine_cipm_projet',
   'validation_projet', 'ano_bailleur_projet', 'signature_marche'
 ];
 
@@ -31,7 +32,7 @@ export const Tracking: React.FC = () => {
   const { can } = useAuth();
   const { theme } = useTheme();
 
-  const { isJalonApplicable, isJalonActive, isPhaseAccessible } = useMarketLogic();
+  const { isJalonApplicable, isJalonActive, isPhaseAccessible, isBlockedBySuspendu: checkBlockedBySuspendu } = useMarketLogic();
   
   // --- CORRECTION : Utilisation du Hook de filtrage ---
   const {
@@ -63,6 +64,7 @@ export const Tracking: React.FC = () => {
   const calculateAvancement = (m: any) => {
     if (m.is_annule) return { label: "Annulé", color: "bg-danger/10 text-danger" };
     if (m.is_infructueux) return { label: "Infructueux", color: "bg-warning/10 text-warning" };
+    if (m.recours?.statut === RecoursStatut.SUSPENDU) return { label: "Suspendu (Recours)", color: "bg-orange-500/10 text-orange-500" };
     let lastJalonLabel = "Non lancé";
     const datesRealisees = m.dates_realisees || {};
     for (let i = jalonsKeys.length - 1; i >= 0; i--) {
@@ -217,6 +219,9 @@ export const Tracking: React.FC = () => {
                   // Grisage si marché infructueux et champ après prop_attribution
                   const isGrayedByInfructueux = selectedMarket.is_infructueux && JALONS_AFTER_INFRUCTUEUX.includes(key);
 
+                  // Grisage si marché suspendu par recours type C
+                  const isBlockedBySuspendu = checkBlockedBySuspendu(selectedMarket, key);
+
                   if (currentVal && parentProject) {
                     const dateYear = new Date(currentVal).getFullYear();
                     if (dateYear < parentProject.exercice) {
@@ -245,7 +250,9 @@ export const Tracking: React.FC = () => {
                     </div>
                   );
 
-                  if (key === 'annule') return (
+                  if (key === 'annule') {
+                    const hasDepouillement = !!(selectedMarket.dates_realisees.depouillement || selectedMarket.dates_realisees.depouillement_1t);
+                    return (
                     <div key={key} className={`p-8 rounded-3xl ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-danger/5 border-danger/10'} border space-y-4`}>
                        <div className="flex items-center justify-between">
                           <div className={`flex items-center gap-3 ${theme.mode === 'dark' ? 'text-white' : 'text-danger'} font-black uppercase text-xs`}><Ban size={18}/> Annuler le Dossier ?</div>
@@ -261,15 +268,28 @@ export const Tracking: React.FC = () => {
                                 onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'annule_doc', id)}
                               />
                             </div>
+                            {hasDepouillement && (
+                              <div className={`p-4 rounded-2xl ${theme.mode === 'dark' ? 'bg-orange-500/5 border-orange-500/10' : 'bg-orange-50 border-orange-200'} border space-y-3`}>
+                                <p className={`text-[10px] font-black uppercase ${theme.mode === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>Demande d'autorisation du Conseil d'Administration</p>
+                                <div className="flex justify-end">
+                                  <MultiFileManager
+                                    existingDocIds={selectedMarket.docs?.['annule_autorisation_ca']}
+                                    onAdd={(id) => addMarketDocToArray(selectedMarket.id, 'annule_autorisation_ca', id)}
+                                    onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'annule_autorisation_ca', id)}
+                                  />
+                                </div>
+                              </div>
+                            )}
                          </div>
                        )}
                     </div>
-                  );
+                    );
+                  }
 
                   if (key === 'additif') return (
                     <div key={key} className={`p-6 ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'} rounded-3xl border space-y-4`}>
                        <div className="flex items-center justify-between">
-                          <div className={`flex items-center gap-3 ${theme.textSecondary} font-black uppercase text-xs`}>A-t-il eu un Additif ?</div>
+                          <div className={`flex items-center gap-3 ${theme.textSecondary} font-black uppercase text-xs`}>Y'a-t-il eu un Additif ?</div>
                           <CustomBulleSelect label="" value={selectedMarket.has_additif ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {has_additif: v==='OUI'})} />
                        </div>
                        {selectedMarket.has_additif && (
@@ -286,25 +306,13 @@ export const Tracking: React.FC = () => {
                   );
                   
                   if (key === 'recours') return (
-                    <div key={key} className={`p-8 rounded-3xl ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-blue-50/50 border-blue-100'} border space-y-4`}>
-                       <div className="flex items-center justify-between">
-                          <div className={`flex items-center gap-3 ${theme.mode === 'dark' ? 'text-white' : 'text-blue-600'} font-black uppercase text-xs`}><Gavel size={18}/> A-t-il eu un Recours ?</div>
-                          <CustomBulleSelect label="" value={selectedMarket.has_recours ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {has_recours: v==='OUI'})} />
-                       </div>
-                       {selectedMarket.has_recours && (
-                         <div className="space-y-4 animate-in fade-in">
-                            <BulleInput label="Verdict / Issue du recours" value={selectedMarket.recours_issue || ''} onChange={e => updateMarket(selectedMarket.id, {recours_issue: e.target.value})} />
-                            <div className={`flex items-center justify-between p-4 ${theme.card} border-white/5`}>
-                               <p className="text-[10px] font-black text-slate-400 uppercase">Décision du recours</p>
-                               <MultiFileManager
-                                 existingDocIds={selectedMarket.docs?.['recours_doc']}
-                                 onAdd={(id) => addMarketDocToArray(selectedMarket.id, 'recours_doc', id)}
-                                 onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'recours_doc', id)}
-                               />
-                            </div>
-                         </div>
-                       )}
-                    </div>
+                    <RecoursSection
+                      key={key}
+                      market={selectedMarket}
+                      updateMarket={updateMarket}
+                      addMarketDocToArray={addMarketDocToArray}
+                      removeMarketDocFromArray={removeMarketDocFromArray}
+                    />
                   );
 
                   if (key === 'titulaire') return (
@@ -322,6 +330,14 @@ export const Tracking: React.FC = () => {
                        {isGrayedByInfructueux && <span className="text-[8px] italic opacity-60">(Infructueux)</span>}
                     </div>
                   );
+
+                  if (key === 'delai_contractuel') return (
+                    <div key={key} className={`p-6 ${theme.card} border-white/5 flex items-center gap-4 ${isGrayedByInfructueux ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
+                       <Clock className={theme.textAccent} size={20} />
+                       <BulleInput label={JALONS_LABELS[key]} value={selectedMarket.delai_contractuel || ''} onChange={e => updateMarket(selectedMarket.id, {delai_contractuel: e.target.value})} disabled={isGrayedByInfructueux} />
+                       {isGrayedByInfructueux && <span className="text-[8px] italic opacity-60">(Infructueux)</span>}
+                    </div>
+                  );
                   
                   if (key === 'negociation_contractuelle') return (
                     <div key={key} className={`p-6 ${theme.card} flex items-center justify-between group border-white/5 ${isGrayedByInfructueux ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
@@ -335,6 +351,75 @@ export const Tracking: React.FC = () => {
                          onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, key, id)}
                          disabled={!can('WRITE') || isGrayedByInfructueux}
                        />
+                    </div>
+                  );
+
+                  if (key === 'etudes_prealables_doc') return (
+                    <div key={key} className={`p-6 ${theme.card} flex items-center justify-between group border-white/5`}>
+                       <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 ${theme.card} ${theme.textAccent} flex items-center justify-center group-hover:scale-110 transition-transform`}><FileText size={20}/></div>
+                          <p className={`text-[11px] font-black ${theme.textMain} uppercase leading-none`}>{JALONS_LABELS[key]}</p>
+                       </div>
+                       <MultiFileManager
+                         existingDocIds={selectedMarket.docs?.[key]}
+                         onAdd={(id) => addMarketDocToArray(selectedMarket.id, key, id)}
+                         onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, key, id)}
+                         disabled={!can('WRITE')}
+                       />
+                    </div>
+                  );
+
+                  if (key === 'preselection_doc') return (
+                    <div key={key} className={`p-6 ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'} rounded-3xl border space-y-4`}>
+                       <div className="flex items-center justify-between">
+                          <div className={`flex items-center gap-3 ${theme.textSecondary} font-black uppercase text-xs`}>Y'a-t-il eu une Présélection ?</div>
+                          <CustomBulleSelect label="" value={selectedMarket.has_preselection ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {has_preselection: v==='OUI'})} />
+                       </div>
+                       {selectedMarket.has_preselection && (
+                         <div className="flex items-center justify-end gap-4 animate-in slide-in-from-top-2">
+                           <MultiFileManager
+                             existingDocIds={selectedMarket.docs?.['preselection_doc']}
+                             onAdd={(id) => addMarketDocToArray(selectedMarket.id, 'preselection_doc', id)}
+                             onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'preselection_doc', id)}
+                           />
+                         </div>
+                       )}
+                    </div>
+                  );
+
+                  if (key === 'demande_eclaircissement_doc') return (
+                    <div key={key} className={`p-6 ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'} rounded-3xl border space-y-4`}>
+                       <div className="flex items-center justify-between">
+                          <div className={`flex items-center gap-3 ${theme.textSecondary} font-black uppercase text-xs`}>Y'a-t-il eu une demande d'éclaircissement ?</div>
+                          <CustomBulleSelect label="" value={selectedMarket.has_demande_eclaircissement ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {has_demande_eclaircissement: v==='OUI'})} />
+                       </div>
+                       {selectedMarket.has_demande_eclaircissement && (
+                         <div className="flex items-center justify-end gap-4 animate-in slide-in-from-top-2">
+                           <MultiFileManager
+                             existingDocIds={selectedMarket.docs?.['demande_eclaircissement_doc']}
+                             onAdd={(id) => addMarketDocToArray(selectedMarket.id, 'demande_eclaircissement_doc', id)}
+                             onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'demande_eclaircissement_doc', id)}
+                           />
+                         </div>
+                       )}
+                    </div>
+                  );
+
+                  if (key === 'reponse_eclaircissement_doc') return (
+                    <div key={key} className={`p-6 ${theme.mode === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'} rounded-3xl border space-y-4`}>
+                       <div className="flex items-center justify-between">
+                          <div className={`flex items-center gap-3 ${theme.textSecondary} font-black uppercase text-xs`}>Y'a-t-il eu une réponse ?</div>
+                          <CustomBulleSelect label="" value={selectedMarket.has_reponse_eclaircissement ? 'OUI' : 'NON'} options={[{value:'OUI',label:'OUI'},{value:'NON',label:'NON'}]} onChange={v => updateMarket(selectedMarket.id, {has_reponse_eclaircissement: v==='OUI'})} />
+                       </div>
+                       {selectedMarket.has_reponse_eclaircissement && (
+                         <div className="flex items-center justify-end gap-4 animate-in slide-in-from-top-2">
+                           <MultiFileManager
+                             existingDocIds={selectedMarket.docs?.['reponse_eclaircissement_doc']}
+                             onAdd={(id) => addMarketDocToArray(selectedMarket.id, 'reponse_eclaircissement_doc', id)}
+                             onRemove={(id) => removeMarketDocFromArray(selectedMarket.id, 'reponse_eclaircissement_doc', id)}
+                           />
+                         </div>
+                       )}
                     </div>
                   );
 
@@ -357,7 +442,7 @@ export const Tracking: React.FC = () => {
                     <div
                       key={key}
                       className={`p-4 ${theme.card} border-white/5 flex items-center justify-between gap-4
-                        ${isRestricted || isGrayedByInfructueux ? 'opacity-30 pointer-events-none grayscale' : ''}
+                        ${isRestricted || isGrayedByInfructueux || isBlockedBySuspendu ? 'opacity-30 pointer-events-none grayscale' : ''}
                         ${isHistorical ? 'opacity-70 bg-black/5' : ''}
                       `}
                     >
@@ -366,6 +451,7 @@ export const Tracking: React.FC = () => {
                            {JALONS_LABELS[key] || key}
                            {isRestricted && <span className="text-[8px] italic opacity-60 ml-2">(N/A)</span>}
                            {isGrayedByInfructueux && <span className="text-[8px] italic opacity-60 ml-2">(Infructueux)</span>}
+                           {isBlockedBySuspendu && <span className="text-[8px] italic opacity-60 ml-2">(Suspendu)</span>}
                          </p>
                          {isHistorical && currentVal && (
                            <span className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase mt-1">

@@ -104,7 +104,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const unsubscribe = onSnapshot(collection(db, "deleted_markets"), (snapshot) => {
       const deletedData = snapshot.docs.map(docSnap => ({
         ...docSnap.data(),
-        id: docSnap.id // S'assurer que l'ID est bien présent
+        id: docSnap.id
       } as Marche));
       setDeletedMarkets(deletedData);
     }, (error) => {
@@ -168,7 +168,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       let finalUpdates = { ...updates };
       const currentMarket = markets.find(m => m.id === id);
       
-      if (finalUpdates.dates_realisees && currentMarket) {
+      // Ne pas écraser le statut si un statut explicite est fourni (ex: SUSPENDU, ANNULE via recours)
+      if (finalUpdates.dates_realisees && currentMarket && !finalUpdates.statut_global) {
          const mergedDates = { ...currentMarket.dates_realisees, ...finalUpdates.dates_realisees };
          if (mergedDates.signature_marche) finalUpdates.statut_global = StatutGlobal.SIGNE;
          else if (Object.values(mergedDates).some(v => v)) finalUpdates.statut_global = StatutGlobal.EN_COURS;

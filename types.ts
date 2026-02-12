@@ -32,7 +32,38 @@ export enum StatutGlobal {
   SIGNE = 'SIGNE',
   CLOTURE = 'CLOTURE',
   ANNULE = 'ANNULE',
-  INFRUCTUEUX = 'INFRUCTUEUX'
+  INFRUCTUEUX = 'INFRUCTUEUX',
+  SUSPENDU = 'SUSPENDU'
+}
+
+export enum RecoursType {
+  AVANT_OUVERTURE = 'AVANT_OUVERTURE',
+  DURANT_OUVERTURE = 'DURANT_OUVERTURE',
+  APRES_ATTRIBUTION = 'APRES_ATTRIBUTION'
+}
+
+export enum RecoursStatut {
+  EN_COURS_EXAMEN = 'EN_COURS_EXAMEN',
+  SUSPENDU = 'SUSPENDU',
+  CLOTURE_REJETE = 'CLOTURE_REJETE',
+  CLOTURE_ACCEPTE = 'CLOTURE_ACCEPTE'
+}
+
+export interface RecoursData {
+  type: RecoursType;
+  statut: RecoursStatut;
+  date_introduction: string;
+  current_step: number;
+  // Type A
+  date_reponse_dg?: string;
+  is_satisfait_dg?: boolean;
+  date_escalation_ca?: string;
+  // Types B & C
+  date_avis_comite?: string;
+  date_decision_ca?: string;
+  // Clôture
+  verdict?: string;
+  date_cloture?: string;
 }
 
 export interface AuditLog {
@@ -119,16 +150,15 @@ export type TypeOuverture = '1_temps' | '2_temps';
 
 export interface MarcheDates {
   saisine_cipm?: string;
-  examen_dao?: string;
   validation_dossier?: string;
   ano_bailleur_dao?: string;
   lancement_ao?: string;
   additif?: string;
+  date_initiale_depouillement?: string;
   depouillement?: string;
   validation_eval?: string;
   ano_bailleur_eval?: string;
   ouverture_financiere?: string;
-  rapport_consolide?: string;
   validation_rapport_consolide?: string;
   ano_bailleur_consolide?: string;
   depouillement_1t?: string;
@@ -161,6 +191,7 @@ export interface Marche {
   typePrestation: MarketType | string;
   montant_prevu: number;
   montant_ttc_reel?: number;
+  delai_contractuel?: string;
   imputation_budgetaire: string;
   source_financement: SourceFinancement;
   nom_bailleur?: string;
@@ -172,11 +203,15 @@ export interface Marche {
   is_infructueux: boolean;
   is_annule: boolean;
   has_additif: boolean;
+  has_preselection: boolean;
+  has_demande_eclaircissement: boolean;
+  has_reponse_eclaircissement: boolean;
   type_ouverture: TypeOuverture;
   motif_annulation?: string;
   motif_infructueux?: string;
   has_recours: boolean;
   recours_issue?: string;
+  recours?: RecoursData;
   titulaire?: string;
   execution: ExecutionData;
   created_by: string;

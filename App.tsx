@@ -7,8 +7,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { LogsProvider } from './contexts/LogsContext';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { ProjectProvider } from './contexts/ProjectContext';
-import { LibraryProvider } from './contexts/LibraryContext';
 import { MarketProvider } from './contexts/MarketContext';
+import { LibraryProvider } from './contexts/LibraryContext';
 // -----------------
 
 import { Layout } from './components/Layout';

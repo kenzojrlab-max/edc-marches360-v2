@@ -20,7 +20,7 @@ export const Settings: React.FC = () => {
   const { markets, deletedMarkets, restoreMarket, permanentDeleteMarket } = useMarkets();
   const { fonctions, addFonction, removeFonction, aoTypes, addAOType, removeAOType, marketTypes, addMarketType, removeMarketType } = useConfig();
   const { auditLogs, addLog } = useLogs();
-  
+
   const { theme, themeType } = useTheme(); // On récupère le thème et son mode
 
   // --- LOGIQUE D'AFFICHAGE ADAPTATIVE ---

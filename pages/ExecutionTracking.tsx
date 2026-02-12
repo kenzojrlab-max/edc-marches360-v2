@@ -24,13 +24,13 @@ const useLightTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #22c55e #FDFEFE; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #FDFEFE; } .ant-table-body::-webkit-scrollbar-thumb { background: #22c55e; border-radius: 4px; } }
-    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
     .ant-table-thead > tr > th { background: #e6f4ea !important; color: #1a2333 !important; border-bottom: 2px solid #c3dfc9 !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
+    .ant-table-thead > tr > th.th-fixed-priority { z-index: 100 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #1a2333 !important; }
     .ant-table-tbody > tr > td { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 1px solid #e5e7eb !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #f3f4f6 !important; }
-    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #e6f4ea !important; z-index: 100 !important; }
-    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 5 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #e6f4ea !important; z-index: 3 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 1 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #f3f4f6 !important; }
   `,
 }));
@@ -39,13 +39,13 @@ const useDarkTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #22c55e #1a2333; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #1a2333; } .ant-table-body::-webkit-scrollbar-thumb { background: #22c55e; border-radius: 4px; } }
-    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
     .ant-table-thead > tr > th { background: #0d2818 !important; color: #ffffff !important; border-bottom: 2px solid rgba(34,197,94,0.3) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
+    .ant-table-thead > tr > th.th-fixed-priority { z-index: 100 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #ffffff !important; }
     .ant-table-tbody > tr > td { background: #1e293b !important; color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #334155 !important; }
-    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #0d2818 !important; z-index: 100 !important; }
-    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #1e293b !important; z-index: 5 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #0d2818 !important; z-index: 3 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #1e293b !important; z-index: 1 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #334155 !important; }
   `,
 }));
@@ -149,19 +149,6 @@ export const ExecutionTracking: React.FC = () => {
     return result;
   }, [getExecutionMarkets, selectedYear, selectedFinancement, searchTerm, projects, statusFilter, isClosed]);
 
-  // Override des cellules header pour forcer le z-index sur les colonnes fixées
-  const tableComponents = useMemo(() => ({
-    header: {
-      cell: (props: any) => {
-        const isFixed = props.className && (props.className.includes('ant-table-cell-fix-left') || props.className.includes('ant-table-cell-fix-right'));
-        const style = isFixed
-          ? { ...props.style, zIndex: 100 }
-          : { ...props.style, zIndex: 1 };
-        return <th {...props} style={style} />;
-      },
-    },
-  }), []);
-
   // Colonnes du tableau
   const tableColumns: TableColumnsType<Marche> = useMemo(() => {
     return [
@@ -171,6 +158,7 @@ export const ExecutionTracking: React.FC = () => {
         key: 'dossier',
         fixed: 'left',
         width: 350,
+        onHeaderCell: () => ({ className: 'th-fixed-priority' }),
 
         render: (_, m) => {
           const isResilie = !!m.execution?.is_resilie;
@@ -292,6 +280,7 @@ export const ExecutionTracking: React.FC = () => {
         fixed: 'right',
         width: 100,
         align: 'center',
+        onHeaderCell: () => ({ className: 'th-fixed-priority' }),
 
         render: (_: any, m: Marche) => (
           <button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape} transition-colors`}>
@@ -419,7 +408,6 @@ export const ExecutionTracking: React.FC = () => {
           className={styles.customTable}
           columns={tableColumns}
           dataSource={tableData}
-          components={tableComponents}
           scroll={{ x: 'max-content', y: 55 * 10 }}
           pagination={{ pageSize: 15, showTotal: (total: number, range: [number, number]) => <span className={`text-xs font-bold ${theme.textSecondary}`}>{range[0]}-{range[1]} sur {total} marchés</span>, showSizeChanger: false }}
           bordered={false}

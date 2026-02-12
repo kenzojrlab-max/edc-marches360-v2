@@ -1,4 +1,4 @@
-import { Marche, SourceFinancement } from '../types';
+import { Marche, SourceFinancement, RecoursStatut } from '../types';
 import { JALONS_GROUPS, getJalonsGroupsForMarket } from '../constants';
 
 export const useMarketLogic = () => {
@@ -17,6 +17,8 @@ export const useMarketLogic = () => {
     const currentIdx = allKeys.indexOf(key);
 
     if (market.is_infructueux) {
+      // Publication des résultats reste visible même si infructueux
+      if (key === 'publication') return true;
       const stopIdx = allKeys.indexOf('infructueux');
       // On affiche jusqu'à l'étape "infructueux" incluse
       if (currentIdx > stopIdx) return false;
@@ -50,5 +52,15 @@ export const useMarketLogic = () => {
     return true;
   };
 
-  return { isJalonApplicable, isJalonActive, isPhaseAccessible };
+  // Jalons bloqués quand le marché est suspendu (recours type C)
+  const JALONS_BLOCKED_BY_SUSPENDU = [
+    'notification_attrib', 'souscription', 'saisine_cipm_projet',
+    'validation_projet', 'ano_bailleur_projet', 'signature_marche', 'notification'
+  ];
+
+  const isBlockedBySuspendu = (market: Marche, key: string): boolean => {
+    return market.recours?.statut === RecoursStatut.SUSPENDU && JALONS_BLOCKED_BY_SUSPENDU.includes(key);
+  };
+
+  return { isJalonApplicable, isJalonActive, isPhaseAccessible, isBlockedBySuspendu };
 };

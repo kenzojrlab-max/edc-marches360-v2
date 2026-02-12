@@ -16,7 +16,8 @@ import { useSearchParams } from 'react-router-dom';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { FileManager } from '../components/FileManager';
 import { MultiFileManager } from '../components/MultiFileManager';
-import { Marche } from '../types';
+import { Marche, RecoursStatut } from '../types';
+import { getRecoursTypeLabel, getRecoursStatusLabel, getRecoursStatusColor, isSuspensif } from '../utils/recours';
 import { Table } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { createStyles } from 'antd-style';
@@ -28,13 +29,13 @@ const useLightTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #FDFEFE; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #FDFEFE; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
-    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
     .ant-table-thead > tr > th { background: #e0eaf7 !important; color: #1a2333 !important; border-bottom: 2px solid #b8cce8 !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
+    .ant-table-thead > tr > th.th-fixed-priority { z-index: 100 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #1a2333 !important; }
     .ant-table-tbody > tr > td { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 1px solid #e5e7eb !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #f3f4f6 !important; }
-    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #e0eaf7 !important; z-index: 100 !important; }
-    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 5 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #e0eaf7 !important; z-index: 3 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 1 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #f3f4f6 !important; }
     .ant-table-tbody > tr.highlighted-row > td, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-left, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-right { background: #fef3c7 !important; }
     .date-cell { font-size: 12px !important; font-weight: 700 !important; }
@@ -50,13 +51,13 @@ const useDarkTableStyles = createStyles(({ css }) => ({
   customTable: css`
     .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
     .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #3b82f6 #1a2333; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #1a2333; } .ant-table-body::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; } }
-    .ant-table-thead > tr { position: static !important; z-index: auto !important; }
     .ant-table-thead > tr > th { background: #0d1a30 !important; color: #ffffff !important; border-bottom: 2px solid rgba(59,130,246,0.3) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
+    .ant-table-thead > tr > th.th-fixed-priority { z-index: 100 !important; }
     .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #ffffff !important; }
     .ant-table-tbody > tr > td { background: #1e293b !important; color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
     .ant-table-tbody > tr:hover > td { background: #334155 !important; }
-    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #0d1a30 !important; z-index: 100 !important; }
-    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #1e293b !important; z-index: 5 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #0d1a30 !important; z-index: 3 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #1e293b !important; z-index: 1 !important; }
     .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #334155 !important; }
     .ant-table-tbody > tr.highlighted-row > td, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-left, .ant-table-tbody > tr.highlighted-row > .ant-table-cell-fix-right { background: #422006 !important; }
     .date-cell { font-size: 12px !important; font-weight: 700 !important; }
@@ -91,14 +92,14 @@ const CircularProgress = ({ percent, color, icon: Icon }: { percent: number, col
 
 // Clés des jalons à griser si le marché est infructueux (après prop_attribution)
 const JALONS_AFTER_INFRUCTUEUX = [
-  'negociation_contractuelle', 'avis_conforme_ca', 'ano_bailleur_attrib', 'publication',
+  'negociation_contractuelle', 'avis_conforme_ca', 'ano_bailleur_attrib',
   'souscription', 'saisine_cipm_projet',
   'ano_bailleur_projet', 'signature_marche'
 ];
 
 // Groupes de jalons PPM pour colonnes repliables
 const PPM_JALON_GROUPS = [
-  { id: 'preparation', label: 'Préparation', keys: ['saisine_cipm', 'examen_dao', 'ano_bailleur_dao', 'lancement_ao'] },
+  { id: 'preparation', label: 'Préparation', keys: ['saisine_cipm', 'ano_bailleur_dao', 'lancement_ao'] },
   { id: 'consultation', label: 'Consultation', keys: ['depouillement'] },
   { id: 'attribution', label: 'Attribution', keys: ['prop_attribution', 'negociation_contractuelle', 'ano_bailleur_attrib', 'avis_conforme_ca', 'publication'] },
   { id: 'contractualisation', label: 'Contract.', keys: ['souscription', 'saisine_cipm_projet', 'ano_bailleur_projet', 'signature_marche'] },
@@ -345,31 +346,25 @@ export const PPMView: React.FC = () => {
       // Filtre par recherche texte
       const matchSearch = (m.numDossier || "").toLowerCase().includes(searchTerm.toLowerCase()) || (m.objet || "").toLowerCase().includes(searchTerm.toLowerCase());
 
+      // Exclure les marchés résiliés (visibles uniquement dans Exécution des Marchés)
+      if (m.execution?.is_resilie) return false;
+
       // Filtre par statut rapide
       let matchStatus = true;
       if (statusFilter !== 'all') {
         if (statusFilter === 'signe') matchStatus = !!m.dates_realisees?.signature_marche;
         else if (statusFilter === 'annule') matchStatus = !!m.is_annule;
         else if (statusFilter === 'infructueux') matchStatus = !!m.is_infructueux;
-        else if (statusFilter === 'en_cours') matchStatus = !m.dates_realisees?.signature_marche && !m.is_annule && !m.is_infructueux;
+        else if (statusFilter === 'non_lance') {
+          const datesRealisees = m.dates_realisees || {};
+          matchStatus = !Object.values(datesRealisees).some(v => v);
+        }
+        else if (statusFilter === 'en_cours') matchStatus = !m.dates_realisees?.signature_marche && !m.is_annule && !m.is_infructueux && Object.values(m.dates_realisees || {}).some(v => v);
       }
 
       return matchFinancement && matchSearch && matchYear && matchStatus;
     });
   }, [markets, projects, selectedFinancement, selectedYear, searchTerm, isInPassation, statusFilter]);
-
-  // Override des cellules header pour forcer le z-index sur les colonnes fixées
-  const tableComponents = useMemo(() => ({
-    header: {
-      cell: (props: any) => {
-        const isFixed = props.className && (props.className.includes('ant-table-cell-fix-left') || props.className.includes('ant-table-cell-fix-right'));
-        const style = isFixed
-          ? { ...props.style, zIndex: 100 }
-          : { ...props.style, zIndex: 1 };
-        return <th {...props} style={style} />;
-      },
-    },
-  }), []);
 
   // Configuration des colonnes pour Ant Design Table
   const tableColumns: TableColumnsType<Marche> = useMemo(() => {
@@ -381,6 +376,7 @@ export const PPMView: React.FC = () => {
         key: 'dossier',
         fixed: 'left',
         width: 420,
+        onHeaderCell: () => ({ className: 'th-fixed-priority' }),
 
         render: (_, m) => {
           const isResilie = !!m.execution.is_resilie;
@@ -409,6 +405,19 @@ export const PPMView: React.FC = () => {
         render: (value) => (
           <span className={`text-sm font-black ${theme.textMain}`}>
             {(value || 0).toLocaleString()} <span className={`text-[9px] ${theme.textSecondary}`}>FCFA</span>
+          </span>
+        ),
+      },
+      {
+        title: 'Budget Signé',
+        dataIndex: 'montant_ttc_reel',
+        key: 'budget_signe',
+        width: 180,
+        align: 'right',
+        sorter: (a: Marche, b: Marche) => (a.montant_ttc_reel || 0) - (b.montant_ttc_reel || 0),
+        render: (value) => (
+          <span className={`text-sm font-black ${theme.textMain}`}>
+            {value ? (<>{value.toLocaleString()} <span className={`text-[9px] ${theme.textSecondary}`}>FCFA</span></>) : <span className={`text-[10px] ${theme.textSecondary}`}>-</span>}
           </span>
         ),
       },
@@ -583,6 +592,7 @@ export const PPMView: React.FC = () => {
         fixed: 'right',
         width: 100,
         align: 'center',
+        onHeaderCell: () => ({ className: 'th-fixed-priority' }),
 
         render: (_, m) => (
           <button onClick={() => setDetailMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape} transition-colors`}>
@@ -623,14 +633,17 @@ export const PPMView: React.FC = () => {
         // Règle 1 : Applicabilité (ANO)
         if (!isJalonApplicable(m, key)) return false;
 
-        // Règle 2 : Additif
+        // Règle 2 : Conditionnels
         if (key === 'additif' && !m.has_additif) return false;
+        if (key === 'preselection_doc' && !m.has_preselection) return false;
+        if (key === 'demande_eclaircissement_doc' && !m.has_demande_eclaircissement) return false;
+        if (key === 'reponse_eclaircissement_doc' && !m.has_reponse_eclaircissement) return false;
 
         // Règle 3 : Exceptions graphiques (non comptées dans le % global)
         if (key === 'annule' || key === 'infructueux' || key === 'recours') return false;
 
         // Règle 4 : Exclure les champs non-documentaires du calcul
-        if (key === 'titulaire' || key === 'montant_ttc_reel') return false;
+        if (key === 'titulaire' || key === 'montant_ttc_reel' || key === 'delai_contractuel') return false;
 
         return true;
     });
@@ -678,16 +691,20 @@ export const PPMView: React.FC = () => {
 
       {/* FILTRES RAPIDES & SÉLECTEUR DE COLONNES */}
       <div className="flex items-center justify-between gap-4 px-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          {[
-            { key: 'all', label: 'Tous' },
-            { key: 'en_cours', label: 'En cours' },
-            { key: 'signe', label: 'Signés' },
-            { key: 'infructueux', label: 'Infructueux' },
-            { key: 'annule', label: 'Annulés' },
-          ].map(f => (
-            <button key={f.key} onClick={() => setStatusFilter(f.key)} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${statusFilter === f.key ? 'bg-primary text-white shadow-lg' : `${theme.card} ${theme.textSecondary} hover:opacity-80`}`}>{f.label}</button>
-          ))}
+        <div className="w-48">
+          <CustomBulleSelect
+            label=""
+            value={statusFilter}
+            options={[
+              { value: 'all', label: 'Tous les statuts' },
+              { value: 'non_lance', label: 'Non lancés' },
+              { value: 'en_cours', label: 'En cours' },
+              { value: 'signe', label: 'Signés' },
+              { value: 'infructueux', label: 'Infructueux' },
+              { value: 'annule', label: 'Annulés' },
+            ]}
+            onChange={setStatusFilter}
+          />
         </div>
         <div className="relative">
           <button onClick={() => setShowColumnSelector(!showColumnSelector)} className={`px-3 py-1.5 text-[10px] font-black uppercase ${theme.card} ${theme.textSecondary} rounded-lg border border-white/10`}>Colonnes</button>
@@ -695,6 +712,7 @@ export const PPMView: React.FC = () => {
             <div className={`absolute right-0 top-full mt-1 ${theme.card} shadow-2xl rounded-lg p-3 z-50 min-w-[200px] border border-white/10`}>
               {[
                 { key: 'budget', label: 'Budget Estimé' },
+                { key: 'budget_signe', label: 'Budget Signé' },
                 { key: 'fonction', label: 'Fonction Analytique' },
                 { key: 'activite', label: 'Activité' },
                 { key: 'financement', label: 'Financement' },
@@ -717,7 +735,6 @@ export const PPMView: React.FC = () => {
           className={styles.customTable}
           columns={tableColumns}
           dataSource={tableData}
-          components={tableComponents}
           scroll={{ x: 'max-content', y: 55 * 10 }}
           pagination={{ current: currentPage, pageSize: 15, onChange: (page: number) => setCurrentPage(page), showTotal: (total: number, range: [number, number]) => <span className={`text-xs font-bold ${theme.textSecondary}`}>{range[0]}-{range[1]} sur {total} marchés</span>, showSizeChanger: false }}
           bordered={false}
@@ -771,20 +788,44 @@ export const PPMView: React.FC = () => {
                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
                                       <div className="flex items-center gap-2 text-danger font-black uppercase text-[10px]"><Ban size={14}/> Annulation Validée</div>
                                       <p className="text-[11px] font-bold text-slate-400 italic">Motif : {selectedMarket.motif_annulation || "Non renseigné"}</p>
-                                      <FileManager existingDocId={selectedMarket.docs?.['annule_doc']} onUpload={() => {}} disabled />
+                                      <FileManager existingDocId={Array.isArray(selectedMarket.docs?.['annule_doc']) ? selectedMarket.docs?.['annule_doc'][0] : selectedMarket.docs?.['annule_doc']} onUpload={() => {}} disabled />
                                    </div>
                                  )}
                                  {selectedMarket.is_infructueux && (
                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
                                       <div className="flex items-center gap-2 text-warning font-black uppercase text-[10px]"><Activity size={14}/> Dossier déclaré Infructueux</div>
-                                      <FileManager existingDocId={selectedMarket.docs?.['infructueux_doc']} onUpload={() => {}} disabled />
+                                      <FileManager existingDocId={Array.isArray(selectedMarket.docs?.['infructueux_doc']) ? selectedMarket.docs?.['infructueux_doc'][0] : selectedMarket.docs?.['infructueux_doc']} onUpload={() => {}} disabled />
                                    </div>
                                  )}
                                  {selectedMarket.has_recours && (
-                                   <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+                                   <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
                                       <div className="flex items-center gap-2 text-blue-400 font-black uppercase text-[10px]"><Gavel size={14}/> Recours Introduit</div>
-                                      <p className="text-[11px] font-bold text-slate-400 italic">Verdict : {selectedMarket.recours_issue || "En attente de jugement"}</p>
-                                      <FileManager existingDocId={selectedMarket.docs?.['recours_doc']} onUpload={() => {}} disabled />
+                                      {selectedMarket.recours ? (
+                                        <div className="space-y-2">
+                                          <div className="flex flex-wrap gap-2">
+                                            <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[9px] font-black uppercase">
+                                              {getRecoursTypeLabel(selectedMarket.recours.type)}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${getRecoursStatusColor(selectedMarket.recours.statut)}`}>
+                                              {getRecoursStatusLabel(selectedMarket.recours.statut)}
+                                            </span>
+                                            {isSuspensif(selectedMarket.recours.type) && (
+                                              <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 text-[9px] font-black uppercase">Suspensif</span>
+                                            )}
+                                          </div>
+                                          <p className="text-[10px] text-slate-500">Introduit le : {formatDate(selectedMarket.recours.date_introduction)}</p>
+                                          {(selectedMarket.recours.statut === RecoursStatut.CLOTURE_REJETE || selectedMarket.recours.statut === RecoursStatut.CLOTURE_ACCEPTE) && (
+                                            <p className="text-[11px] font-bold text-slate-400 italic">
+                                              Verdict : {selectedMarket.recours.verdict || (selectedMarket.recours.statut === RecoursStatut.CLOTURE_ACCEPTE ? 'Accepté' : 'Rejeté')}
+                                            </p>
+                                          )}
+                                          {selectedMarket.docs?.['recours_lettre'] && (
+                                            <MultiFileManager existingDocIds={selectedMarket.docs['recours_lettre']} onAdd={() => {}} onRemove={() => {}} disabled />
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <p className="text-[11px] font-bold text-slate-400 italic">Verdict : {selectedMarket.recours_issue || "En attente de jugement"}</p>
+                                      )}
                                    </div>
                                  )}
                               </div>
@@ -802,6 +843,9 @@ export const PPMView: React.FC = () => {
                                     // Exceptions
                                     if (['annule', 'infructueux', 'recours'].includes(key)) return false;
                                     if (key === 'additif' && !selectedMarket.has_additif) return false;
+                                    if (key === 'preselection_doc' && !selectedMarket.has_preselection) return false;
+                                    if (key === 'demande_eclaircissement_doc' && !selectedMarket.has_demande_eclaircissement) return false;
+                                    if (key === 'reponse_eclaircissement_doc' && !selectedMarket.has_reponse_eclaircissement) return false;
 
                                     // Arrêt workflow
                                     if (!isJalonActive(selectedMarket, key)) return false;
@@ -824,7 +868,15 @@ export const PPMView: React.FC = () => {
                                       <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex items-center justify-between bg-success/5 hover:bg-success/10 transition-all`}>
                                          <div className="flex items-center gap-4">
                                             <Banknote className="text-success" size={18} />
-                                            <div><p className="text-xs font-black text-slate-400 uppercase leading-none">Montant TTC</p><p className={`text-sm font-black ${theme.textMain} mt-1`}>{selectedMarket.montant_ttc_reel?.toLocaleString() || "-"} FCFA</p></div>
+                                            <div><p className="text-xs font-black text-slate-400 uppercase leading-none">Montant marché signé</p><p className={`text-sm font-black ${theme.textMain} mt-1`}>{selectedMarket.montant_ttc_reel?.toLocaleString() || "-"} FCFA</p></div>
+                                         </div>
+                                      </div>
+                                    );
+                                    if (key === 'delai_contractuel') return (
+                                      <div key={key} className={`p-4 ${theme.buttonShape} border border-white/5 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-all`}>
+                                         <div className="flex items-center gap-4">
+                                            <Clock className={theme.textAccent} size={18} />
+                                            <div><p className="text-xs font-black text-slate-400 uppercase leading-none">Délai contractuel d'exécution</p><p className={`text-sm font-black ${theme.textMain} mt-1`}>{selectedMarket.delai_contractuel || "-"}</p></div>
                                          </div>
                                       </div>
                                     );

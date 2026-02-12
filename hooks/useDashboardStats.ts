@@ -63,9 +63,8 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
     // On cherche le point de départ le plus ancien disponible si la Saisine CIPM manque
     const potentialStartKeys = [
       'saisine_cipm',      // Le standard
-      'examen_dao',        // Fallback 1
-      'validation_dossier',// Fallback 2
-      'lancement_ao'       // Fallback 3 (au pire, on compte depuis le lancement)
+      'validation_dossier',// Fallback 1
+      'lancement_ao'       // Fallback 2 (au pire, on compte depuis le lancement)
     ];
 
     const totalDays = closedMarkets.reduce((acc, m) => {
