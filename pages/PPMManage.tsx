@@ -12,8 +12,6 @@ import { FONCTIONS, JALONS_PPM_KEYS, JALONS_LABELS } from '../constants';
 import { AOType, MarketType, Marche, StatutGlobal, SourceFinancement, Projet } from '../types';
 import { ChevronLeft, FileSpreadsheet, Plus, Download, Upload, MousePointer2, Search, Layers, Trash2 } from 'lucide-react';
 import { generateUUID } from '../utils/uid';
-import * as XLSX from 'xlsx';
-
 // AJOUT : Fonction de nettoyage pour sécuriser les imports Excel
 const sanitizeInput = (str: any): string => {
   if (typeof str !== 'string') return String(str || "");
@@ -125,18 +123,20 @@ export const PPMManage: React.FC = () => {
     });
   }, [projects, searchTerm, selectedYear]);
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const selectedProject = projects.find(p => p.id === importProjectId);
     if (!selectedProject) {
       alert("Veuillez d'abord sélectionner un projet de destination.");
       return;
     }
 
+    const XLSX = await import('xlsx');
+
     const EXCEL_COLUMNS = [
       "N°Dossier", "Objet Marché", "Fonction Analytique", "Activité", "Type AO", "Prestation", "Budget estimé FCFA", "Source de financement", "Imputation budgétaire",
       ...JALONS_PPM_KEYS.map(key => JALONS_LABELS[key] || key)
     ];
-    
+
     const ws = XLSX.utils.aoa_to_sheet([EXCEL_COLUMNS]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "PPM");
@@ -206,6 +206,7 @@ export const PPMManage: React.FC = () => {
     
     reader.onload = async (evt) => {
       try {
+        const XLSX = await import('xlsx');
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
         const ws = wb.Sheets[wb.SheetNames[0]];
@@ -388,6 +389,7 @@ export const PPMManage: React.FC = () => {
             has_recours: shouldAggregate ? (existingMarket?.has_recours || false) : false,
             titulaire: aggregatedTitulaire,
             montant_ttc_reel: aggregatedMontantTTC,
+            is_hors_ppm: false,
             execution: shouldAggregate ? (existingMarket?.execution || { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 }) : { decomptes: [], avenants: [], has_avenant: false, is_resilie: false, resiliation_step: 0 },
             created_by: existingMarket?.created_by || user?.id || 'system',
             date_creation: existingMarket?.date_creation || new Date(baseTime + (i * 10)).toISOString()

@@ -54,9 +54,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (userSnap.exists()) {
           setUser(userSnap.data() as User);
-        } else {
-          // NETTOYAGE PROD : Console warn désactivé pour éviter le spam
-          // console.warn("Utilisateur authentifié mais profil Firestore introuvable.");
         }
       } else {
         setUser(null);

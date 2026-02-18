@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, Activity, PlayCircle, Settings, LogOut,
   Menu, Bell, Clock, CheckCircle, ChevronRight, Settings2, Library,
   Files, AlertTriangle, X, Palette, Zap, Monitor, Layers, GlassWater,
-  User as UserIcon, Hammer, ClipboardCheck
+  User as UserIcon, Hammer, ClipboardCheck, Rocket, BarChart3
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMarkets } from '../contexts/MarketContext';
@@ -119,10 +119,12 @@ export const Layout: React.FC = () => {
     { to: '/', icon: LayoutDashboard, label: 'Dashboard', visible: true },
     { to: '/ppm-view', icon: FileText, label: 'Suivi Plan de Passation', visible: true },
     { to: '/execution-tracking', icon: ClipboardCheck, label: 'Suivi Exécution Marchés', visible: true },
+    { to: '/execution-tracking-v2', icon: BarChart3, label: 'Suivi Exécution V2', visible: true },
     { to: '/documents', icon: Library, label: 'Documentation', visible: true },
     { to: '/ppm-manage', icon: Settings2, label: 'Gestion Plan de Passation', visible: isAdmin },
     { to: '/tracking', icon: Activity, label: 'Suivi des Marchés', visible: isAdmin },
     { to: '/execution', icon: PlayCircle, label: 'Exécution des Marchés', visible: isAdmin },
+    { to: '/execution-v2', icon: Rocket, label: 'Saisie Exécution V2', visible: isAdmin },
     { to: '/documents-manage', icon: Files, label: 'Gestion documentaire', visible: isSuperAdmin },
     { to: '/settings', icon: Settings, label: 'Paramètres', visible: isSuperAdmin },
     { to: '/profile', icon: UserIcon, label: 'Mon Profil', visible: true },

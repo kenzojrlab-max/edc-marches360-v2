@@ -1,10 +1,16 @@
 import { useMemo } from 'react';
 import { Marche, Projet, StatutGlobal, SourceFinancement } from '../types';
-import { JALONS_GROUPS } from '../constants';
+import { JALONS_GROUPS, JALONS_LABELS } from '../constants';
 import { calculateDaysBetween } from '../utils/date';
 
+export interface AlertMarket extends Marche {
+  alertType: 'no_realisation' | 'late_realisation';
+  maxDelay: number;
+  lastJalonRealise: string;
+}
+
 export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[], projects: Projet[]) => {
-  
+
   // Couleurs pour les graphiques
   const COLORS = {
     primary: '#005bb5', // Bleu EDC
@@ -15,7 +21,7 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
     slate: '#94a3b8'
   };
 
-  // 1. Nombre de Marchés prévus au PPM
+  // 1. Nombre de Marchés planifiés
   const volumeStats = useMemo(() => {
     return {
       prevu: filteredMarkets.length,
@@ -38,14 +44,14 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
     }, { prevu: 0, realise: 0 });
   }, [filteredMarkets]);
 
-  // 3. Taux d’exécution du PPM
+  // 3. Taux d'exécution du PPM
   const executionRateStats = useMemo(() => {
     const total = filteredMarkets.length;
     if (total === 0) return { prevu: 50, realise: 0 };
-    
+
     const lances = filteredMarkets.filter(m => m.dates_realisees.lancement_ao).length;
     const rate = (lances / total) * 100;
-    
+
     return {
       prevu: 50,
       realise: parseFloat(rate.toFixed(2))
@@ -54,41 +60,35 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
 
   // 4. Délais moyen de Passation (INTELLIGENT)
   const delayStats = useMemo(() => {
-    // On prend les marchés signés (année de fin = sélectionnée via les filtres)
     const closedMarkets = filteredMarkets.filter(m => m.dates_realisees.signature_marche);
-    
-    if (closedMarkets.length === 0) return { prevu: 120, realise: 0 }; 
 
-    // Liste des jalons "de début" possibles, par ordre de préférence (chronologique inverse)
-    // On cherche le point de départ le plus ancien disponible si la Saisine CIPM manque
+    if (closedMarkets.length === 0) return { prevu: 120, realise: 0 };
+
     const potentialStartKeys = [
-      'saisine_cipm',      // Le standard
-      'validation_dossier',// Fallback 1
-      'lancement_ao'       // Fallback 2 (au pire, on compte depuis le lancement)
+      'saisine_cipm',
+      'validation_dossier',
+      'lancement_ao'
     ];
 
     const totalDays = closedMarkets.reduce((acc, m) => {
         const dateFin = m.dates_realisees.signature_marche!;
-        
-        // Trouver la première date de début valide
+
         let dateDebut = '';
         for (const key of potentialStartKeys) {
           if (m.dates_realisees[key as keyof typeof m.dates_realisees]) {
             dateDebut = m.dates_realisees[key as keyof typeof m.dates_realisees] as string;
-            break; // On a trouvé le point de départ le plus précis/ancien disponible
+            break;
           }
         }
 
         if (dateDebut) {
-          // calculateDaysBetween gère parfaitement les années différentes (ex: 2022 à 2023)
           return acc + calculateDaysBetween(dateDebut, dateFin);
         }
-        
-        return acc; // Si aucune date de début n'est trouvée, on ignore ce marché dans la somme
+
+        return acc;
     }, 0);
-    
-    // On ne divise que par le nombre de marchés qui avaient des dates valides pour ne pas fausser la moyenne
-    const validMarketsCount = closedMarkets.filter(m => 
+
+    const validMarketsCount = closedMarkets.filter(m =>
       potentialStartKeys.some(key => m.dates_realisees[key as keyof typeof m.dates_realisees])
     ).length;
 
@@ -103,7 +103,7 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
     const count = filteredMarkets.filter(m => m.has_recours).length;
     const launchedCount = filteredMarkets.filter(m => m.dates_realisees.lancement_ao).length;
     const rate = launchedCount > 0 ? ((count / launchedCount) * 100).toFixed(1) : "0.0";
-    
+
     return {
       prevu: 0,
       realise: count,
@@ -117,6 +117,27 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
     return {
       prevu: 0,
       realise: count
+    };
+  }, [filteredMarkets]);
+
+  // NOUVEAU : Stats PPM vs Inscrits (hors PPM)
+  const ppmVsInscritStats = useMemo(() => {
+    const marchesPPM = filteredMarkets.filter(m => !m.is_hors_ppm);
+    const marchesInscrits = filteredMarkets.filter(m => m.is_hors_ppm === true);
+
+    return {
+      ppm: {
+        nombre: marchesPPM.length,
+        volume: marchesPPM.reduce((acc, m) => acc + (m.montant_prevu || 0), 0)
+      },
+      inscrit: {
+        nombre: marchesInscrits.length,
+        volume: marchesInscrits.reduce((acc, m) => acc + (m.montant_prevu || 0), 0)
+      },
+      total: {
+        nombre: filteredMarkets.length,
+        volume: filteredMarkets.reduce((acc, m) => acc + (m.montant_prevu || 0), 0)
+      }
     };
   }, [filteredMarkets]);
 
@@ -144,7 +165,7 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
       const type = (m.typeAO || 'Autre').toString();
       map.set(type, (map.get(type) || 0) + 1);
     });
-    
+
     return Array.from(map.entries()).map(([name, value], index) => ({
       name,
       value,
@@ -164,7 +185,7 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
       if (m.dates_realisees.lancement_ao) g.lances++;
       if (m.dates_realisees.signature_marche) g.signes++;
       g.budgetPrevu += m.montant_prevu;
-      
+
       const montantSigne = (m.dates_realisees.signature_marche) ? (m.montant_ttc_reel || m.montant_prevu || 0) : 0;
       g.budgetSigne += montantSigne;
     });
@@ -278,28 +299,86 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
     return ((signes / filteredMarkets.length) * 100).toFixed(1);
   }, [filteredMarkets]);
 
-  const alertsList = useMemo(() => {
+  // ALERTES CRITIQUES : Marchés dont la saisine CIPM n'a pas été réalisée
+  const alertsList = useMemo((): AlertMarket[] => {
     const today = new Date().toISOString().split('T')[0];
-    const jalonsKeys = JALONS_GROUPS.flatMap(g => g.keys);
-    const marketsWithDelay = filteredMarkets.map(m => {
-        if (m.is_annule || m.is_infructueux || m.execution?.is_resilie || m.dates_realisees.signature_marche) {
-            return { market: m, maxDelay: 0 };
-        }
-        let maxDelay = 0;
-        jalonsKeys.forEach(key => {
-            const prevue = m.dates_prevues[key as keyof typeof m.dates_prevues];
-            const realisee = m.dates_realisees[key as keyof typeof m.dates_realisees];
-            if (prevue && !realisee && today > prevue) {
-                const delay = calculateDaysBetween(prevue, today);
-                if (delay > maxDelay) maxDelay = delay;
-            }
+
+    // Trouver le dernier jalon réalisé pour un marché
+    const getLastJalonRealise = (m: Marche): string => {
+      const allKeys = JALONS_GROUPS.flatMap(g => g.keys);
+      let lastKey = '';
+      for (const key of allKeys) {
+        const realisee = m.dates_realisees[key as keyof typeof m.dates_realisees];
+        if (realisee) lastKey = key;
+      }
+      return lastKey ? (JALONS_LABELS[lastKey] || lastKey) : 'Aucun jalon réalisé';
+    };
+
+    const results: AlertMarket[] = [];
+
+    filteredMarkets.forEach(m => {
+      // Exclure les marchés annulés, infructueux, résiliés, signés, ou dismissés
+      if (m.is_annule || m.is_infructueux || m.execution?.is_resilie || m.dates_realisees.signature_marche) return;
+      if (m.alert_dismissed) return;
+
+      // Seulement les marchés dont la saisine CIPM n'a pas été réalisée
+      if (m.dates_realisees.saisine_cipm) return;
+
+      const prevueSaisineCipm = m.dates_prevues.saisine_cipm;
+
+      // Cas 1 : Date prévue dépassée, pas de date réalisée → retard pur (rouge)
+      if (prevueSaisineCipm && today > prevueSaisineCipm) {
+        const delay = calculateDaysBetween(prevueSaisineCipm, today);
+        results.push({
+          ...m,
+          alertType: 'no_realisation',
+          maxDelay: delay,
+          lastJalonRealise: getLastJalonRealise(m)
         });
-        return { market: m, maxDelay };
+        return;
+      }
+
+      // Cas 2 : Vérifier tous les jalons - si un jalon a une date réalisée APRÈS la date prévue
+      const jalonsKeys = JALONS_GROUPS.flatMap(g => g.keys);
+      let hasLateRealisation = false;
+      let maxDelay = 0;
+
+      jalonsKeys.forEach(key => {
+        const prevue = m.dates_prevues[key as keyof typeof m.dates_prevues];
+        const realisee = m.dates_realisees[key as keyof typeof m.dates_realisees];
+
+        if (prevue && realisee && realisee > prevue) {
+          hasLateRealisation = true;
+          const delay = calculateDaysBetween(prevue, realisee);
+          if (delay > maxDelay) maxDelay = delay;
+        }
+
+        // Aussi si date prévue dépassée sans réalisation
+        if (prevue && !realisee && today > prevue) {
+          const delay = calculateDaysBetween(prevue, today);
+          if (delay > maxDelay) maxDelay = delay;
+        }
+      });
+
+      if (hasLateRealisation && maxDelay > 0) {
+        results.push({
+          ...m,
+          alertType: 'late_realisation',
+          maxDelay,
+          lastJalonRealise: getLastJalonRealise(m)
+        });
+      } else if (maxDelay > 0) {
+        // Date prévue d'un jalon dépassée sans réalisation (même si pas saisine CIPM spécifiquement)
+        results.push({
+          ...m,
+          alertType: 'no_realisation',
+          maxDelay,
+          lastJalonRealise: getLastJalonRealise(m)
+        });
+      }
     });
-    return marketsWithDelay
-        .filter(item => item.maxDelay > 0)
-        .sort((a, b) => b.maxDelay - a.maxDelay)
-        .map(item => item.market);
+
+    return results.sort((a, b) => b.maxDelay - a.maxDelay);
   }, [filteredMarkets]);
 
   return {
@@ -316,6 +395,7 @@ export const useDashboardStats = (filteredMarkets: Marche[], allMarkets: Marche[
     totalAvenants,
     ppmExecutionRate,
     alertsList,
+    ppmVsInscritStats,
     marchesSignesParExercice,
     tauxExecutionParExercice,
     executionPPMParFonction,

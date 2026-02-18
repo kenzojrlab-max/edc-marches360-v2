@@ -1,9 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-// 1. Import des modules App Check
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+import { initializeAuth, browserLocalPersistence, browserPopupRedirectResolver, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,23 +14,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// 2. Initialisation de App Check
-if (typeof window !== "undefined") {
-  // CORRECTION : On active le token de debug UNIQUEMENT si on est en local (localhost)
-  // Cela évite l'erreur 403 en production.
-  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-    // @ts-ignore
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-  }
-
-  initializeAppCheck(app, {
-    // Ta clé du site reCAPTCHA v3
-    provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
-    isTokenAutoRefreshEnabled: true
-  });
-}
-
+export { app };
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const auth = getAuth(app);
+export const auth = initializeAuth(app, {
+  persistence: browserLocalPersistence,
+  popupRedirectResolver: browserPopupRedirectResolver,
+});
 export const googleProvider = new GoogleAuthProvider();

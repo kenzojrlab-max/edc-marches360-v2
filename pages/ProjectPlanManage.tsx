@@ -116,6 +116,7 @@ export const ProjectPlanManage: React.FC = () => {
           is_infructueux: false,
           is_annule: false,
           has_recours: false,
+          is_hors_ppm: true,
           execution: {
             decomptes: [],
             avenants: [],

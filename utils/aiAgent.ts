@@ -2,10 +2,14 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { getApp } from "firebase/app";
 import { Marche, Projet } from '../types';
 
-// Connexion aux Cloud Functions Firebase
-// La clé API Gemini reste UNIQUEMENT côté serveur (Cloud Function)
-// Plus aucune clé n'est exposée dans le bundle client
-const functions = getFunctions(getApp(), 'us-central1');
+// Firebase Functions initialisé à la demande (pas au chargement du module)
+let _functions: ReturnType<typeof getFunctions> | null = null;
+const getFirebaseFunctions = () => {
+  if (!_functions) {
+    _functions = getFunctions(getApp(), 'us-central1');
+  }
+  return _functions;
+};
 
 const MAX_ITEMS_CONTEXT = 200; // Augmenté pour supporter plus de marchés
 
@@ -141,7 +145,7 @@ export const sendMessageToGemini = async (
 
   try {
     // Appel sécurisé via Cloud Function (la clé API reste côté serveur)
-    const callAI = httpsCallable<{ prompt: string; mode: string }, { response: string }>(functions, 'generateAIResponse');
+    const callAI = httpsCallable<{ prompt: string; mode: string }, { response: string }>(getFirebaseFunctions(), 'generateAIResponse');
     const result = await callAI({ prompt: fullPrompt, mode });
     return result.data.response;
 

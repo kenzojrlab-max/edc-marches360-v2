@@ -3,8 +3,6 @@ import { FileText, Download, Play, AlertTriangle, FileCheck, ChevronDown, Chevro
 import { useTheme } from '../../contexts/ThemeContext';
 import { CustomBulleSelect } from '../CustomBulleSelect';
 import { Projet, Marche } from '../../types';
-// @ts-ignore
-import html2pdf from 'html2pdf.js';
 
 interface ReportConfig {
   projectId: string;
@@ -38,8 +36,10 @@ export const AIReportView: React.FC<AIReportViewProps> = ({
     }
   }, [generatedReport]);
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!reportRef.current) return;
+    // @ts-ignore
+    const html2pdf = (await import('html2pdf.js')).default;
     const element = reportRef.current;
     const opt = {
       margin: 10,

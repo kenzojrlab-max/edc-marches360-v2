@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuditLog, UserRole } from '../types';
 import { db, auth } from '../firebase';
 import { collection, addDoc, query, orderBy, limit, onSnapshot, doc, getDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useAuth } from './AuthContext';
 
 interface LogsContextType {
   auditLogs: AuditLog[];
@@ -13,59 +13,52 @@ const LogsContext = createContext<LogsContextType | undefined>(undefined);
 
 export const LogsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, isAdmin } = useAuth();
 
-  // AJOUT : Écoute de l'état d'authentification
+  // OPTIMISATION : On n'écoute les logs QUE si l'utilisateur est admin
+  // Supprime le listener onAuthStateChanged redondant ET évite une requête Firestore inutile pour les non-admins
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user);
-    });
-    return () => unsubscribeAuth();
-  }, []);
-
-  // CORRECTION : On n'écoute les logs QUE si l'utilisateur est connecté
-  useEffect(() => {
-    // Si pas connecté, on ne fait rien
-    if (!isAuthenticated) {
+    if (!user || !isAdmin) {
       setAuditLogs([]);
       return;
     }
 
-    const q = query(collection(db, "audit_logs"), orderBy("timestamp", "desc"), limit(1000));
+    const q = query(collection(db, "audit_logs"), orderBy("timestamp", "desc"), limit(200));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const logs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AuditLog));
       setAuditLogs(logs);
     }, (error) => {
-      // Gestion silencieuse : si l'utilisateur n'est pas admin, il n'a pas accès aux logs (c'est normal)
-      console.warn("Accès aux logs refusé (normal si vous n'êtes pas admin):", error.code);
+      console.warn("Accès aux logs refusé:", error.code);
     });
 
     return () => unsubscribe();
-  }, [isAuthenticated]);
+  }, [user, isAdmin]);
 
   const addLog = async (module: string, action: string, details: string) => {
     try {
-      const user = auth.currentUser;
+      const firebaseUser = auth.currentUser;
 
-      if (!user) {
+      if (!firebaseUser) {
         console.warn("addLog ignoré : utilisateur non connecté");
         return;
       }
 
-      // Récupérer le vrai rôle depuis le profil Firestore de l'utilisateur
-      let userRole: UserRole = UserRole.GUEST;
-      try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          userRole = userDoc.data().role || UserRole.GUEST;
+      // Utiliser le rôle du contexte Auth si disponible, sinon fallback Firestore
+      let userRole: UserRole = user?.role || UserRole.GUEST;
+      if (!user) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+          if (userDoc.exists()) {
+            userRole = userDoc.data().role || UserRole.GUEST;
+          }
+        } catch {
+          // Si on ne peut pas lire le profil, on garde GUEST par sécurité
         }
-      } catch {
-        // Si on ne peut pas lire le profil, on garde GUEST par sécurité
       }
 
       const newLog: Omit<AuditLog, 'id'> = {
         timestamp: new Date().toISOString(),
-        userName: user.displayName || user.email || 'Système',
+        userName: firebaseUser.displayName || firebaseUser.email || 'Système',
         userRole,
         module,
         action,

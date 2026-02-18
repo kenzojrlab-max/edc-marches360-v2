@@ -98,6 +98,7 @@ export interface PieceJointe {
   date_upload: string;
 }
 
+// --- V1 : INCHANGÉ ---
 export interface Decompte {
   id: string;
   numero: string;
@@ -105,8 +106,11 @@ export interface Decompte {
   montant: number;
   date_validation: string;
   doc_id?: string;
+  doc_attachement_id?: string;
+  doc_ov_id?: string;
 }
 
+// --- V1 : INCHANGÉ ---
 export interface Avenant {
   id: string;
   ref: string;
@@ -118,7 +122,92 @@ export interface Avenant {
   doc_enreg_id?: string;
 }
 
+// ============================================================
+// V2 : NOUVELLES INTERFACES
+// ============================================================
+
+// --- BORDEREAU : Suivi Mensuel ---
+// 1 mois = 1 PeriodeMensuelle avec tout dedans
+export interface PeriodeMensuelle {
+  id: string;
+  label: string;                       // "Janvier 2025"
+  date_debut: string;
+  date_fin: string;
+  ordre: number;                       // 1, 2, 3... pour le tri
+
+  // Attachement & Décompte
+  doc_attachement_id?: string;
+  numero_decompte?: string;            // "DC N°001"
+  montant_decompte: number;
+  date_decompte?: string;
+
+  // Rapport MOE
+  doc_rapport_moe_id?: string;
+  observations?: string;
+  aleas_techniques?: string;
+
+  // OS du mois
+  doc_os_periode_id?: string;
+
+  // Réclamation
+  has_reclamation: boolean;
+  objet_reclamation?: string;
+  doc_reclamation_id?: string;
+  doc_reponse_reclamation_id?: string;
+
+  // Facturation & Paiement
+  doc_facture_id?: string;
+  numero_facture?: string;
+  montant_facture?: number;
+  doc_ov_id?: string;
+  statut_paiement: 'EN_ATTENTE' | 'FACTURE' | 'PAYE';
+  date_paiement?: string;
+}
+
+// --- FORFAIT : Suivi par Livrable ---
+export interface Livrable {
+  id: string;
+  libelle: string;                     // "Rapport Phase 1"
+  date_limite: string;
+  statut: 'A_FAIRE' | 'SOUMIS' | 'VALIDE' | 'REJETE';
+  montant_prevu: number;
+
+  doc_rapport_id?: string;
+  doc_pv_csrt_id?: string;
+  doc_facture_id?: string;
+  doc_ov_id?: string;
+
+  doc_os_id?: string;
+  has_reclamation?: boolean;
+  doc_reclamation_id?: string;
+  doc_reponse_reclamation_id?: string;
+
+  validation_date?: string;
+  statut_paiement?: 'EN_ATTENTE' | 'FACTURE' | 'PAYE';
+  date_paiement?: string;
+}
+
+// --- FOURNITURE : Suivi par Bon de Livraison ---
+export interface BonLivraison {
+  id: string;
+  numero: string;                      // "BL N°001"
+  designation: string;
+  quantite: number;
+  montant: number;
+  date_livraison: string;
+
+  doc_bl_id?: string;
+  doc_pv_reception_id?: string;
+  doc_facture_id?: string;
+  doc_ov_id?: string;
+
+  statut: 'EN_ATTENTE' | 'LIVRE' | 'RECEPTIONNEE' | 'PAYE';
+}
+
+// ============================================================
+
 export interface ExecutionData {
+  // ===== V1 EXISTANT (INCHANGÉ) =====
   ref_contrat?: string;
   delai_mois?: number;
   type_retenue_garantie?: 'Retenue 10%' | 'Caution Bancaire';
@@ -144,6 +233,32 @@ export interface ExecutionData {
   doc_mise_en_demeure_id?: string;
   doc_constat_carence_id?: string;
   doc_decision_resiliation_id?: string;
+
+  // ===== V2 AJOUTS =====
+  type_contrat?: 'BORDEREAU' | 'FORFAIT' | 'FOURNITURE';
+
+  moa_chef_service?: string;
+  moa_ingenieur?: string;
+  moe_type?: 'PUBLIC' | 'PRIVE';
+  moe_prive_nom?: string;
+  moe_prive_montant?: number;
+  moe_prive_delai?: string;
+  moe_prive_ref?: string;
+  moe_prive_rccm?: string;
+
+  has_avance_demarrage?: boolean;
+  doc_caution_avance_id?: string;
+  doc_facture_avance_id?: string;
+
+  doc_dossier_exec_id?: string;
+
+  // 5. Tiroirs V2 (selon type_contrat)
+  periodes?: PeriodeMensuelle[];     // BORDEREAU
+  livrables?: Livrable[];            // FORFAIT
+  bons_livraison?: BonLivraison[];   // FOURNITURE
+
+  // 6. Pénalités
+  montant_penalites?: number;
 }
 
 export type TypeOuverture = '1_temps' | '2_temps';
@@ -214,6 +329,8 @@ export interface Marche {
   recours?: RecoursData;
   titulaire?: string;
   execution: ExecutionData;
+  is_hors_ppm?: boolean;
+  alert_dismissed?: boolean;
   created_by: string;
   date_creation: string;
 }

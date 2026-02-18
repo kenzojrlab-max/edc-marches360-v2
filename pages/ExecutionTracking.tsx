@@ -369,15 +369,18 @@ export const ExecutionTracking: React.FC = () => {
 
       {/* FILTRES RAPIDES & SÉLECTEUR DE COLONNES */}
       <div className="flex items-center justify-between gap-4 px-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          {[
-            { key: 'all', label: 'Tous' },
-            { key: 'en_cours', label: 'En cours' },
-            { key: 'cloture', label: 'Clôturés' },
-            { key: 'resilie', label: 'Résiliés' },
-          ].map(f => (
-            <button key={f.key} onClick={() => setStatusFilter(f.key)} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${statusFilter === f.key ? 'bg-green-500 text-white shadow-lg' : `${theme.card} ${theme.textSecondary} hover:opacity-80`}`}>{f.label}</button>
-          ))}
+        <div className="w-48">
+          <CustomBulleSelect
+            label=""
+            value={statusFilter}
+            options={[
+              { value: 'all', label: 'Tous les statuts' },
+              { value: 'en_cours', label: 'En cours' },
+              { value: 'cloture', label: 'Clôturés' },
+              { value: 'resilie', label: 'Résiliés' },
+            ]}
+            onChange={setStatusFilter}
+          />
         </div>
         <div className="relative">
           <button onClick={() => setShowColumnSelector(!showColumnSelector)} className={`px-3 py-1.5 text-[10px] font-black uppercase ${theme.card} ${theme.textSecondary} rounded-lg border border-white/10`}>Colonnes</button>

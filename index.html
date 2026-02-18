@@ -2,11 +2,31 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" type="image/png" href="/logo.png" />
+  <!-- Preconnect (doit être le plus haut possible dans le head) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://edc-marches360.firebaseapp.com">
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+  <link rel="preconnect" href="https://firestore.googleapis.com">
+  <link rel="preconnect" href="https://www.googleapis.com">
+  <link rel="dns-prefetch" href="https://www.gstatic.com">
 
+  <link rel="icon" type="image/png" href="/logo.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EDC Marchés360</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="EDC Marchés360 — Plateforme de gestion et suivi des marchés publics de l'Electricity Development Corporation. Portefeuille de projets, suivi de contrats et gestion documentaire.">
+  <meta property="og:title" content="EDC Marchés360">
+  <meta property="og:description" content="Plateforme de gestion et suivi des marchés publics de l'EDC">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://edc-marches360.web.app">
+  <meta property="og:image" content="https://edc-marches360.web.app/logo.png">
+
+  <!-- Google Fonts non-bloquant -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </noscript>
   <style>
     body { font-family: 'DM Sans', sans-serif; background-color: #f8fafc; color: #1e293b; }
     h1, h2, h3, h4, h5, h6, .font-display { font-family: 'Poppins', sans-serif; }

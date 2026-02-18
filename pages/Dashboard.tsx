@@ -1,22 +1,22 @@
 import React from 'react';
 import {
   TrendingUp, BarChart2, Activity, Briefcase, ChevronRight, Clock, AlertTriangle,
-  Layers, DollarSign, FileStack, Gavel, Ban, X
+  Layers, DollarSign, FileStack, Gavel, Ban, X, Printer, Download, XCircle,
+  BookOpen, PlusCircle
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell, Legend, LineChart, Line
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
-
 // Contextes
 import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Hooks personnalisés
-import { useDashboardStats } from '../hooks/useDashboardStats';
-import { useMarketFilter } from '../hooks/useMarketFilter'; 
+import { useDashboardStats, AlertMarket } from '../hooks/useDashboardStats';
+import { useMarketFilter } from '../hooks/useMarketFilter';
 
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { TruncatedText } from '../components/TruncatedText';
@@ -26,8 +26,64 @@ const formatCurrency = (val: number) => {
   return val.toLocaleString('fr-FR') + ' FCFA';
 };
 
+// Fonction d'export Excel pour les modales (chargement dynamique de xlsx)
+const exportToXLSX = async (data: Record<string, any>[], headers: { key: string; label: string }[], filename: string) => {
+  const XLSX = await import('xlsx');
+  const wsData = [
+    headers.map(h => h.label),
+    ...data.map(row => headers.map(h => row[h.key] ?? ''))
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Auto-width des colonnes
+  ws['!cols'] = headers.map((_, i) => ({
+    wch: Math.max(
+      headers[i].label.length,
+      ...data.map(row => String(row[headers[i].key] ?? '').length)
+    ) + 2
+  }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Données');
+  XLSX.writeFile(wb, `${filename}.xlsx`);
+};
+
+// Fonction d'impression d'un tableau
+const printTable = (title: string, tableId: string) => {
+  const printContent = document.getElementById(tableId);
+  if (!printContent) return;
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
+          h1 { font-size: 18px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; }
+          th { background: #0a1120; color: white; padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+          td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
+          tr:nth-child(even) { background: #f8fafc; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <h1>${title}</h1>
+        ${printContent.outerHTML}
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.print();
+};
+
 export const Dashboard: React.FC = () => {
-  const { markets } = useMarkets();
+  const { markets, updateMarket } = useMarkets();
   const { projects } = useProjects();
   const { theme, themeType } = useTheme();
   const navigate = useNavigate();
@@ -46,8 +102,8 @@ export const Dashboard: React.FC = () => {
   // --- Stats (via Hook) ---
   const {
     volumeStats, budgetStats, executionRateStats, delayStats, recoursStats, failureStats,
-    alertsList, marchesSignesParExercice, tauxExecutionParExercice, executionPPMParFonction,
-    tauxBudgetaireParFonction, COLORS
+    alertsList, ppmVsInscritStats, marchesSignesParExercice, tauxExecutionParExercice,
+    executionPPMParFonction, tauxBudgetaireParFonction, COLORS
   } = useDashboardStats(filteredMarkets, markets, projects);
 
   // États pour les modals KPI
@@ -61,18 +117,14 @@ export const Dashboard: React.FC = () => {
     [filteredMarkets]
   );
 
-  // Marchés réalisés (signés) avec calcul du délai
-  const marchesRealises = React.useMemo(() =>
+  // Marchés signés avec délai contractuel
+  const marchesSigned = React.useMemo(() =>
     filteredMarkets
-      .filter(m => m.dates_realisees.lancement_ao)
-      .map(m => {
-        const dateLancement = new Date(m.dates_realisees.lancement_ao!);
-        const dateSignature = m.dates_realisees.signature_marche
-          ? new Date(m.dates_realisees.signature_marche)
-          : new Date();
-        const delaiJours = Math.round((dateSignature.getTime() - dateLancement.getTime()) / (1000 * 60 * 60 * 24));
-        return { ...m, delaiJours };
-      }),
+      .filter(m => m.dates_realisees.signature_marche)
+      .map(m => ({
+        ...m,
+        dateSignatureFormatted: new Date(m.dates_realisees.signature_marche!).toLocaleDateString('fr-FR')
+      })),
     [filteredMarkets]
   );
 
@@ -81,6 +133,27 @@ export const Dashboard: React.FC = () => {
     filteredMarkets.filter(m => m.is_infructueux),
     [filteredMarkets]
   );
+
+  // Dismiss alerte
+  const handleDismissAlert = (marketId: string) => {
+    updateMarket(marketId, { alert_dismissed: true });
+  };
+
+  const handleDismissMultipleAlerts = (marketIds: string[]) => {
+    marketIds.forEach(id => updateMarket(id, { alert_dismissed: true }));
+  };
+
+  // Sélection des alertes pour suppression multiple
+  const [selectedAlerts, setSelectedAlerts] = React.useState<Set<string>>(new Set());
+
+  const toggleAlertSelection = (id: string) => {
+    setSelectedAlerts(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // État pour l'analyseur dynamique
   const [analyseMetrique, setAnalyseMetrique] = React.useState<'volume' | 'budget' | 'delai' | 'taux'>('volume');
@@ -116,7 +189,7 @@ export const Dashboard: React.FC = () => {
   // --- Rendu ---
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20 relative">
-      
+
       {/* 1. BARRE DE FILTRES */}
       <div className={`${theme.card} p-6 flex flex-wrap items-center gap-6 mb-8 relative z-30`}>
         <div className={`flex items-center gap-3 ${theme.textSecondary} border-r border-white/10 pr-6 hidden md:flex`}>
@@ -128,19 +201,19 @@ export const Dashboard: React.FC = () => {
         <div className="w-full md:w-64"><CustomBulleSelect label="Fonction" value={selectedFonction} options={fonctionOptions} onChange={setSelectedFonction} /></div>
       </div>
 
-      {/* 2. GRILLE DES KPIs (6 CARTES) */}
+      {/* 2. GRILLE DES KPIs (7 CARTES) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-        
-        {/* KPI 1 : Nombre de Marchés prévus au PPM */}
+
+        {/* KPI 1 : Nombre de Marchés planifiés */}
         <div onClick={() => setModalPPM(true)} className={`${theme.card} p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform h-full cursor-pointer`}>
            <div className="flex items-start justify-between mb-4">
-              <p className={`text-sm font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Nombre de Marchés prévus au PPM</p>
+              <p className={`text-sm font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Nombre de Marchés planifiés</p>
               <FileStack size={24} strokeWidth={theme.iconStroke} className={`${theme.iconStyle} ${theme.textSecondary}`} />
            </div>
            <div>
               <div className="flex items-baseline gap-2">
                  <h3 className={`text-4xl font-black ${theme.textMain}`}>{volumeStats.prevu}</h3>
-                 <span className={`text-xs font-bold ${theme.textSecondary} uppercase`}>Prévus</span>
+                 <span className={`text-xs font-bold ${theme.textSecondary} uppercase`}>Planifiés</span>
               </div>
               <p className={`text-sm font-bold ${theme.textAccent} mt-2 flex items-center gap-1`}>
                  <span className="bg-primary/10 px-2 py-0.5 rounded">{volumeStats.realise}</span> consultations lancées
@@ -156,7 +229,6 @@ export const Dashboard: React.FC = () => {
            </div>
            <div>
               <div className="flex items-baseline gap-2">
-                 {/* Augmentation de la taille ici pour meilleure visibilité */}
                  <h3 className={`text-3xl font-black ${theme.textMain}`}>{formatCurrency(budgetStats.prevu)}</h3>
               </div>
               <p className={`text-xs font-bold ${theme.textSecondary} uppercase mt-1`}>Volume Prévu</p>
@@ -168,10 +240,10 @@ export const Dashboard: React.FC = () => {
            </div>
         </div>
 
-        {/* KPI 3 : Taux d’exécution du PPM */}
+        {/* KPI 3 : Taux d'exécution du PPM */}
         <div className={`${theme.card} p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform h-full`}>
            <div className="flex items-start justify-between mb-4">
-              <p className={`text-sm font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Taux d’exécution du PPM</p>
+              <p className={`text-sm font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Taux d'exécution du PPM</p>
               <Activity size={24} strokeWidth={theme.iconStroke} className={`${theme.iconStyle} ${theme.textAccent}`} />
            </div>
            <div>
@@ -233,6 +305,57 @@ export const Dashboard: React.FC = () => {
            </div>
         </div>
 
+        {/* KPI 7 (NOUVEAU) : Marchés prévus (PPM) + inscrits (Hors PPM) */}
+        <div className={`${theme.card} p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform h-full`}>
+           <div className="flex items-start justify-between mb-4">
+              <p className={`text-sm font-black uppercase tracking-widest ${theme.textSecondary}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Marchés prévus & inscrits</p>
+              <PlusCircle size={24} strokeWidth={theme.iconStroke} className={`${theme.iconStyle} text-violet-500`} />
+           </div>
+           <div>
+              <div className="flex items-baseline gap-2">
+                 <h3 className={`text-4xl font-black ${theme.textMain}`}>{ppmVsInscritStats.total.nombre}</h3>
+                 <span className={`text-xs font-bold ${theme.textSecondary} uppercase`}>Total</span>
+              </div>
+              <p className={`text-xs font-bold ${theme.textSecondary} mt-1`}>
+                 Volume : <span className={theme.textMain}>{formatCurrency(ppmVsInscritStats.total.volume)}</span>
+              </p>
+              <div className="mt-3 pt-3 border-t border-white/5 space-y-1">
+                 <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-bold">
+                      <BookOpen size={12} className="text-primary" /> PPM
+                    </span>
+                    <span className={`text-xs font-black ${theme.textMain}`}>{ppmVsInscritStats.ppm.nombre} ({formatCurrency(ppmVsInscritStats.ppm.volume)})</span>
+                 </div>
+                 <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-bold">
+                      <PlusCircle size={12} className="text-violet-500" /> Inscrits
+                    </span>
+                    <span className={`text-xs font-black ${theme.textMain}`}>{ppmVsInscritStats.inscrit.nombre} ({formatCurrency(ppmVsInscritStats.inscrit.volume)})</span>
+                 </div>
+              </div>
+           </div>
+        </div>
+
+      </div>
+
+      {/* NOUVEAU : Volume Marchés prévus (PPM) vs Inscrits (Hors PPM) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+        <div className={`${theme.card} p-8`}>
+          <div className="flex items-center gap-3 mb-4">
+            <BookOpen size={20} className="text-primary" />
+            <h3 className={`text-sm font-black uppercase tracking-widest ${theme.textMain}`}>Volume des marchés prévus (PPM)</h3>
+          </div>
+          <h3 className={`text-3xl font-black ${theme.textMain}`}>{formatCurrency(ppmVsInscritStats.ppm.volume)}</h3>
+          <p className={`text-xs font-bold ${theme.textSecondary} mt-2`}>{ppmVsInscritStats.ppm.nombre} marchés dans le PPM</p>
+        </div>
+        <div className={`${theme.card} p-8`}>
+          <div className="flex items-center gap-3 mb-4">
+            <PlusCircle size={20} className="text-violet-500" />
+            <h3 className={`text-sm font-black uppercase tracking-widest ${theme.textMain}`}>Volume des marchés inscrits (Hors PPM)</h3>
+          </div>
+          <h3 className={`text-3xl font-black ${theme.textMain}`}>{formatCurrency(ppmVsInscritStats.inscrit.volume)}</h3>
+          <p className={`text-xs font-bold ${theme.textSecondary} mt-2`}>{ppmVsInscritStats.inscrit.nombre} marchés inscrits manuellement</p>
+        </div>
       </div>
 
       {/* 3. ALERTES CRITIQUES */}
@@ -242,24 +365,80 @@ export const Dashboard: React.FC = () => {
              <AlertTriangle size={24} />
              <h3 className={`text-xl font-black uppercase tracking-widest ${theme.textMain}`} style={{ fontFamily: "'Poppins', sans-serif" }}>Alertes Critiques</h3>
           </div>
-          <p className={`text-sm font-bold ${theme.textSecondary}`}>Dossiers en retard sur le planning prévisionnel</p>
+          <div className="flex items-center gap-4">
+            <p className={`text-sm font-bold ${theme.textSecondary}`}>Marchés sans saisine CIPM réalisée</p>
+            {selectedAlerts.size > 0 && (
+              <button
+                onClick={() => { handleDismissMultipleAlerts(Array.from(selectedAlerts)); setSelectedAlerts(new Set()); }}
+                className="px-4 py-2 bg-danger/10 text-danger rounded-xl text-xs font-black uppercase tracking-widest hover:bg-danger/20 transition-all flex items-center gap-2"
+              >
+                <XCircle size={14} /> Retirer {selectedAlerts.size} alerte{selectedAlerts.size > 1 ? 's' : ''}
+              </button>
+            )}
+          </div>
         </div>
-        <div className="space-y-4 max-h-80 overflow-y-auto custom-scrollbar">
-          {alertsList.map((m, i) => (
-            <div key={i} onClick={() => navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`)} className={`flex items-center justify-between p-6 ${theme.buttonShape} bg-black/5 border border-white/5 hover:border-danger/30 transition-all cursor-pointer group`}>
-              <div className="flex items-center gap-5">
-                <div className={`w-12 h-12 ${theme.card} flex items-center justify-center text-danger shadow-sm group-hover:scale-110 transition-transform`}><Clock size={20} /></div>
-                <div>
-                  <h4 className={`font-black ${theme.textMain} text-sm tracking-tight uppercase mb-1`}>{m.numDossier}</h4>
-                  <TruncatedText text={m.objet} as="p" className={`text-xs font-bold ${theme.textSecondary} line-clamp-1`} />
+
+        {/* Légende des couleurs */}
+        <div className="flex items-center gap-6 mb-6">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <span className={`text-xs font-bold ${theme.textSecondary}`}>Date prévue dépassée - Pas de réalisation</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-amber-500" />
+            <span className={`text-xs font-bold ${theme.textSecondary}`}>Réalisation effectuée en retard</span>
+          </div>
+        </div>
+
+        <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+          {alertsList.map((m: AlertMarket, i: number) => {
+            const isNoRealisation = m.alertType === 'no_realisation';
+            const borderColor = isNoRealisation ? 'hover:border-red-500/30' : 'hover:border-amber-500/30';
+            const badgeColor = isNoRealisation ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500';
+            const iconColor = isNoRealisation ? 'text-red-500' : 'text-amber-500';
+            const badgeText = isNoRealisation ? `Retard ${m.maxDelay}j` : `Retard réalisé ${m.maxDelay}j`;
+
+            return (
+              <div key={i} className={`flex items-center justify-between p-6 ${theme.buttonShape} bg-black/5 border border-white/5 ${borderColor} transition-all group`}>
+                <div className="flex items-center gap-5">
+                  {/* Checkbox de sélection */}
+                  <input
+                    type="checkbox"
+                    checked={selectedAlerts.has(m.id)}
+                    onChange={() => toggleAlertSelection(m.id)}
+                    className="w-4 h-4 accent-danger cursor-pointer"
+                    onClick={e => e.stopPropagation()}
+                  />
+                  <div
+                    className="flex items-center gap-5 cursor-pointer flex-1"
+                    onClick={() => navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`)}
+                  >
+                    <div className={`w-12 h-12 ${theme.card} flex items-center justify-center ${iconColor} shadow-sm group-hover:scale-110 transition-transform`}>
+                      <Clock size={20} />
+                    </div>
+                    <div>
+                      <h4 className={`font-black ${theme.textMain} text-sm tracking-tight uppercase mb-1`}>{m.numDossier}</h4>
+                      <TruncatedText text={m.objet} as="p" className={`text-xs font-bold ${theme.textSecondary} line-clamp-1`} />
+                      <p className={`text-[10px] font-bold ${theme.textSecondary} mt-1 opacity-70`}>
+                        Situation : {m.lastJalonRealise}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`px-4 py-1.5 ${badgeColor} rounded-full text-xs font-black uppercase tracking-widest`}>{badgeText}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDismissAlert(m.id); }}
+                    className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary} opacity-0 group-hover:opacity-100 transition-opacity`}
+                    title="Retirer des alertes"
+                  >
+                    <XCircle size={16} />
+                  </button>
+                  <ChevronRight size={18} className={`${theme.textSecondary} cursor-pointer`} onClick={() => navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`)} />
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <span className="px-4 py-1.5 bg-danger/10 text-danger rounded-full text-xs font-black uppercase tracking-widest">Retard</span>
-                <ChevronRight size={18} className={theme.textSecondary} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {alertsList.length === 0 && <div className="p-10 text-center text-slate-400 font-black uppercase italic text-sm">Aucune alerte en cours</div>}
         </div>
       </div>
@@ -443,6 +622,7 @@ export const Dashboard: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </div>
+
       {/* MODAL : Marchés non lancés (PPM) */}
       {modalPPM && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setModalPPM(false)}>
@@ -451,13 +631,43 @@ export const Dashboard: React.FC = () => {
               <h3 className={`text-lg font-black uppercase tracking-widest ${theme.textMain}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                 Marchés non lancés ({marchesNonLances.length})
               </h3>
-              <button onClick={() => setModalPPM(false)} className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}><X size={20} /></button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => printTable('Marchés non lancés', 'table-non-lances')}
+                  className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}
+                  title="Imprimer"
+                >
+                  <Printer size={18} />
+                </button>
+                <button
+                  onClick={() => exportToXLSX(
+                    marchesNonLances.map(m => ({
+                      numDossier: m.numDossier,
+                      objet: m.objet,
+                      typeAO: m.typeAO,
+                      montant_prevu: m.montant_prevu
+                    })),
+                    [
+                      { key: 'numDossier', label: 'N° Dossier' },
+                      { key: 'objet', label: 'Objet du marché' },
+                      { key: 'typeAO', label: 'Type AO' },
+                      { key: 'montant_prevu', label: 'Montant prévu' }
+                    ],
+                    'Marches_non_lances'
+                  )}
+                  className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}
+                  title="Télécharger Excel"
+                >
+                  <Download size={18} />
+                </button>
+                <button onClick={() => setModalPPM(false)} className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}><X size={20} /></button>
+              </div>
             </div>
             <div className="overflow-auto flex-1 p-6">
               {marchesNonLances.length === 0 ? (
                 <p className={`text-center py-10 ${theme.textSecondary} italic`}>Tous les marchés ont été lancés.</p>
               ) : (
-                <table className="w-full text-left">
+                <table id="table-non-lances" className="w-full text-left">
                   <thead>
                     <tr className={`text-xs font-black uppercase tracking-widest ${theme.textSecondary} border-b border-white/10`}>
                       <th className="pb-4 pr-4">N° Dossier</th>
@@ -483,37 +693,73 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL : Marchés réalisés (Volume) */}
+      {/* MODAL : Marchés signés (Volume) */}
       {modalVolume && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setModalVolume(false)}>
-          <div className={`${theme.card} w-full max-w-5xl max-h-[80vh] overflow-hidden flex flex-col m-4`} onClick={e => e.stopPropagation()}>
+          <div className={`${theme.card} w-full max-w-6xl max-h-[80vh] overflow-hidden flex flex-col m-4`} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-white/10">
               <h3 className={`text-lg font-black uppercase tracking-widest ${theme.textMain}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                Marchés réalisés ({marchesRealises.length})
+                Marchés signés ({marchesSigned.length})
               </h3>
-              <button onClick={() => setModalVolume(false)} className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}><X size={20} /></button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => printTable('Marchés signés', 'table-signes')}
+                  className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}
+                  title="Imprimer"
+                >
+                  <Printer size={18} />
+                </button>
+                <button
+                  onClick={() => exportToXLSX(
+                    marchesSigned.map(m => ({
+                      numDossier: m.numDossier,
+                      objet: m.objet,
+                      attributaire: m.titulaire || '—',
+                      dateSignature: m.dateSignatureFormatted,
+                      delaiContractuel: m.delai_contractuel || '—',
+                      montant: m.montant_ttc_reel || m.montant_prevu
+                    })),
+                    [
+                      { key: 'numDossier', label: 'N° Dossier' },
+                      { key: 'objet', label: 'Objet du marché' },
+                      { key: 'attributaire', label: 'Attributaire' },
+                      { key: 'dateSignature', label: 'Date de signature' },
+                      { key: 'delaiContractuel', label: "Délai contractuel d'exécution" },
+                      { key: 'montant', label: 'Montant' }
+                    ],
+                    'Marches_signes'
+                  )}
+                  className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}
+                  title="Télécharger Excel"
+                >
+                  <Download size={18} />
+                </button>
+                <button onClick={() => setModalVolume(false)} className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}><X size={20} /></button>
+              </div>
             </div>
             <div className="overflow-auto flex-1 p-6">
-              {marchesRealises.length === 0 ? (
-                <p className={`text-center py-10 ${theme.textSecondary} italic`}>Aucun marché réalisé.</p>
+              {marchesSigned.length === 0 ? (
+                <p className={`text-center py-10 ${theme.textSecondary} italic`}>Aucun marché signé.</p>
               ) : (
-                <table className="w-full text-left">
+                <table id="table-signes" className="w-full text-left">
                   <thead>
                     <tr className={`text-xs font-black uppercase tracking-widest ${theme.textSecondary} border-b border-white/10`}>
-                      <th className="pb-4 pr-4">Nom du marché</th>
+                      <th className="pb-4 pr-4">N° Dossier</th>
+                      <th className="pb-4 pr-4">Objet du marché</th>
                       <th className="pb-4 pr-4">Attributaire</th>
-                      <th className="pb-4 pr-4 text-center">Délai (jours)</th>
+                      <th className="pb-4 pr-4 text-center">Date de signature</th>
+                      <th className="pb-4 pr-4 text-center">Délai contractuel</th>
                       <th className="pb-4 text-right">Montant</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {marchesRealises.map(m => (
+                    {marchesSigned.map(m => (
                       <tr key={m.id} className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer`} onClick={() => { setModalVolume(false); navigate(`/ppm-view?id=${encodeURIComponent(m.id)}`); }}>
+                        <td className={`py-4 pr-4 text-sm font-bold ${theme.textMain}`}>{m.numDossier}</td>
                         <td className={`py-4 pr-4 text-sm ${theme.textMain}`}><TruncatedText text={m.objet} as="span" className="line-clamp-1 font-bold" /></td>
                         <td className={`py-4 pr-4 text-sm ${theme.textSecondary}`}>{m.titulaire || '—'}</td>
-                        <td className={`py-4 pr-4 text-sm font-bold text-center ${!m.dates_realisees.signature_marche ? 'text-warning' : theme.textMain}`}>
-                          {m.delaiJours}j {!m.dates_realisees.signature_marche && <span className="text-xs font-normal">(en cours)</span>}
-                        </td>
+                        <td className={`py-4 pr-4 text-sm font-bold text-center ${theme.textMain}`}>{m.dateSignatureFormatted}</td>
+                        <td className={`py-4 pr-4 text-sm font-bold text-center ${theme.textAccent}`}>{m.delai_contractuel || '—'}</td>
                         <td className={`py-4 text-sm font-bold ${theme.textMain} text-right`}>{formatCurrency(m.montant_ttc_reel || m.montant_prevu)}</td>
                       </tr>
                     ))}
@@ -533,13 +779,41 @@ export const Dashboard: React.FC = () => {
               <h3 className={`text-lg font-black uppercase tracking-widest ${theme.textMain}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                 Procédures infructueuses ({marchesInfructueux.length})
               </h3>
-              <button onClick={() => setModalInfructueux(false)} className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}><X size={20} /></button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => printTable('Procédures infructueuses', 'table-infructueux')}
+                  className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}
+                  title="Imprimer"
+                >
+                  <Printer size={18} />
+                </button>
+                <button
+                  onClick={() => exportToXLSX(
+                    marchesInfructueux.map(m => ({
+                      objet: m.objet,
+                      dateLancement: m.dates_realisees.lancement_ao ? new Date(m.dates_realisees.lancement_ao).toLocaleDateString('fr-FR') : '—',
+                      motif: m.motif_infructueux || 'Non renseigné'
+                    })),
+                    [
+                      { key: 'objet', label: 'Nom du marché' },
+                      { key: 'dateLancement', label: 'Date de lancement' },
+                      { key: 'motif', label: "Motif d'infructuosité" }
+                    ],
+                    'Procedures_infructueuses'
+                  )}
+                  className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}
+                  title="Télécharger Excel"
+                >
+                  <Download size={18} />
+                </button>
+                <button onClick={() => setModalInfructueux(false)} className={`p-2 rounded-xl hover:bg-white/10 ${theme.textSecondary}`}><X size={20} /></button>
+              </div>
             </div>
             <div className="overflow-auto flex-1 p-6">
               {marchesInfructueux.length === 0 ? (
                 <p className={`text-center py-10 ${theme.textSecondary} italic`}>Aucune procédure infructueuse.</p>
               ) : (
-                <table className="w-full text-left">
+                <table id="table-infructueux" className="w-full text-left">
                   <thead>
                     <tr className={`text-xs font-black uppercase tracking-widest ${theme.textSecondary} border-b border-white/10`}>
                       <th className="pb-4 pr-4">Nom du marché</th>

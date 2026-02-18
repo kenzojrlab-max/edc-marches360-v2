@@ -9,8 +9,14 @@ import { UserRole } from '../types';
 // import { storage } from '../utils/storage'; // SUPPRIMÉ : Plus besoin
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebase";
+import { initAppCheck } from "../appCheck";
 
 export const Login: React.FC = () => {
+  // Initialiser App Check au premier rendu de la page Login
+  useEffect(() => {
+    initAppCheck();
+  }, []);
+
   const [isSignUpActive, setIsSignUpActive] = useState(false);
   const { theme, themeType } = useTheme();
   
@@ -148,7 +154,7 @@ export const Login: React.FC = () => {
             <h1 className={`text-xl font-black ${theme.textMain} tracking-tight uppercase`} style={{ fontFamily: "'Poppins', sans-serif" }}>Créer un compte</h1>
             
             <button type="button" onClick={handleGoogleLogin} className={`flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-full shadow-sm hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-wide`}>
-               <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-4 h-4" />
+               <svg className="w-4 h-4" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
                S'inscrire avec Google
             </button>
 
@@ -173,7 +179,7 @@ export const Login: React.FC = () => {
             <h1 className={`text-xl font-black ${theme.textMain} tracking-tight uppercase hidden md:block`} style={{ fontFamily: "'Poppins', sans-serif" }}>Connexion</h1>
             
             <button type="button" onClick={handleGoogleLogin} className={`flex items-center gap-2 px-6 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-full shadow-sm hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-wide group`}>
-               <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-4 h-4" />
+               <svg className="w-4 h-4" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
                <span className="group-hover:text-black">Continuer avec Google</span>
             </button>
             
