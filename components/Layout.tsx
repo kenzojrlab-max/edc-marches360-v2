@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { Suspense, useMemo, useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Activity, PlayCircle, Settings, LogOut,
@@ -307,7 +307,13 @@ export const Layout: React.FC = () => {
         </header>
 
         <section className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-          <Outlet />
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-slate-200 border-t-blue-500" />
+            </div>
+          }>
+            <Outlet />
+          </Suspense>
         </section>
 
         {/* Widget IA - Z-Index 100 (Très haut mais sous les modales) */}

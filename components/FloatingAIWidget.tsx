@@ -186,7 +186,10 @@ export const FloatingAIWidget: React.FC = () => {
     setIsChatLoading(true);
 
     try {
-      const response = await sendMessageToGemini(text, markets, projects, 'CHAT');
+      // Construire l'historique de conversation (exclure le message d'accueil initial)
+      const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }));
+
+      const response = await sendMessageToGemini(text, markets, projects, 'CHAT', history);
       const aiMsg = { id: (Date.now() + 1).toString(), role: 'assistant', content: response, timestamp: new Date() };
       setMessages(prev => [...prev, aiMsg]);
       speak(response); // Lecture vocale de la réponse

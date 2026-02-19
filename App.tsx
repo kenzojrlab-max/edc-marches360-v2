@@ -62,30 +62,28 @@ const AppContent: React.FC = () => {
   return (
     <AppProviders>
       <HashRouter>
-        <Suspense fallback={<Loader />}>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route index element={<Dashboard />} />
-              <Route path="ppm-view" element={<PPMView />} />
-              <Route path="ppm-manage" element={<PPMManage />} />
-              <Route path="ppm-manage/:projectId" element={<ProjectPlanManage />} />
-              <Route path="tracking" element={<Tracking />} />
-              {/* V1 : Inchangé */}
-              <Route path="execution" element={<Execution />} />
-              <Route path="execution-tracking" element={<ExecutionTracking />} />
+        <Routes>
+          <Route path="/login" element={<Suspense fallback={<Loader />}><Login /></Suspense>} />
+          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route index element={<Dashboard />} />
+            <Route path="ppm-view" element={<PPMView />} />
+            <Route path="ppm-manage" element={<PPMManage />} />
+            <Route path="ppm-manage/:projectId" element={<ProjectPlanManage />} />
+            <Route path="tracking" element={<Tracking />} />
+            {/* V1 : Inchangé */}
+            <Route path="execution" element={<Execution />} />
+            <Route path="execution-tracking" element={<ExecutionTracking />} />
 
-              {/* V2 : Nouvelles pages */}
-              <Route path="execution-v2" element={<ExecutionV2 />} />
-              <Route path="execution-tracking-v2" element={<ExecutionTrackingV2 />} />
+            {/* V2 : Nouvelles pages */}
+            <Route path="execution-v2" element={<ExecutionV2 />} />
+            <Route path="execution-tracking-v2" element={<ExecutionTrackingV2 />} />
 
-              <Route path="documents" element={<Documents />} />
-              <Route path="documents-manage" element={<DocumentsManage />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="profile" element={<Profile />} />
-            </Route>
-          </Routes>
-        </Suspense>
+            <Route path="documents" element={<Documents />} />
+            <Route path="documents-manage" element={<DocumentsManage />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
+        </Routes>
       </HashRouter>
     </AppProviders>
   );

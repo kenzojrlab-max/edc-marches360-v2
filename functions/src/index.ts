@@ -62,7 +62,7 @@ export const generateAIResponse = onCall({ cors: true, timeoutSeconds: 120, secr
       model: "gemini-2.5-flash",
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: mode === 'REPORT' ? 16000 : 2000, // Augmenté pour rapports complets
+        maxOutputTokens: mode === 'REPORT' ? 65536 : 4000, // 65K pour rapports exhaustifs, 4K pour chat
       }
     });
 
