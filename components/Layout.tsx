@@ -14,22 +14,29 @@ import { calculateDaysBetween } from '../utils/date';
 import { Marche } from '../types';
 import { FloatingAIWidget } from './FloatingAIWidget';
 import { TruncatedText } from './TruncatedText';
+import { OfflineBanner } from './OfflineBanner';
+import { useToast } from '../contexts/ToastContext';
 
 export const Layout: React.FC = () => {
   const { user, logout, isAdmin, isSuperAdmin } = useAuth();
   const { markets } = useMarkets();
   const { theme, themeType, setThemeType } = useTheme();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   const notificationRef = useRef<HTMLDivElement>(null);
   const themeRef = useRef<HTMLDivElement>(null);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      toast.error("Erreur lors de la déconnexion.");
+    }
     navigate('/login');
   };
 
@@ -132,6 +139,7 @@ export const Layout: React.FC = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden relative`}>
+      <OfflineBanner />
       {/* Effet d'arrière-plan pour le thème Metal */}
       {themeType === 'metal' && (
         <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">

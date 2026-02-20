@@ -13,8 +13,43 @@ import { Marche } from '../types';
 import {
   FileDown, Calendar, User, Briefcase, CheckCircle2, BarChart3,
   AlertTriangle, Search, Layers, Activity, Banknote,
-  TrendingUp, X, CalendarDays, Package, ChevronDown, ChevronUp
+  TrendingUp, X, CalendarDays, Package, ChevronDown, ChevronUp,
+  ExternalLink
 } from 'lucide-react';
+import { Table } from 'antd';
+import type { TableColumnsType } from 'antd';
+import { createStyles } from 'antd-style';
+
+// --- STYLES POUR LE TABLEAU ---
+const useLightTableStyles = createStyles(({ css }) => ({
+  customTable: css`
+    .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
+    .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #22c55e #FDFEFE; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #FDFEFE; } .ant-table-body::-webkit-scrollbar-thumb { background: #22c55e; border-radius: 4px; } }
+    .ant-table-thead > tr > th { background: #e6f4ea !important; color: #1a2333 !important; border-bottom: 2px solid #c3dfc9 !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
+    .ant-table-thead > tr > th.th-fixed-priority { z-index: 100 !important; }
+    .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #1a2333 !important; }
+    .ant-table-tbody > tr > td { background: #FDFEFE !important; color: #1a2333 !important; border-bottom: 1px solid #e5e7eb !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
+    .ant-table-tbody > tr:hover > td { background: #f3f4f6 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #e6f4ea !important; z-index: 3 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #FDFEFE !important; z-index: 1 !important; }
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #f3f4f6 !important; }
+  `,
+}));
+
+const useDarkTableStyles = createStyles(({ css }) => ({
+  customTable: css`
+    .ant-table { background: transparent !important; font-family: 'DM Sans', sans-serif !important; }
+    .ant-table-container { .ant-table-body, .ant-table-content { scrollbar-width: thin; scrollbar-color: #22c55e #1a2333; } .ant-table-body::-webkit-scrollbar { width: 8px; height: 8px; } .ant-table-body::-webkit-scrollbar-track { background: #1a2333; } .ant-table-body::-webkit-scrollbar-thumb { background: #22c55e; border-radius: 4px; } }
+    .ant-table-thead > tr > th { background: #0d2818 !important; color: #ffffff !important; border-bottom: 2px solid rgba(34,197,94,0.3) !important; font-family: 'Poppins', sans-serif !important; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 12px !important; position: sticky; top: 0; z-index: 2 !important; }
+    .ant-table-thead > tr > th.th-fixed-priority { z-index: 100 !important; }
+    .ant-table-thead > tr > th span, .ant-table-thead > tr > th div { color: #ffffff !important; }
+    .ant-table-tbody > tr > td { background: #1e293b !important; color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; font-family: 'DM Sans', sans-serif !important; padding: 16px 12px !important; font-size: 12px !important; }
+    .ant-table-tbody > tr:hover > td { background: #334155 !important; }
+    .ant-table-thead > tr > th.ant-table-cell-fix-left, .ant-table-thead > tr > th.ant-table-cell-fix-right { background: #0d2818 !important; z-index: 3 !important; }
+    .ant-table-tbody > tr > td.ant-table-cell-fix-left, .ant-table-tbody > tr > td.ant-table-cell-fix-right { background: #1e293b !important; z-index: 1 !important; }
+    .ant-table-tbody > tr:hover > .ant-table-cell-fix-left, .ant-table-tbody > tr:hover > .ant-table-cell-fix-right { background: #334155 !important; }
+  `,
+}));
 
 // ══════════════════════════════════════
 // COMPOSANTS UTILITAIRES
@@ -115,7 +150,13 @@ export const ExecutionTrackingV2: React.FC = () => {
   const { markets } = useMarkets();
   const { projects } = useProjects();
   const { theme, themeType } = useTheme();
-  const { isClosed } = useMarketLifecycle(markets, projects);
+  const { isClosed, isFromPreviousYear, getOriginYear } = useMarketLifecycle(markets, projects);
+
+  // Styles du tableau (light/dark)
+  const isDarkTheme = theme.mode === 'dark';
+  const { styles: lightStyles } = useLightTableStyles();
+  const { styles: darkStyles } = useDarkTableStyles();
+  const tableStyles = isDarkTheme ? darkStyles : lightStyles;
 
   const {
     searchTerm, setSearchTerm,
@@ -132,6 +173,18 @@ export const ExecutionTrackingV2: React.FC = () => {
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedPeriodeId, setExpandedPeriodeId] = useState<string | null>(null);
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
+    try { const s = localStorage.getItem('exec_v2_hidden_cols'); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
+  });
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const toggleColumnVisibility = (key: string) => {
+    setHiddenColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      localStorage.setItem('exec_v2_hidden_cols', JSON.stringify([...next]));
+      return next;
+    });
+  };
   const selectedMarket = markets.find(m => m.id === selectedMarketId);
 
   // Filtres
@@ -150,6 +203,158 @@ export const ExecutionTrackingV2: React.FC = () => {
     clotures: executionMarkets.filter(m => isClosed(m)).length,
     resilies: executionMarkets.filter(m => m.execution?.is_resilie).length,
   }), [executionMarkets, isClosed]);
+
+  // Colonnes du tableau (style V1)
+  const tableColumns: TableColumnsType<Marche> = useMemo(() => {
+    return [
+      {
+        title: 'Dossier & Objet',
+        dataIndex: 'numDossier',
+        key: 'dossier',
+        fixed: 'left',
+        width: 350,
+        onHeaderCell: () => ({ className: 'th-fixed-priority' }),
+        render: (_: any, m: Marche) => {
+          const isResilie = !!m.execution?.is_resilie;
+          const isClotured = isClosed(m);
+          return (
+            <div className="flex flex-col gap-2">
+              <span className={`text-[10px] font-black px-3 py-1 ${theme.buttonShape} w-fit ${isResilie ? 'bg-danger text-white' : isClotured ? 'bg-success text-white' : 'bg-primary text-white'}`}>{m.numDossier}</span>
+              <TruncatedText text={m.objet} className={`text-xs font-black ${theme.textMain} line-clamp-2 uppercase whitespace-normal leading-snug`} />
+              <div className="flex flex-wrap gap-1 mt-1">
+                {isResilie && <span className="px-2 py-0.5 bg-red-600 text-white text-[8px] font-black rounded uppercase tracking-tighter shadow-sm animate-pulse">Marché Résilié</span>}
+                {isClotured && !isResilie && <span className="px-2 py-0.5 bg-green-600 text-white text-[8px] font-black rounded uppercase tracking-tighter">Marché Clôturé</span>}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        title: 'Origine PPM',
+        key: 'origine',
+        width: 120,
+        align: 'center',
+        render: (_: any, m: Marche) => {
+          const originYear = getOriginYear(m);
+          const isPrevious = isFromPreviousYear(m, selectedYear);
+          return (
+            <span className={`text-[10px] font-black px-3 py-1.5 rounded-lg ${isPrevious ? 'bg-warning/20 text-warning' : 'bg-primary/10 text-primary'}`}>
+              {originYear || '-'}
+              {isPrevious && <span className="block text-[8px] font-bold opacity-70 mt-0.5">Antérieur</span>}
+            </span>
+          );
+        },
+      },
+      {
+        title: 'Type',
+        key: 'type',
+        width: 120,
+        align: 'center',
+        render: (_: any, m: Marche) => (
+          <span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${
+            m.execution.type_contrat === 'FORFAIT' ? 'bg-accent/10 text-accent' :
+            m.execution.type_contrat === 'FOURNITURE' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
+          }`}>{m.execution.type_contrat || 'BORDEREAU'}</span>
+        ),
+      },
+      {
+        title: 'Titulaire',
+        dataIndex: 'titulaire',
+        key: 'titulaire',
+        width: 200,
+        render: (value: string) => (
+          <TruncatedText text={value || '-'} className={`text-[11px] font-bold ${theme.textMain} uppercase line-clamp-2`} />
+        ),
+      },
+      {
+        title: 'Montant Marché',
+        dataIndex: 'montant_ttc_reel',
+        key: 'montant',
+        width: 180,
+        align: 'right',
+        sorter: (a: Marche, b: Marche) => (a.montant_ttc_reel || 0) - (b.montant_ttc_reel || 0),
+        render: (value: number) => (
+          <span className={`text-sm font-black ${theme.textMain}`}>
+            {value ? value.toLocaleString() : '-'} <span className={`text-[9px] ${theme.textSecondary}`}>FCFA</span>
+          </span>
+        ),
+      },
+      {
+        title: 'Date Signature',
+        key: 'signature',
+        width: 130,
+        align: 'center',
+        render: (_: any, m: Marche) => (
+          <span className={`text-[11px] font-bold ${theme.textAccent}`}>
+            {formatDate(m.dates_realisees?.signature_marche || null)}
+          </span>
+        ),
+      },
+      {
+        title: 'Cumul Exécuté',
+        key: 'cumul',
+        width: 150,
+        align: 'center',
+        sorter: (a: Marche, b: Marche) => getCumulFinancier(a) - getCumulFinancier(b),
+        render: (_: any, m: Marche) => {
+          const cumul = getCumulFinancier(m);
+          return (
+            <div className="flex flex-col items-center">
+              <span className="text-[11px] font-black text-green-500">{cumul.toLocaleString()} FCFA</span>
+            </div>
+          );
+        },
+      },
+      {
+        title: 'Avenants',
+        key: 'avenants',
+        width: 100,
+        align: 'center',
+        render: (_: any, m: Marche) => {
+          const count = m.execution?.avenants?.length || 0;
+          return (
+            <span className={`text-[10px] font-black px-2 py-1 rounded ${count > 0 ? 'bg-warning/20 text-warning' : 'bg-white/5 ' + theme.textSecondary}`}>
+              {count} avenant{count > 1 ? 's' : ''}
+            </span>
+          );
+        },
+      },
+      {
+        title: 'Avancement',
+        key: 'avancement',
+        width: 150,
+        align: 'center',
+        render: (_: any, m: Marche) => {
+          const progress = calculateV2Progress(m);
+          return (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                <div className={`h-full transition-all ${progress >= 100 ? 'bg-green-500' : progress > 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${progress}%` }} />
+              </div>
+              <span className="text-[10px] font-black text-green-500">{Math.round(progress)}%</span>
+            </div>
+          );
+        },
+      },
+      {
+        title: 'Détails',
+        key: 'details',
+        fixed: 'right',
+        width: 100,
+        align: 'center',
+        onHeaderCell: () => ({ className: 'th-fixed-priority' }),
+        render: (_: any, m: Marche) => (
+          <button onClick={() => setSelectedMarketId(m.id)} className={`p-3 ${theme.buttonSecondary} ${theme.buttonShape} transition-colors`}>
+            <ExternalLink size={18} />
+          </button>
+        ),
+      },
+    ].filter(c => !hiddenColumns.has(c.key as string));
+  }, [theme, selectedYear, getOriginYear, isFromPreviousYear, isClosed, hiddenColumns]);
+
+  const tableData = useMemo(() =>
+    displayMarkets.map(m => ({ ...m, key: m.id })),
+  [displayMarkets]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-40 relative">
@@ -196,8 +401,8 @@ export const ExecutionTrackingV2: React.FC = () => {
         </div>
       </div>
 
-      {/* FILTRES RAPIDES */}
-      <div className="flex items-center gap-2 px-2">
+      {/* FILTRES RAPIDES & SÉLECTEUR DE COLONNES */}
+      <div className="flex items-center justify-between gap-4 px-2">
         <div className="w-48">
           <CustomBulleSelect
             label=""
@@ -211,58 +416,50 @@ export const ExecutionTrackingV2: React.FC = () => {
             onChange={setStatusFilter}
           />
         </div>
+        <div className="relative">
+          <button onClick={() => setShowColumnSelector(!showColumnSelector)} className={`px-3 py-1.5 text-[10px] font-black uppercase ${theme.card} ${theme.textSecondary} rounded-lg border border-white/10`}>Colonnes</button>
+          {showColumnSelector && (
+            <div className={`absolute right-0 top-full mt-1 ${theme.card} shadow-2xl rounded-lg p-3 z-50 min-w-[200px] border border-white/10`}>
+              {[
+                { key: 'origine', label: 'Origine PPM' },
+                { key: 'type', label: 'Type Contrat' },
+                { key: 'titulaire', label: 'Titulaire' },
+                { key: 'montant', label: 'Montant Marché' },
+                { key: 'signature', label: 'Date Signature' },
+                { key: 'cumul', label: 'Cumul Exécuté' },
+                { key: 'avenants', label: 'Avenants' },
+                { key: 'avancement', label: 'Avancement' },
+              ].map(col => (
+                <label key={col.key} className={`flex items-center gap-2 py-1.5 text-[11px] font-bold ${theme.textMain} cursor-pointer`}>
+                  <input type="checkbox" checked={!hiddenColumns.has(col.key)} onChange={() => toggleColumnVisibility(col.key)} className="rounded" />
+                  {col.label}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* TABLEAU PRINCIPAL */}
-      <div className={`${theme.card} overflow-hidden overflow-x-auto`}>
-        <table className="w-full text-left min-w-[900px]">
-          <thead className="bg-black/5">
-            <tr className={`text-[10px] font-black uppercase ${theme.textSecondary}`}>
-              <th className="p-4">Dossier</th>
-              <th className="p-4">Objet</th>
-              <th className="p-4">Type</th>
-              <th className="p-4">Montant Marché</th>
-              <th className="p-4">Cumul Exécuté</th>
-              <th className="p-4">Avancement</th>
-              <th className="p-4 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {displayMarkets.map(m => {
-              const progress = calculateV2Progress(m);
-              const cumul = getCumulFinancier(m);
-              const isResilie = m.execution?.is_resilie;
-              return (
-                <tr key={m.id} className={`hover:bg-white/5 transition-all ${isResilie ? 'opacity-60' : ''}`}>
-                  <td className={`p-4 text-[11px] font-bold ${theme.textAccent}`}>{m.numDossier}</td>
-                  <td className={`p-4 text-[11px] font-medium ${theme.textMain} max-w-xs truncate`}>{m.objet}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${
-                      m.execution.type_contrat === 'FORFAIT' ? 'bg-accent/10 text-accent' :
-                      m.execution.type_contrat === 'FOURNITURE' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
-                    }`}>{m.execution.type_contrat || 'BORDEREAU'}</span>
-                  </td>
-                  <td className={`p-4 text-[11px] font-black ${theme.textMain}`}>{m.montant_ttc_reel?.toLocaleString() || '—'} <span className={`text-[9px] ${theme.textSecondary}`}>FCFA</span></td>
-                  <td className={`p-4 text-[11px] font-black text-green-500`}>{cumul.toLocaleString()} <span className="text-[9px] opacity-60">FCFA</span></td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-20 bg-black/20 rounded-full overflow-hidden">
-                        <div className={`h-full ${progress >= 100 ? 'bg-green-500' : progress > 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${progress}%` }}></div>
-                      </div>
-                      <span className="text-[9px] font-bold opacity-60">{Math.round(progress)}%</span>
-                    </div>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button onClick={() => setSelectedMarketId(m.id)} className={`${theme.buttonPrimary} px-4 py-1.5 rounded-lg text-[10px] font-black uppercase`}>Détails</button>
-                  </td>
-                </tr>
-              );
-            })}
-            {displayMarkets.length === 0 && (
-              <tr><td colSpan={7} className="p-20 text-center font-black uppercase text-slate-400 text-xs">Aucun marché trouvé</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div className={`${theme.card} flex flex-col relative overflow-hidden z-10`}>
+        <Table<Marche>
+          className={tableStyles.customTable}
+          columns={tableColumns}
+          dataSource={tableData}
+          scroll={{ x: 'max-content', y: 55 * 10 }}
+          pagination={{ pageSize: 15, showTotal: (total: number, range: [number, number]) => <span className={`text-xs font-bold ${theme.textSecondary}`}>{range[0]}-{range[1]} sur {total} marchés</span>, showSizeChanger: false }}
+          bordered={false}
+          size="middle"
+          rowClassName={(record) => {
+            const isClotured = isClosed(record);
+            const isResilie = !!record.execution?.is_resilie;
+            return `cursor-pointer transition-all ${isClotured ? 'opacity-70' : ''} ${isResilie ? 'opacity-60' : ''}`;
+          }}
+          onRow={(record) => ({
+            onDoubleClick: () => setSelectedMarketId(record.id),
+          })}
+          locale={{ emptyText: <div className="p-20 text-center font-black uppercase text-slate-400">Aucun marché trouvé</div> }}
+        />
       </div>
 
       {/* ══════════════════════════════════════ */}

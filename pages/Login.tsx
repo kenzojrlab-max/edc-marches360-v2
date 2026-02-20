@@ -46,20 +46,30 @@ export const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const success = await login(email, password);
-    if (!success) {
-      setError('Identifiants incorrects.');
+    try {
+      await login(email, password);
+      // Si réussi, le useEffect ci-dessus déclenchera la redirection
+    } catch (err: any) {
+      setError(err.message || "Erreur de connexion.");
+    } finally {
+      setLoading(false);
     }
-    // Si success est vrai, le useEffect ci-dessus déclenchera la redirection
-    setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    await loginWithGoogle();
-    setLoading(false);
-    // SUPPRIMÉ : if (storage.getSession()) navigate('/'); 
-    // La redirection est gérée par le useEffect
+    setError('');
+    try {
+      await loginWithGoogle();
+      // La redirection est gérée par le useEffect
+    } catch (err: any) {
+      // Ne pas afficher "Connexion annulée" comme erreur bloquante
+      if (err.message !== "Connexion annulée.") {
+        setError(err.message || "Erreur de connexion Google.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -69,6 +79,7 @@ export const Login: React.FC = () => {
       return;
     }
     setLoading(true);
+    setError('');
     try {
       await register({
         name,
@@ -80,24 +91,34 @@ export const Login: React.FC = () => {
       });
       // Après inscription, on connecte l'utilisateur
       await login(email, password);
-    } catch (err) {
-      setError("Erreur lors de l'inscription.");
+    } catch (err: any) {
+      setError(err.message || "Erreur lors de l'inscription.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  const [resetStatus, setResetStatus] = useState('');
 
   const handleDoReset = async () => {
     if (!resetEmail) {
-      alert("Veuillez saisir votre email.");
+      setResetStatus("Veuillez saisir votre email.");
       return;
     }
     try {
       await sendPasswordResetEmail(auth, resetEmail);
-      alert("📧 Un email de réinitialisation a été envoyé ! Vérifiez vos spams.");
-      setShowResetModal(false);
+      setResetStatus("Un email de réinitialisation a été envoyé. Vérifiez vos spams.");
+      setTimeout(() => { setShowResetModal(false); setResetStatus(''); }, 3000);
     } catch (error: any) {
       console.error(error);
-      alert("Erreur : " + error.message);
+      const code = error?.code || '';
+      if (code === 'auth/user-not-found') {
+        setResetStatus("Aucun compte trouvé avec cet email.");
+      } else if (code === 'auth/too-many-requests') {
+        setResetStatus("Trop de tentatives. Réessayez plus tard.");
+      } else {
+        setResetStatus("Erreur lors de l'envoi. Vérifiez votre email.");
+      }
     }
   };
 
@@ -246,6 +267,7 @@ export const Login: React.FC = () => {
            </div>
            <div className="space-y-4">
               <BulleInput label="Email" icon={Mail} value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} autoComplete="off" />
+              {resetStatus && <p className={`text-[10px] font-bold px-3 py-2 rounded-lg ${resetStatus.includes('envoyé') ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>{resetStatus}</p>}
            </div>
            <button onClick={handleDoReset} className={`${theme.buttonPrimary} w-full py-4 ${theme.buttonShape} font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3`}>
              <Save size={16} /> Envoyer le lien

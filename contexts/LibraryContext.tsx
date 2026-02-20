@@ -51,6 +51,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       await setDoc(doc(db, "library", newDoc.id), newDoc);
     } catch (error) {
       console.error("Erreur lors de l'ajout du document:", error);
+      throw error;
     }
   };
 
@@ -60,6 +61,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       await deleteDoc(doc(db, "library", id));
     } catch (error) {
       console.error("Erreur lors de la suppression du document:", error);
+      throw error;
     }
   };
 

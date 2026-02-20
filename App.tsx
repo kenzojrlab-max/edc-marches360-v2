@@ -9,6 +9,7 @@ import { ConfigProvider } from './contexts/ConfigContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { MarketProvider } from './contexts/MarketContext';
 import { LibraryProvider } from './contexts/LibraryContext';
+import { ToastProvider } from './contexts/ToastContext';
 // -----------------
 
 import { Loader } from './components/Loader';
@@ -92,7 +93,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </ThemeProvider>
   );
 };

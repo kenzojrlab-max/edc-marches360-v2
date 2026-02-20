@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useToast } from '../contexts/ToastContext';
 
 // Hooks personnalisés
 import { useDashboardStats, AlertMarket } from '../hooks/useDashboardStats';
@@ -86,6 +87,7 @@ export const Dashboard: React.FC = () => {
   const { markets, updateMarket } = useMarkets();
   const { projects } = useProjects();
   const { theme, themeType } = useTheme();
+  const toast = useToast();
   const navigate = useNavigate();
 
   // --- Filtres (via Hook) ---
@@ -135,12 +137,20 @@ export const Dashboard: React.FC = () => {
   );
 
   // Dismiss alerte
-  const handleDismissAlert = (marketId: string) => {
-    updateMarket(marketId, { alert_dismissed: true });
+  const handleDismissAlert = async (marketId: string) => {
+    try {
+      await updateMarket(marketId, { alert_dismissed: true });
+    } catch {
+      toast.error("Erreur lors de la suppression de l'alerte.");
+    }
   };
 
-  const handleDismissMultipleAlerts = (marketIds: string[]) => {
-    marketIds.forEach(id => updateMarket(id, { alert_dismissed: true }));
+  const handleDismissMultipleAlerts = async (marketIds: string[]) => {
+    let errors = 0;
+    for (const id of marketIds) {
+      try { await updateMarket(id, { alert_dismissed: true }); } catch { errors++; }
+    }
+    if (errors > 0) toast.warning(`${errors} alerte(s) n'ont pas pu être supprimées.`);
   };
 
   // Sélection des alertes pour suppression multiple

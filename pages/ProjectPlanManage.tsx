@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMarkets } from '../contexts/MarketContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useToast } from '../contexts/ToastContext';
 import {
   ChevronLeft, Trash2, Plus, PencilLine, Search, Activity,
   Layers, MessageSquare
@@ -27,6 +28,8 @@ export const ProjectPlanManage: React.FC = () => {
   const { projects, updateProject } = useProjects();
 
   const { user, can } = useAuth();
+  const toast = useToast();
+  const formDirty = useRef(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -71,7 +74,18 @@ export const ProjectPlanManage: React.FC = () => {
   const isDarkTheme = theme.mode === 'dark';
   const styles = useProjectTableStyles(isDarkTheme);
 
+  const handleCloseModal = () => {
+    if (formDirty.current) {
+      if (!window.confirm("Vous avez des modifications non enregistrées. Quitter sans sauvegarder ?")) {
+        return;
+      }
+    }
+    setIsModalOpen(false);
+    formDirty.current = false;
+  };
+
   const openModal = (market: Marche | null = null) => {
+    formDirty.current = false;
     if (market) {
       setEditingMarket(market);
       setFormData({ ...market });
@@ -95,13 +109,14 @@ export const ProjectPlanManage: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!formData.numDossier || !formData.objet) {
-      alert("Erreur : Le Numéro de Dossier et l'Objet sont obligatoires.");
+      toast.warning("Le Numéro de Dossier et l'Objet sont obligatoires.");
       return;
     }
 
     try {
       if (editingMarket) {
         await updateMarket(editingMarket.id, formData);
+        toast.success("Marché mis à jour.");
       } else {
         await addMarket({
           ...(formData as Marche),
@@ -127,15 +142,18 @@ export const ProjectPlanManage: React.FC = () => {
           created_by: user?.id || 'system',
           date_creation: new Date().toISOString()
         });
+        toast.success("Marché inscrit avec succès.");
       }
+      formDirty.current = false;
       setIsModalOpen(false);
     } catch (error) {
       console.error("Erreur lors de l'enregistrement", error);
-      alert("Une erreur est survenue lors de l'enregistrement.");
+      toast.error("Erreur lors de l'enregistrement du marché.");
     }
   };
 
   const updateFormDataDate = (key: string, val: string) => {
+    formDirty.current = true;
     setFormData(prev => ({
       ...prev,
       dates_prevues: { ...(prev.dates_prevues || {}), [key]: val }
@@ -143,6 +161,7 @@ export const ProjectPlanManage: React.FC = () => {
   };
 
   const updateFormDataComment = (key: string, val: string) => {
+    formDirty.current = true;
     setFormData(prev => ({
       ...prev,
       comments: { ...(prev.comments || {}), [key]: val }
@@ -244,11 +263,11 @@ export const ProjectPlanManage: React.FC = () => {
       {/* MODAL D'ÉDITION */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         title={editingMarket ? `Édition : ${editingMarket.numDossier}` : "Inscrire un nouveau Marché"}
         size="xl"
       >
-        <div className="space-y-8">
+        <div className="space-y-8" onChangeCapture={() => { formDirty.current = true; }}>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <BulleInput label="N° Dossier" value={formData.numDossier} onChange={e => setFormData({...formData, numDossier: e.target.value})} placeholder="Ex: 001/AO/EDC/2025" required />
               <BulleInput label="Objet du Marché" value={formData.objet} onChange={e => setFormData({...formData, objet: e.target.value})} placeholder="Saisir l'objet complet..." required />

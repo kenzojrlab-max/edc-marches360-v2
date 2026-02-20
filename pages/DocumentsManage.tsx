@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLibrary } from '../contexts/LibraryContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useToast } from '../contexts/ToastContext';
 import { BulleInput } from '../components/BulleInput';
 import { CustomBulleSelect } from '../components/CustomBulleSelect';
 import { Modal } from '../components/Modal';
@@ -17,6 +18,7 @@ export const DocumentsManage: React.FC = () => {
   const { addLibraryDoc, libraryDocs, removeLibraryDoc } = useLibrary();
   const { user } = useAuth();
   const { theme } = useTheme();
+  const toast = useToast();
   
   const [showModal, setShowModal] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -50,13 +52,14 @@ export const DocumentsManage: React.FC = () => {
         uploaded_by: user?.id || ''
       };
 
-      addLibraryDoc(newDoc);
+      await addLibraryDoc(newDoc);
       setShowModal(false);
       setFile(null);
       setFormData({ titre: '', categorie: '', description: '' });
+      toast.success("Document publié avec succès.");
     } catch (error) {
       console.error("Erreur d'upload:", error);
-      alert("Une erreur est survenue lors de l'envoi du document.");
+      toast.error("Erreur lors de l'envoi du document.");
     } finally {
       setIsUploading(false);
     }
@@ -65,7 +68,7 @@ export const DocumentsManage: React.FC = () => {
   // --- CORRECTION ICI ---
   const handleDelete = async (doc: LibraryDocument) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
-      
+
       // VÉRIFICATION DE SÉCURITÉ :
       // On vérifie si le document est hébergé sur le Cloud (URL commençant par http/https)
       const isCloudDoc = doc.url && doc.url.startsWith('http');
@@ -79,9 +82,13 @@ export const DocumentsManage: React.FC = () => {
           // On continue vers la suppression locale même si le cloud échoue
         }
       }
-      
-      // Suppression locale (Pour mettre à jour l'affichage)
-      removeLibraryDoc(doc.id);
+
+      try {
+        await removeLibraryDoc(doc.id);
+        toast.success("Document supprimé.");
+      } catch {
+        toast.error("Erreur lors de la suppression du document.");
+      }
     }
   };
 

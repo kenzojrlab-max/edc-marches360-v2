@@ -3,6 +3,7 @@ import { Upload, File, Lock, Trash2, Plus } from 'lucide-react';
 import { PieceJointe } from '../types';
 import { storage } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface Props {
   existingDocIds?: string | string[];
@@ -14,6 +15,7 @@ interface Props {
 
 export const MultiFileManager: React.FC<Props> = ({ existingDocIds, onAdd, onRemove, disabled, viewOnly }) => {
   const { can } = useAuth();
+  const toast = useToast();
   const [docs, setDocs] = useState<PieceJointe[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -35,11 +37,14 @@ export const MultiFileManager: React.FC<Props> = ({ existingDocIds, onAdd, onRem
     const docIds = normalizeIds(existingDocIds);
 
     if (docIds.length > 0) {
-      Promise.all(docIds.map(id => storage.getDocById(id)))
+      Promise.all(docIds.map(id => storage.getDocById(id).catch(() => null)))
         .then(results => {
           if (isMounted) {
             setDocs(results.filter((d): d is PieceJointe => d !== null));
           }
+        })
+        .catch((error) => {
+          console.error("Erreur chargement documents:", error);
         });
     } else {
       setDocs([]);
@@ -73,7 +78,7 @@ export const MultiFileManager: React.FC<Props> = ({ existingDocIds, onAdd, onRem
     if (!file) return;
 
     if (file.size > 25 * 1024 * 1024) {
-      alert("Fichier trop volumineux (Max 25 Mo)");
+      toast.error("Fichier trop volumineux (Max 25 Mo).");
       return;
     }
 
@@ -93,7 +98,7 @@ export const MultiFileManager: React.FC<Props> = ({ existingDocIds, onAdd, onRem
 
     } catch (error) {
       console.error("Erreur upload:", error);
-      alert("Erreur lors de l'upload. Vérifiez votre connexion.");
+      toast.error("Erreur lors de l'upload. Vérifiez votre connexion.");
     } finally {
       setLoading(false);
       setIsUploading(false);
@@ -136,7 +141,7 @@ export const MultiFileManager: React.FC<Props> = ({ existingDocIds, onAdd, onRem
         onRemove(docToDelete.id);
       } catch (error) {
         console.error("Erreur suppression", error);
-        alert("Impossible de supprimer.");
+        toast.error("Impossible de supprimer le document.");
       }
     }
   };

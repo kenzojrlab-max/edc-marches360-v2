@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useToast } from '../contexts/ToastContext';
 import { BulleInput } from '../components/BulleInput';
-import { Save, User as UserIcon, Briefcase, Camera, Upload, CheckCircle2 } from 'lucide-react';
+import { Save, User as UserIcon, Briefcase, Camera, Upload, CheckCircle2, Loader2 } from 'lucide-react';
 
 export const Profile: React.FC = () => {
   const { user, updateUserProfile } = useAuth();
   const { theme, themeType } = useTheme();
-  
+  const toast = useToast();
+
   const [name, setName] = useState('');
   const [fonction, setFonction] = useState('');
   const [photoURL, setPhotoURL] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Initialisation des données
   useEffect(() => {
@@ -22,29 +25,35 @@ export const Profile: React.FC = () => {
     }
   }, [user]);
 
-  const handleSave = () => {
-    if (user) {
-      updateUserProfile(user.id, {
-        name,
-        fonction,
-        photoURL
-      });
+  const handleSave = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await updateUserProfile(user.id, { name, fonction, photoURL });
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
+    } catch {
+      toast.error("Erreur lors de la sauvegarde du profil.");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Conversion simple en Base64 pour stockage local (pour la démo)
-      // Dans une prod réelle, on utiliserait storage.uploadFile vers Firebase Storage
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoURL(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (file.size > 500_000) {
+      toast.error("Image trop volumineuse (max 500 Ko).");
+      return;
     }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoURL(reader.result as string);
+    };
+    reader.onerror = () => {
+      toast.error("Impossible de lire le fichier image.");
+    };
+    reader.readAsDataURL(file);
   };
 
   // Sélection d'avatars prédéfinis
@@ -144,11 +153,12 @@ export const Profile: React.FC = () => {
           </div>
 
           <div className="pt-8 border-t border-white/10 flex justify-end">
-            <button 
-              onClick={handleSave} 
-              className={`${theme.buttonPrimary} px-8 py-3 ${theme.buttonShape} font-black text-xs uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2`}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className={`${theme.buttonPrimary} px-8 py-3 ${theme.buttonShape} font-black text-xs uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-wait`}
             >
-              <Save size={16} /> Enregistrer les modifications
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {saving ? 'Sauvegarde...' : 'Enregistrer les modifications'}
             </button>
           </div>
         </div>

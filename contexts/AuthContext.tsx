@@ -48,17 +48,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 1. Gestion de la session Firebase Auth
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
+      try {
+        if (firebaseUser) {
+          const userRef = doc(db, "users", firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
 
-        if (userSnap.exists()) {
-          setUser(userSnap.data() as User);
+          if (userSnap.exists()) {
+            setUser(userSnap.data() as User);
+          } else {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
         }
-      } else {
+      } catch (error) {
+        console.error("Erreur lors de la récupération du profil utilisateur:", error);
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false); // Fin du chargement une fois l'auth vérifiée
     });
 
     return () => unsubscribe();
@@ -76,9 +84,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const usersData = snapshot.docs.map(docSnap => ({
         ...docSnap.data(),
-        id: docSnap.id // CORRECTION: Inclure l'ID du document Firestore
+        id: docSnap.id
       } as User));
       setUsers(usersData);
+    }, (error) => {
+      console.error("Erreur synchronisation utilisateurs:", error);
     });
     return () => unsubscribe();
   }, [user]); // Dépendance 'user' essentielle ici
@@ -87,9 +97,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signInWithEmailAndPassword(auth, email, password);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erreur login:", error);
-      return false;
+      const code = error?.code || '';
+      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
+        throw new Error("Email ou mot de passe incorrect.");
+      } else if (code === 'auth/wrong-password') {
+        throw new Error("Mot de passe incorrect.");
+      } else if (code === 'auth/user-disabled') {
+        throw new Error("Ce compte a été désactivé.");
+      } else if (code === 'auth/too-many-requests') {
+        throw new Error("Trop de tentatives. Veuillez réessayer plus tard.");
+      } else if (code === 'auth/network-request-failed') {
+        throw new Error("Erreur réseau. Vérifiez votre connexion internet.");
+      } else {
+        throw new Error("Erreur de connexion. Veuillez réessayer.");
+      }
     }
   };
 
@@ -119,9 +142,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoURL: fbUser.photoURL || undefined,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erreur connexion Google:", error);
-      alert("La connexion avec Google a échoué.");
+      const code = error?.code || '';
+      if (code === 'auth/popup-closed-by-user') {
+        throw new Error("Connexion annulée.");
+      } else if (code === 'auth/network-request-failed') {
+        throw new Error("Erreur réseau. Vérifiez votre connexion internet.");
+      } else {
+        throw new Error("La connexion avec Google a échoué.");
+      }
     }
   };
 
@@ -157,6 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await updateDoc(doc(db, "users", userId), { role });
     } catch (error) {
       console.error("Erreur updateUserRole:", error);
+      throw error;
     }
   };
 
@@ -165,6 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await updateDoc(doc(db, "users", userId), data);
     } catch (error) {
       console.error("Erreur updateUserProfile:", error);
+      throw error;
     }
   };
 
@@ -173,11 +205,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await deleteDoc(doc(db, "users", userId));
     } catch (error) {
       console.error("Erreur deleteUser:", error);
+      throw error;
     }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Erreur logout:", error);
+    }
     setUser(null);
   };
 

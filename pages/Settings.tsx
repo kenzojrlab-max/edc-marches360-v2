@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '../utils/date';
 import { TruncatedText } from '../components/TruncatedText';
+import { useToast } from '../contexts/ToastContext';
 import { collection, getDocs, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -21,7 +22,8 @@ export const Settings: React.FC = () => {
   const { fonctions, addFonction, removeFonction, aoTypes, addAOType, removeAOType, marketTypes, addMarketType, removeMarketType } = useConfig();
   const { auditLogs, addLog } = useLogs();
 
-  const { theme, themeType } = useTheme(); // On récupère le thème et son mode
+  const { theme, themeType } = useTheme();
+  const toast = useToast();
 
   // --- LOGIQUE D'AFFICHAGE ADAPTATIVE ---
   // Si le thème est clair (Clay, Minimal), on utilise des bordures grises visibles
@@ -40,33 +42,47 @@ export const Settings: React.FC = () => {
   const [logSearch, setLogSearch] = useState('');
   const [selectedTrashIds, setSelectedTrashIds] = useState<string[]>([]);
 
-  const saveRole = (userId: string) => {
+  const saveRole = async (userId: string) => {
     const role = pendingRoles[userId];
     const target = users.find(u => u.id === userId);
     if (role) {
-      updateUserRole(userId, role);
-      addLog('Accès', 'Changement de rôle', `Rôle de ${target?.name} changé en ${role}.`);
-      const next = { ...pendingRoles };
-      delete next[userId];
-      setPendingRoles(next);
+      try {
+        await updateUserRole(userId, role);
+        addLog('Accès', 'Changement de rôle', `Rôle de ${target?.name} changé en ${role}.`);
+        const next = { ...pendingRoles };
+        delete next[userId];
+        setPendingRoles(next);
+        toast.success(`Rôle de ${target?.name} mis à jour.`);
+      } catch {
+        toast.error("Erreur lors du changement de rôle.");
+      }
     }
   };
 
-  const handleRemoveUser = (userId: string) => {
+  const handleRemoveUser = async (userId: string) => {
     if(window.confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ?")) {
-       deleteUser(userId);
-       addLog('Accès', 'Suppression Utilisateur', `ID: ${userId} supprimé.`);
+      try {
+        await deleteUser(userId);
+        addLog('Accès', 'Suppression Utilisateur', `ID: ${userId} supprimé.`);
+        toast.success("Utilisateur supprimé.");
+      } catch {
+        toast.error("Erreur lors de la suppression de l'utilisateur.");
+      }
     }
   };
 
-  const handleAddItem = (type: 'fonction' | 'ao' | 'prestation') => {
+  const handleAddItem = async (type: 'fonction' | 'ao' | 'prestation') => {
     const value = newItemNames[type];
     if (!value?.trim()) return;
     const name = value.toUpperCase();
-    if (type === 'fonction') addFonction(name);
-    if (type === 'ao') addAOType(name);
-    if (type === 'prestation') addMarketType(name);
-    setNewItemNames(prev => ({ ...prev, [type]: '' }));
+    try {
+      if (type === 'fonction') await addFonction(name);
+      if (type === 'ao') await addAOType(name);
+      if (type === 'prestation') await addMarketType(name);
+      setNewItemNames(prev => ({ ...prev, [type]: '' }));
+    } catch {
+      toast.error("Erreur lors de l'ajout de l'élément.");
+    }
   };
 
   const handleDeleteItem = (type: 'fonction' | 'ao' | 'prestation', label: string) => {
@@ -156,19 +172,31 @@ export const Settings: React.FC = () => {
     setSelectedTrashIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const handleBulkRestore = () => {
+  const handleBulkRestore = async () => {
     if (window.confirm(`Voulez-vous vraiment restaurer ces ${selectedTrashIds.length} éléments ?`)) {
-      selectedTrashIds.forEach(id => restoreMarket(id));
+      const count = selectedTrashIds.length;
+      let errors = 0;
+      for (const id of selectedTrashIds) {
+        try { await restoreMarket(id); } catch { errors++; }
+      }
       setSelectedTrashIds([]);
-      addLog('Corbeille', 'Restauration en masse', `${selectedTrashIds.length} éléments restaurés.`);
+      addLog('Corbeille', 'Restauration en masse', `${count} éléments restaurés.`);
+      if (errors > 0) toast.warning(`${errors} élément(s) n'ont pas pu être restaurés.`);
+      else toast.success(`${count} élément(s) restaurés.`);
     }
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (window.confirm(`ATTENTION : Suppression définitive de ${selectedTrashIds.length} éléments.\nCette action est irréversible.\n\nContinuer ?`)) {
-      selectedTrashIds.forEach(id => permanentDeleteMarket(id));
+      const count = selectedTrashIds.length;
+      let errors = 0;
+      for (const id of selectedTrashIds) {
+        try { await permanentDeleteMarket(id); } catch { errors++; }
+      }
       setSelectedTrashIds([]);
-      addLog('Corbeille', 'Suppression en masse', `${selectedTrashIds.length} éléments supprimés définitivement.`);
+      addLog('Corbeille', 'Suppression en masse', `${count} éléments supprimés définitivement.`);
+      if (errors > 0) toast.warning(`${errors} élément(s) n'ont pas pu être supprimés.`);
+      else toast.success(`${count} élément(s) supprimés définitivement.`);
     }
   };
 
@@ -219,6 +247,9 @@ export const Settings: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${divideColor}`}>
+                    {users.length === 0 && (
+                      <tr><td colSpan={5} className={`p-20 text-center font-black ${theme.textSecondary} uppercase italic text-xs`}>Aucun utilisateur trouvé</td></tr>
+                    )}
                     {users.map((u, index) => {
                       const hasPending = !!pendingRoles[u.id];
                       const displayedRole = pendingRoles[u.id] || u.role;
@@ -298,6 +329,9 @@ export const Settings: React.FC = () => {
                      </tr>
                   </thead>
                   <tbody className={`divide-y ${divideColor}`}>
+                     {filteredLogs.length === 0 && (
+                       <tr><td colSpan={4} className={`p-20 text-center font-black ${theme.textSecondary} uppercase italic text-xs`}>{logSearch ? "Aucun log ne correspond à la recherche" : "Aucune activité enregistrée"}</td></tr>
+                     )}
                      {filteredLogs.map(log => (
                        <tr key={log.id} className={`${rowHoverBg} transition-all`}>
                           <td className="p-8"><span className={`text-[11px] font-bold ${theme.textSecondary}`}>{new Date(log.timestamp).toLocaleString('fr-FR')}</span></td>

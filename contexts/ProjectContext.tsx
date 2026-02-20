@@ -54,6 +54,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addLog('Projets', 'Création', `Nouveau projet : ${project.libelle}`);
     } catch (error) {
       console.error("Erreur ajout projet:", error);
+      throw error;
     }
   };
 
@@ -63,6 +64,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       await updateDoc(projectRef, updates);
     } catch (error) {
       console.error("Erreur mise à jour projet:", error);
+      throw error;
     }
   };
 
@@ -73,6 +75,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addLog('Projets', 'Suppression', `Projet ID ${id} supprimé.`);
     } catch (error) {
       console.error("Erreur suppression projet:", error);
+      throw error;
     }
   };
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, File, Lock, Trash2 } from 'lucide-react'; // RefreshCcw retiré car remplacé par la barre
+import { Upload, File, Lock, Trash2 } from 'lucide-react';
 import { PieceJointe } from '../types';
 import { storage } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface Props {
   onUpload: (docId: string) => void;
@@ -12,6 +13,7 @@ interface Props {
 
 export const FileManager: React.FC<Props> = ({ onUpload, existingDocId, disabled }) => {
   const { can } = useAuth();
+  const toast = useToast();
   const [doc, setDoc] = useState<PieceJointe | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0); // NOUVEAU : État pour la progression
@@ -26,6 +28,8 @@ export const FileManager: React.FC<Props> = ({ onUpload, existingDocId, disabled
     if (existingDocId) {
       storage.getDocById(existingDocId).then(data => {
         if (isMounted && data) setDoc(data);
+      }).catch((error) => {
+        console.error("Erreur chargement document:", error);
       });
     } else {
       setDoc(null);
@@ -77,7 +81,7 @@ export const FileManager: React.FC<Props> = ({ onUpload, existingDocId, disabled
     if (!file) return;
 
     if (file.size > 25 * 1024 * 1024) {
-      alert("Fichier trop volumineux (Max 25 Mo)");
+      toast.error("Fichier trop volumineux (Max 25 Mo).");
       return;
     }
 
@@ -98,7 +102,7 @@ export const FileManager: React.FC<Props> = ({ onUpload, existingDocId, disabled
 
     } catch (error) {
       console.error("Erreur upload:", error);
-      alert("Erreur lors de l'upload. Vérifiez votre connexion.");
+      toast.error("Erreur lors de l'upload. Vérifiez votre connexion.");
     } finally {
       setLoading(false);
       setIsUploading(false);
@@ -141,7 +145,7 @@ export const FileManager: React.FC<Props> = ({ onUpload, existingDocId, disabled
         onUpload("");
       } catch (error) {
         console.error("Erreur suppression", error);
-        alert("Impossible de supprimer.");
+        toast.error("Impossible de supprimer le fichier.");
       } finally {
         setLoading(false);
       }

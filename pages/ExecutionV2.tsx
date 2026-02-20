@@ -15,6 +15,7 @@ import {
   CalendarDays, Package
 } from 'lucide-react';
 import { TruncatedText } from '../components/TruncatedText';
+import { useToast } from '../contexts/ToastContext';
 import { PeriodeMensuelle, Livrable, BonLivraison, Avenant } from '../types';
 
 // Mois en français
@@ -26,6 +27,7 @@ export const ExecutionV2: React.FC = () => {
   const { projects } = useProjects();
   const { can } = useAuth();
   const { theme, themeType } = useTheme();
+  const toast = useToast();
 
   const {
     searchTerm, setSearchTerm,
@@ -45,10 +47,14 @@ export const ExecutionV2: React.FC = () => {
 
   const selectedMarket = markets.find(m => m.id === selectedMarketId);
 
-  const updateExec = (marketId: string, updates: any) => {
+  const updateExec = async (marketId: string, updates: any) => {
     const market = markets.find(m => m.id === marketId);
     if (!market) return;
-    updateMarket(marketId, { execution: { ...market.execution, ...updates } });
+    try {
+      await updateMarket(marketId, { execution: { ...market.execution, ...updates } });
+    } catch {
+      toast.error("Erreur lors de la mise à jour. Vérifiez votre connexion.");
+    }
   };
 
   const handleDocUpload = (marketId: string, key: string, docId: string) => {
@@ -57,6 +63,7 @@ export const ExecutionV2: React.FC = () => {
 
   const handleSave = () => {
     setShowSuccess(true);
+    toast.success("Données synchronisées avec succès.");
     setTimeout(() => { setShowSuccess(false); setSelectedMarketId(null); }, 2000);
   };
 

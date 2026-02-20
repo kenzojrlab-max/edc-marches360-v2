@@ -179,6 +179,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await updateDoc(marketRef, safeUpdates);
     } catch (error) {
       console.error("Erreur updateMarket:", error);
+      throw error;
     }
   };
 
@@ -190,6 +191,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     } catch (error) {
       console.error("Erreur updateMarketDoc:", error);
+      throw error;
     }
   };
 
@@ -217,6 +219,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     } catch (error) {
       console.error("Erreur addMarketDocToArray:", error);
+      throw error;
     }
   };
 
@@ -244,6 +247,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     } catch (error) {
       console.error("Erreur removeMarketDocFromArray:", error);
+      throw error;
     }
   };
 
@@ -260,6 +264,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await batch.commit();
     } catch (error) {
       console.error("Erreur removeMarket:", error);
+      throw error;
     }
   };
 
@@ -283,6 +288,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addLog('Système', 'Suppression en cascade', `${targets.length} marchés archivés suite à la suppression du projet.`);
     } catch (error) {
       console.error("Erreur removeMarketsByProjectId:", error);
+      throw error;
     }
   };
 
@@ -299,6 +305,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await batch.commit();
     } catch (error) {
       console.error("Erreur restoreMarket:", error);
+      throw error;
     }
   };
 
@@ -307,6 +314,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await deleteDoc(doc(db, "deleted_markets", id));
     } catch (error) {
       console.error("Erreur permanentDeleteMarket:", error);
+      throw error;
     }
   };
 
@@ -390,6 +398,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     } catch (error) {
       console.error("Erreur updateJalon:", error);
+      throw error;
     }
   };
 
@@ -401,6 +410,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     } catch (error) {
       console.error("Erreur updateComment:", error);
+      throw error;
     }
   };
 

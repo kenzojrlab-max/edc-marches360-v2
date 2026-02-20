@@ -12,6 +12,7 @@ import { FONCTIONS, JALONS_PPM_KEYS, JALONS_LABELS } from '../constants';
 import { AOType, MarketType, Marche, StatutGlobal, SourceFinancement, Projet } from '../types';
 import { ChevronLeft, FileSpreadsheet, Plus, Download, Upload, MousePointer2, Search, Layers, Trash2 } from 'lucide-react';
 import { generateUUID } from '../utils/uid';
+import { useToast } from '../contexts/ToastContext';
 // AJOUT : Fonction de nettoyage pour sécuriser les imports Excel
 const sanitizeInput = (str: any): string => {
   if (typeof str !== 'string') return String(str || "");
@@ -83,9 +84,10 @@ export const PPMManage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isSuperAdmin } = useAuth();
   const { theme, themeType } = useTheme();
-  
+  const toast = useToast();
+
   const { markets, addMarkets, removeMarketsByProjectId } = useMarkets();
-  
+
   const { projects, addProject, removeProject } = useProjects();
   const { addLog } = useLogs();
   
@@ -421,16 +423,21 @@ export const PPMManage: React.FC = () => {
 
   const handleCreateProject = async () => {
     if (!newProject.libelle) return;
-    await addProject({
-      id: generateUUID(),
-      libelle: newProject.libelle!,
-      sourceFinancement: newProject.sourceFinancement!,
-      nomBailleur: newProject.nomBailleur,
-      exercice: newProject.exercice!,
-      created_at: new Date().toISOString()
-    });
-    setShowProjectModal(false);
-    setNewProject({ libelle: '', sourceFinancement: SourceFinancement.BUDGET_EDC, nomBailleur: '', exercice: new Date().getFullYear() });
+    try {
+      await addProject({
+        id: generateUUID(),
+        libelle: newProject.libelle!,
+        sourceFinancement: newProject.sourceFinancement!,
+        nomBailleur: newProject.nomBailleur,
+        exercice: newProject.exercice!,
+        created_at: new Date().toISOString()
+      });
+      setShowProjectModal(false);
+      setNewProject({ libelle: '', sourceFinancement: SourceFinancement.BUDGET_EDC, nomBailleur: '', exercice: new Date().getFullYear() });
+      toast.success("Projet créé avec succès.");
+    } catch {
+      toast.error("Erreur lors de la création du projet.");
+    }
   };
 
   return (
@@ -471,6 +478,17 @@ export const PPMManage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-[1]">
+        {filteredProjects.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center py-20 gap-4">
+            <Layers size={48} className={`${theme.textSecondary} opacity-30`} />
+            <p className={`text-sm font-black uppercase tracking-widest ${theme.textSecondary}`}>
+              {projects.length === 0 ? "Aucun projet créé" : "Aucun projet ne correspond à votre recherche"}
+            </p>
+            <p className={`text-xs ${theme.textSecondary} opacity-60`}>
+              {projects.length === 0 ? "Cliquez sur \"Nouveau Projet\" pour commencer." : "Modifiez vos filtres ou la recherche."}
+            </p>
+          </div>
+        )}
         {filteredProjects.map(p => (
           <div key={p.id} onDoubleClick={() => navigate(`/ppm-manage/${p.id}`)} className={`${theme.card} p-10 cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-2 flex flex-col h-full group`}>
              <div className="flex items-center justify-between mb-6">
@@ -487,11 +505,16 @@ export const PPMManage: React.FC = () => {
                 <div className="flex items-center gap-3">
                    {isSuperAdmin && (
                      <button 
-                       onClick={(e) => {
+                       onClick={async (e) => {
                          e.stopPropagation();
                          if (window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ? Cette action est irréversible.")) {
-                           removeMarketsByProjectId(p.id);
-                           removeProject(p.id);
+                           try {
+                             await removeMarketsByProjectId(p.id);
+                             await removeProject(p.id);
+                             toast.success("Projet supprimé.");
+                           } catch {
+                             toast.error("Erreur lors de la suppression du projet.");
+                           }
                          }
                        }} 
                        className={`p-2 hover:bg-red-500/10 text-slate-400 hover:text-red-500 rounded-lg transition-colors`}
